@@ -1,0 +1,21 @@
+type = extern;
+
+version : "1.0.0";
+
+fetch "https://github.com/ocornut/imgui.git"
+{
+  license    : "LICENSE";
+  commit     : "aceab9a877de0258d19d29a5d87a51b63a8999bf";
+  package    : ImGui;
+  skip_namespace  : true;
+  args
+  {
+  
+  }
+}
+
+
+public:
+{
+  dependencies: [ "External.freetype" ];
+}

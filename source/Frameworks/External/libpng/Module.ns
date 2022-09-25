@@ -1,0 +1,25 @@
+type = extern;
+
+version : "1.0.0";
+
+fetch "https://github.com/glennrp/libpng"
+{
+  license    : "LICENSE";
+  commit     : "763c77e628e2c78b4c422bb7e26327d28ee54ad4";
+  package    : libpng;
+  skip_namespace  : true;
+  targets  : png_static;
+  fetch_content : true;
+  args
+  {
+    PNG_STATIC : ON;
+    PNG_SHARED : OFF;
+    PNG_EXECUTABLES : OFF;
+    PNG_TESTS : OFF;
+  }
+}
+
+public:
+{
+  dependencies: [ "External.zlib" ];
+}

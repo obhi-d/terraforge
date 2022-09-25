@@ -1,0 +1,33 @@
+type = extern;
+
+version : "1.0.0";
+
+fetch "https://github.com/mosra/magnum.git"
+{
+  license    : "LICENSE";
+  commit     : "fa00122fdb84eab23064d83c36d50757fdf899c1";
+  package    : Magnum;
+  namespace  : Magnum;
+  components : [GL, Trade, Shaders];
+  args
+  {
+    BUILD_STATIC : ON;
+    BUILD_PLUGINS_STATIC : ON;
+    WITH_SDL2APPLICATION : OFF;
+    WITH_GLFWAPPLICATION : OFF;
+    WITH_MESHTOOLS  : OFF;
+    WITH_TRADE : ON;
+    WITH_TEXT : OFF;
+    WITH_TEXTURETOOLS :OFF ; 
+  }
+}
+
+public:
+{
+  dependencies: [ "External.corrade" ];
+}
+
+{{cmake:prepare}}
+find_package(Corrade REQUIRED Main)
+
+

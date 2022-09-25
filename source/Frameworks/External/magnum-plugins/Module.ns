@@ -1,0 +1,27 @@
+type = extern;
+
+version : "1.0.0";
+
+fetch "https://github.com/mosra/magnum-plugins.git"
+{
+  license    : "LICENSE";
+  commit     : "1c9d360aa21a3788f32b2d94ad45c39841702a39";
+  package    : MagnumPlugins;
+  namespace  : MagnumPlugins;
+  components : ["StbImageImporter", "DdsImporter" ];
+  args
+  {
+    BUILD_STATIC                 : ON;
+    MAGNUM_WITH_STBIMAGEIMPORTER : ON;
+    MAGNUM_WITH_DDSIMPORTER      : ON;
+  }
+}
+
+public:
+{
+  dependencies: [ "External.magnum" ];
+}
+
+{{cmake:prepare}}
+find_package(Magnum REQUIRED)
+

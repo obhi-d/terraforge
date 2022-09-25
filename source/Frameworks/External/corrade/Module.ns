@@ -1,0 +1,20 @@
+type = extern;
+
+version : "1.0.0";
+
+fetch "https://github.com/mosra/corrade.git"
+{
+  license    : "LICENSE";
+  commit     : "e6b4d952e757ab99a0b67e516235b7f91904dca0";
+  package    : Corrade;
+  namespace  : Corrade;
+  components : [Utility, Main];
+  args
+  {
+    BUILD_STATIC : ON;
+    WITH_INTERCONNECT : OFF;
+    WITH_TESTSUITE : OFF;
+  }
+}
+
+

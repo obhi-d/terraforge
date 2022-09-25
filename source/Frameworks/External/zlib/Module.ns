@@ -1,0 +1,18 @@
+type = extern;
+
+version : "0.2.3";
+
+fetch "https://github.com/madler/zlib.git"
+{
+  license        : "LICENSE";
+  commit         : "21767c654d31d2dccdde4330529775c6c5fd5389";
+  package        : zlib;
+  skip_namespace : true;
+  targets        : zlib;
+  fetch_content  : true;
+  args
+  {
+    BUILD_STATIC            : ON;
+    BUILD_SHARED            : OFF;
+  }
+}

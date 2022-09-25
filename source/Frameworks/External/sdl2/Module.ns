@@ -1,0 +1,25 @@
+type = extern;
+
+version : "2.24.0";
+
+fetch "https://github.com/libsdl-org/SDL.git"
+{
+  license    : "LICENSE";
+  commit     : "8c9beb0c873f6ca5efbd88f1ad2648bfc793b2ac";
+  package    : SDL2;
+  args
+  {
+    SDL_ATOMIC     : OFF;
+    SDL_CPUINFO    : OFF;
+    SDL_FILE       : OFF;
+    SDL_FILESYSTEM : OFF;
+    SDL_HAPTIC     : OFF;
+    SDL_LOCALE     : OFF;
+    SDL_POWER      : OFF;
+    SDL_RENDER     : OFF;
+    SDL_SENSOR     : OFF;
+    SDL_THREADS    : ON;
+    SDL_STATIC     : ON;
+    SDL_SHARED     : OFF;
+  }
+}

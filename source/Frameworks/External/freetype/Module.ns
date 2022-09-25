@@ -1,0 +1,17 @@
+type = extern;
+
+version : "2.12.1";
+
+fetch "https://github.com/freetype/freetype.git"
+{
+  license    : "LICENSE";
+  commit     : "e8ebfe988b5f57bfb9a3ecb13c70d9791bce9ecf";
+  package    : freetype;
+  skip_namespace  : true;
+  args
+  {
+    BUILD_STATIC : ON;
+  }
+}
+
+
