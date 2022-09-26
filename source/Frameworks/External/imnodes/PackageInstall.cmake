@@ -2,13 +2,17 @@
 
 include(GNUInstallDirs)
 
+find_package(imgui REQUIRED PATHS ${fetch_sdk_dir} NO_DEFAULT_PATH)
+
 add_library(${PROJECT_NAME} STATIC ${fetch_src_dir}/imnodes.cpp)
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
+target_link_libraries(${PROJECT_NAME} PUBLIC imgui::imgui)
 
 target_include_directories(
     ${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${fetch_src_dir}>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
 )
 
 install(TARGETS ${PROJECT_NAME}
@@ -51,7 +55,7 @@ install(FILES "${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
 install(FILES 
         ${fetch_src_dir}/imnodes.h
         ${fetch_src_dir}/imnodes_internal.h
-      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+      DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 
         
 

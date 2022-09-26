@@ -7,7 +7,7 @@ fetch "https://github.com/Auburn/imnodes.git"
   license    : "LICENSE";
   commit     : "277fdd7a912e622a2476981fea14c68abcb6b3c8";
   package    : ImNodes;
-  skip_namespace  : true;
+  fetch_content : true;
   args
   {
   }

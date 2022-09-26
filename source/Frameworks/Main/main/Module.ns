@@ -17,6 +17,6 @@ public:
   references: [
     "Main.data",
     "Main.gui"
-  ]
+  ];
 }
 
