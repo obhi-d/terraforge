@@ -14,9 +14,10 @@ public:
     "External.freetype"
   ];
 
-  references: [
-    "Main.data",
-    "Main.gui"
-  ];
 }
+
+references: [
+  "Main.data",
+  "Main.gui"
+];
 

@@ -9,7 +9,6 @@ add_library(${PROJECT_NAME} STATIC "${fetch_src_dir}/imgui.cpp"
           "${fetch_src_dir}/imgui_tables.cpp"
           "${fetch_src_dir}/imgui_widgets.cpp"
           "${fetch_src_dir}/misc/cpp/imgui_stdlib.cpp"
-          "${fetch_src_dir}/misc/fonts/binary_to_compressed_c.cpp"
           "${fetch_src_dir}/misc/freetype/imgui_freetype.cpp")
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})

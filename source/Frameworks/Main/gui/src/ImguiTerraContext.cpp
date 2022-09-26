@@ -1,7 +1,7 @@
 
 #include <SDL.h>
-#include <imgui/ImguiTerraContext.h>
-#include <imgui/ImguiTerraWindow.h>
+#include <ImguiTerraContext.h>
+#include <ImguiTerraWindow.h>
 
 namespace terra
 {

@@ -9,25 +9,25 @@ fetch "https://github.com/mosra/magnum.git"
   package    : Magnum;
   namespace  : Magnum;
   components : [GL, Trade, Shaders];
+  fetch_content: true;
   args
   {
-    BUILD_STATIC : ON;
-    BUILD_PLUGINS_STATIC : ON;
-    WITH_SDL2APPLICATION : OFF;
-    WITH_GLFWAPPLICATION : OFF;
-    WITH_MESHTOOLS  : OFF;
-    WITH_TRADE : ON;
-    WITH_TEXT : OFF;
-    WITH_TEXTURETOOLS :OFF ; 
+    MAGNUM_BUILD_STATIC : ON;
+    MAGNUM_BUILD_PLUGINS_STATIC : ON;
+    MAGNUM_WITH_SDL2APPLICATION : OFF;
+    MAGNUM_WITH_WINDOWLESSWGLAPPLICATION : ON;
+    MAGNUM_WITH_GLFWAPPLICATION : OFF;
+    MAGNUM_WITH_MESHTOOLS  : OFF;
+    MAGNUM_WITH_TRADE : ON;
+    MAGNUM_WITH_TEXT : OFF;
+    MAGNUM_WITH_TEXTURETOOLS :OFF ; 
   }
 }
 
 public:
 {
-  dependencies: [ "External.corrade" ];
+  dependencies: [ "External.corrade", "External.sdl2" ];
 }
 
 {{cmake:prepare}}
-find_package(Corrade REQUIRED Main)
-
-
+find_package(Corrade REQUIRED Main PATHS ${fetch_sdk_dir} NO_DEFAULT_PATH)

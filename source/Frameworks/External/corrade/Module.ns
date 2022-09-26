@@ -8,7 +8,7 @@ fetch "https://github.com/mosra/corrade.git"
   commit     : "e6b4d952e757ab99a0b67e516235b7f91904dca0";
   package    : Corrade;
   namespace  : Corrade;
-  components : [Utility, Main];
+  components : [Utility];
   args
   {
     BUILD_STATIC : ON;

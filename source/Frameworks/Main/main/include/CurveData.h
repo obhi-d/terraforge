@@ -2,7 +2,7 @@
 
 #include "GpuBuffer.h"
 #include "Serializer.h"
-#include "detail/spline.h"
+#include "spline.h"
 
 namespace terra
 {

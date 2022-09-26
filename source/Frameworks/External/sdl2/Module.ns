@@ -7,6 +7,8 @@ fetch "https://github.com/libsdl-org/SDL.git"
   license    : "LICENSE";
   commit     : "8c9beb0c873f6ca5efbd88f1ad2648bfc793b2ac";
   package    : SDL2;
+  components : [SDL2main, SDL2-static];
+  namespace  : SDL2;
   args
   {
     SDL_ATOMIC     : OFF;

@@ -1,6 +1,6 @@
 
 #include <Common.h>
-#include <imgui/ImguiTerraWindow.h>
+#include <ImguiTerraWindow.h>
 
 namespace terra
 {

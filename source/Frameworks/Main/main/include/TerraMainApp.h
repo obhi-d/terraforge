@@ -2,7 +2,7 @@
 
 
 #include <Magnum/Platform/GLContext.h>
-#include <imgui/ImguiTerraContext.h>
+#include <ImguiTerraContext.h>
 
 using namespace Magnum;
 namespace terra
