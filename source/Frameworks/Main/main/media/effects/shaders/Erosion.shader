@@ -1,6 +1,6 @@
 [shader];
 
-Erosion.glsl;
+Erosion.glsl : Erosion;
 
 [parameters];
 

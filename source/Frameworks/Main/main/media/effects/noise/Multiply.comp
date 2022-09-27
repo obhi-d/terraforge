@@ -1,0 +1,4 @@
+
+vec4 multiply(vec4 x, vec4 y, noise_params noise, env_params env)
+{
+}
