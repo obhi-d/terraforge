@@ -7,24 +7,28 @@
 #define int2   ivec2
 
 
-struct env_params
+struct EnvParams
 {
-    int   seed;
     float frequency;
     float wavelength;
-
     float2 start;
-    float2 size;
 
+    float2 size;
     float2 center;
+
     float2 gridSize;
     float2 recipSize;
+
     float2 recipGridSize;
     float2 halfRecipGridSize;
 
     int2 bufferSize;
     int2 startCoord;
+
+    int   seed;
+    int   reserved;
 };
+
 
 const int4   FnPrimes_X = int4( 501125321 );
 const int4   FnPrimes_Y = int4( 1136930381 );
@@ -33,3 +37,5 @@ const float4 ROOT3      = float4( 1.7320508075688772935 );
 const float4 SQRT3      = float4( 1.7320508075688772935274463415059 );
 const float4 F2         = float4( float4( 0.5 ) * ( SQRT3 - float4( 1.0 ) ) );
 const float4 G2         = float4( ( float4( 3.0 ) - SQRT3 ) / float4( 6.0 ) );
+
+// NodeUniforms is defined after this

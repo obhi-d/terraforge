@@ -9,13 +9,15 @@
 
 namespace terra
 {
-
+class Terra;
 struct NodeCmdHandler : neo::command_handler
 {
   template <typename L>
-  NodeCmdHandler(NodeMeta& m, L&& eh) : meta(m), errorHandler(std::forward<L>(eh))
+  NodeCmdHandler(NodeMeta& m, Terra& ctrl, L&& eh) : meta(m), controller(ctrl), errorHandler(std::forward<L>(eh))
   {}
 
+  Terra&                           controller;
+  std::u8string                    localizedString(std::string_view);
   std::function<void(std::string)> errorHandler;
   NodeMeta&                        meta;
 };
@@ -30,8 +32,8 @@ struct NodeCmdHandler : neo::command_handler
 
 #define NodeStarHandler(FnName, iObj, iState, iCmd) neo_star_handler(FnName, terra::NodeCmdHandler, iObj, iState, iCmd)
 
-#define NodeRegistry(name) neo_registry(name)
-#define NodeRegister(name) neo_register(name)
+#define NodeRegistry(name)      neo_registry(name)
+#define NodeRegister(name, reg) neo_register(name, reg)
 
 #define NodeStar(name)                     neo_star(name)
 #define NodeCmd(name)                      neo_cmd(name)

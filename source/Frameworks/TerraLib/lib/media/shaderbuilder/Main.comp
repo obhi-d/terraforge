@@ -15,5 +15,5 @@ void main()
         float4( env.data.y + float( sy + 0 ) * env.data.frequency, env.data.y + float( sy + 1 ) * env.data.frequency,
                 env.data.y + float( sy + 2 ) * env.data.frequency, env.data.y + float( sy + 3 ) * env.data.frequency );
 
-    heights.values[pixelStart] = Binding_NodeFunction( x, y, int3( sx, sy, pixelStart ), env.data );
+    heights.values[pixelStart] = Binding_Node( x, y, int3( sx, sy, pixelStart ), constants.params );
 }

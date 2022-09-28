@@ -118,3 +118,17 @@ float4 gradient_dot_fancy( int4 hash, float4 x, float4 y )
     // Bit-8 = Flip sign of a + b
     return intBitsToFloat( floatBitsToInt( a + b ) ^ ( ( index >> 3 ) << 31 ) );
 }
+
+int4 pixel_id(int4 x, int4 y, NoiseParams params)
+{
+  x = (x - int4(params.env.startCoord.x));
+  y = (y - int4(params.env.startCoord.y)) * params.env.bufferSize.x;
+  return x + y;
+}
+
+int pixel_id(int x, int y, NoiseParams params)
+{
+  x = (x - int(params.env.startCoord.x));
+  y = (y - int(params.env.startCoord.y)) * params.env.bufferSize.x;
+  return x + y;
+}

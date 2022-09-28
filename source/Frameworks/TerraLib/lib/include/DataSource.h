@@ -4,11 +4,11 @@
 #include "GpuBuffer.h"
 namespace terra
 {
-class NoiseNode;
-using NoiseNodePtr = std::shared_ptr<NoiseNode>;
+class Node;
+using NodePtr = std::shared_ptr<Node>;
 class DataSource
 {
-  NoiseNodePtr source       = nullptr;
-  float        defaultValue = 0.0f;
+  NodePtr source       = nullptr;
+  float   defaultValue = 0.0f;
 };
 } // namespace terra

@@ -7,19 +7,21 @@
 #include "CurveData.h"
 #include "DataSource.h"
 #include "ImageData.h"
+#include "RenderDevice.h"
 
 namespace terra
 {
+class Terra;
 enum class ParameterType
 {
-  eInt,
-  eFloat,
   eInt2,
   eFloat2,
-  eBool,
+  eInt,
+  eFloat,
   eImage,
   eDataSource,
   eCurveData,
+  eBool,
   eInvalid
 };
 
@@ -27,6 +29,37 @@ enum class DrawHint
 {
   eDefault,  // newline
   eSameline, // same line as the previous param
+};
+
+union ParamValue
+{
+  float fval;
+  int   ival = 0;
+
+  ParamValue(float val) : fval(val) {}
+  ParamValue(int val) : ival(val) {}
+};
+
+struct EnvParams
+{
+  float  frequency;
+  float  wavelength;
+  float2 start;
+
+  float2 size;
+  float2 center;
+
+  float2 gridSize;
+  float2 recipSize;
+
+  float2 recipGridSize;
+  float2 halfRecipGridSize;
+
+  int2 bufferSize;
+  int2 startCoord;
+
+  int seed;
+  int reserved;
 };
 
 struct ParameterMeta
@@ -37,28 +70,18 @@ struct ParameterMeta
   uint32        binding     = 0;
   ParameterType type        = ParameterType::eInvalid;
   DrawHint      drawHint    = DrawHint::eDefault;
-  union
+  std::string   sampler;
+
+  enum ValueType
   {
-    float fmax;
-    int   imax = 0;
-  };
-  union
-  {
-    float fmin;
-    int   imin = 0;
-  };
-  union
-  {
-    float fdefault;
-    int   idefault = 0;
+    eDefault = 0,
+    eMin,
+    eMax,
+    eStep,
+    eCount
   };
 
-  enum class ValueType
-  {
-    eDefault,
-    eMin,
-    eMax
-  };
+  ParamValue values[ValueType::eCount];
 
   inline bool isValid() const
   {
@@ -71,8 +94,25 @@ struct ParameterMeta
 
 struct NodeMeta
 {
-  std::string                function;
+  std::u8string name;
+  std::u8string category;
+  std::u8string brief;
+  std::u8string help;
+
+  std::string function;
+
+  std::string                extensions;
+  std::string                shaderContent;
+  uint32_t                   paramSize = 0;
   std::vector<ParameterMeta> parameterDef;
+
+  GfxCompute::handle shader;
+
+  bool buildShader(Terra&, RenderDevice&);
+
+  static std::string writeTextureSampler(std::string_view);
+  static std::string writeDataSampler(std::string_view);
+  static std::string writeCurveSampler(std::string_view);
 };
 
 using Parameter = std::variant<int, float, int2, float2, bool, ImageData, DataSource, CurveDataPtr>;

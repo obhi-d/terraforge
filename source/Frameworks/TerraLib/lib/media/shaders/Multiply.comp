@@ -1,0 +1,4 @@
+
+vec4 Multiply(ivec4 x, ivec4 y, NodeParams noise)
+{
+}

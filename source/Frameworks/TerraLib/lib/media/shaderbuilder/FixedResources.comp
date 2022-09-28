@@ -1,14 +1,22 @@
 
 layout( local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1 ) in;
 
+struct NodeParams
+{
+    EnvParams env;
+    #ifdef Binding_NodeUniforms
+    NodeUniforms uniforms;
+    #endif
+};
+
 // Output buffer
-layout( std430, binding = Binding_Output ) buffer b_heights
+layout( std430, binding = Binding_Output ) buffer UHeights
 {
     float4 values[];
 }heights;
 
 // Uniform buffer
-layout( std430, binding = Binding_EnvUniforms ) uniform u_env
+layout( std430, binding = Binding_Constants ) uniform UNodeConstants
 {
-    env_params data;
-}env;
+  NodeParams params;
+}constants;
