@@ -1,0 +1,14 @@
+type = lib;
+
+public:
+{
+  dependencies: [ 
+    "External.neoscript"
+  ];
+
+}
+
+references: [
+  "TerraLib.interfaces"
+];
+

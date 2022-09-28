@@ -20,7 +20,7 @@ preset win-dbg
   static_libs          : true;
   cppcheck             : false;
   unity_build          : false; // Intellisense does not work with this as true
-  naming               : "terra$(module_name)";
+  naming               : "terra_$(module_name)";
 
   config [msvc]
   {
@@ -47,7 +47,7 @@ preset win-rel
   static_libs          : true;
   cppcheck             : false;
   unity_build          : false; // Intellisense does not work with this as true
-  naming               : "$(module_name)";
+  naming               : "terra_$(module_name)";
 
   config [msvc]
   {

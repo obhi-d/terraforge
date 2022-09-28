@@ -11,13 +11,14 @@ public:
     "External.imgui",
     "External.imnodes",
     "External.libpng",
-    "External.freetype"
+    "External.freetype",
+    "TerraLib.lib"
   ];
 
 }
 
 references: [
-  "Main.data",
-  "Main.gui"
+  "Tool.gl",
+  "Tool.gui"
 ];
 
