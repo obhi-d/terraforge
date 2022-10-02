@@ -63,3 +63,9 @@ float sample_curve_x(float x)
 ...
 }
 ```
+
+## TODO
+
+  [ ] Node Grouping
+  [ ] Resource cleanup
+  [ ] Dummy localization

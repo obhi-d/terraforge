@@ -3,6 +3,7 @@
 
 #include <Magnum/Platform/GLContext.h>
 #include <ImguiTerraContext.h>
+#include <ImguiTerraWindow.h>
 
 using namespace Magnum;
 namespace terra
@@ -27,6 +28,7 @@ namespace terra
         static int Main( int argc, const char* argv[] );
 
     private:
+
         std::optional<Platform::GLContext> context;
         SDL_GLContext                      glContext = nullptr;
         std::vector<Vector2>               dpiScaling;

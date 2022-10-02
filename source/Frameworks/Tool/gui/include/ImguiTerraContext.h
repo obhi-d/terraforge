@@ -6,7 +6,10 @@
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Shaders/FlatGL.h>
 #include <Magnum/Timeline.h>
+#include <Magnum/Math/Vector.h>
+#include <Magnum/Math/Vector2.h>
 
+#include <string>
 #include <memory>
 #include <unordered_map>
 
@@ -18,9 +21,13 @@ namespace terra
     class ImguiTerraContext
     {
     public:
-        bool pollEvents();
+        
+      std::shared_ptr<ImguiTerraWindow> createWindow(std::string name, Magnum::Vector2i size, Magnum::Vector2i pos);
+
+      bool pollEvents();
 
     private:
+      // 0th is the main window
         std::unordered_map<uint32, uint32>             windowMap;
         std::vector<std::shared_ptr<ImguiTerraWindow>> windows;
     };

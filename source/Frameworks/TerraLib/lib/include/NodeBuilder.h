@@ -13,10 +13,9 @@ class Terra;
 struct NodeCmdHandler : neo::command_handler
 {
   template <typename L>
-  NodeCmdHandler(NodeMeta& m, Terra& ctrl, L&& eh) : meta(m), controller(ctrl), errorHandler(std::forward<L>(eh))
+  NodeCmdHandler(NodeMeta& m, L&& eh) : meta(m), errorHandler(std::forward<L>(eh))
   {}
 
-  Terra&                           controller;
   std::u8string                    localizedString(std::string_view);
   std::function<void(std::string)> errorHandler;
   NodeMeta&                        meta;

@@ -36,6 +36,16 @@ NodeCmdHandler(function, builder, state, cmd)
   return neo::retcode::e_success;
 }
 
+NodeCmdHandler(iteration, builder, state, cmd)
+{
+  auto value = terra::getIdxParam(cmd, 0);
+  if (value == "inf")
+    builder.meta.iteration = std::numeric_limits<uint32_t>::max();
+  else
+    std::from_chars(value.data(), value.data() + value.length(), builder.meta.iteration);
+  return neo::retcode::e_success;
+}
+
 NodeCmdHandler(param, builder, state, cmd)
 {
   terra::ParameterMeta meta;
@@ -62,11 +72,13 @@ NodeCmdHandler(param, builder, state, cmd)
     {
       meta.setValueFromString(terra::ParameterMeta::ValueType::eDefault, entry.value());
     }
-    else if (entry.name() == "placement")
+    else if (entry.name() == "hint")
     {
       if (entry.value() == "sameline")
         meta.drawHint = terra::DrawHint::eSameline;
-    }
+      else if (entry.value() == "hidden")
+        meta.drawHint = terra::DrawHint::eHidden;
+    }        
   }
   if (meta.isValid())
   {
@@ -85,7 +97,7 @@ NodeCmdHandler(files, builder, state, cmd)
   auto shaders = terra::getFirstList(cmd);
   for (auto& e : shaders)
   {
-    builder.meta.shaderContent += builder.controller.loadMediaString("shaders/" + e);
+    builder.meta.shaderContent += terra::get().loadMediaString("shaders/" + e);
     builder.meta.shaderContent += "\n";
   }
   return neo::retcode::e_success;
@@ -105,12 +117,47 @@ NodeCmdHandler(requires, builder, state, cmd)
 
 NodeCmdHandler(config, builder, state, cmd)
 {
-  if (!builder.controller.isShaderConfigSupported(terra::getIdxParam(cmd, 0)))
+  if (!terra::get().isShaderConfigSupported(terra::getIdxParam(cmd, 0)))
     return neo::retcode::e_skip_block;
+  return neo::retcode::e_success;
 }
 
 NodeCmdHandler(shaders, builder, state, cmd)
 {
+  return neo::retcode::e_success;
+}
+
+NodeCmdHandler(type, builder, state, cmd)
+{
+  auto type = terra::getIdxParam(cmd, 0, "height");
+  if (type == "height")
+    builder.meta.hasTextureOutput = false;
+  else if (type == "image")
+    builder.meta.hasTextureOutput = false;
+  auto const& params = cmd.params().value();
+  for (auto& p : params)
+  {
+    if (p.index() != 1)
+      continue;
+    auto const& entry = std::get<neo::single>(p);   
+    if (entry.name() == "downscale")
+    {
+      auto value = entry.value();
+      std::from_chars(value.data(), value.data() + value.size(), builder.meta.outputDownscale);
+    }
+    else if (entry.name() == "upscale")
+    {
+      auto value = entry.value();
+      std::from_chars(value.data(), value.data() + value.size(), builder.meta.outputUpscale);
+    }
+    else if (entry.name() == "format")
+    {
+      if (entry.value() == "unorm16")
+        builder.meta.imageFormat = terra::ImageFormat::eUnorm16;
+      else
+        builder.meta.imageFormat = terra::ImageFormat::eFloat;
+    }
+  }
   return neo::retcode::e_success;
 }
 
@@ -123,6 +170,7 @@ NodeRegistry(NoiseBuilder)
   NodeCmd(category);
   NodeCmd(brief);
   NodeCmd(function);
+  NodeCmd(type);
   NodeScopeDef(shaders)
   {
     NodeScopeDef(config)

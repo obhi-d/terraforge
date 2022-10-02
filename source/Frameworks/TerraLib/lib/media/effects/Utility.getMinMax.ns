@@ -1,0 +1,17 @@
+name        = "@local:getMinMax";
+category    = "@local:utility";
+brief       = "@local:getMinMax_brief";
+help        = "@local:getMinMax_help";
+function    = "get_min_max";
+type        = heights (downscale = 16);
+iteration   = inf;
+
+shaders
+{
+  config default_config
+  {
+    files = ["get_min_max.comp"];
+  };
+};
+
+param Source(type = source, min = -1.0f, max = 1.0f, default = 1.0);

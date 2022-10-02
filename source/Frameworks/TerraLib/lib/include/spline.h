@@ -78,7 +78,7 @@ namespace tk
         // f(x) = a_i + b_i*(x-x_i) + c_i*(x-x_i)^2 + d_i*(x-x_i)^3
         // where a_i = y_i, or else it won't go through grid points
         std::vector<prec_type> m_b, m_c, m_d; // spline coefficients
-        prec_type              m_c0; // for left extrapolation
+        prec_type              m_c0 = 0; // for left extrapolation
         spline_type            m_type;
         bd_type                m_left, m_right;
         prec_type              m_left_value, m_right_value;
@@ -139,6 +139,11 @@ namespace tk
             return m_right;
         }
 
+        auto get_c0() const 
+        {
+          return m_c0;
+        }
+
         auto get_left_value() const
         {
             return m_left_value;
@@ -152,6 +157,21 @@ namespace tk
         auto is_monotonic() const
         {
             return m_made_monotonic;
+        }
+
+        auto const& get_b() const
+        {
+          return m_b;
+        }
+
+        auto const& get_c() const
+        {
+          return m_c;
+        }
+
+        auto const& get_d() const
+        {
+          return m_d;
         }
 
         auto const& get_x() const

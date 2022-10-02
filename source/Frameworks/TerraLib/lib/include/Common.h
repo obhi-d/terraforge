@@ -1,7 +1,10 @@
-
+#pragma once
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
 #include <stdexcept>
 
 namespace terra
@@ -25,4 +28,66 @@ struct Content
   Content& operator=(Content const&)     = default;
   Content& operator=(Content&&) noexcept = default;
 };
+
+// helper type for the visitor #4
+template <class... Ts>
+struct overloaded : Ts...
+{
+  using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
+template <typename T>
+struct handle
+{
+  constexpr handle() noexcept = default;
+  constexpr handle(uint32_t v) noexcept : reserved(v) {}
+
+  constexpr operator uint32_t() const noexcept
+  {
+    return reserved;
+  }
+
+  constexpr operator bool() const noexcept
+  {
+    return reserved != std::numeric_limits<uint32_t>::max();
+  }
+
+  constexpr auto operator<=>(handle const&) const noexcept = default;
+
+public:
+  uint32_t reserved = std::numeric_limits<uint32_t>::max();
+};
+
+template <typename T>
+struct index
+{
+  constexpr index() noexcept = default;
+  constexpr index(int32_t v) noexcept : reserved(v) {}
+
+  constexpr operator int32_t() const noexcept
+  {
+    return reserved;
+  }
+
+  constexpr operator bool() const noexcept
+  {
+    return reserved < 0;
+  }
+
+  constexpr auto operator<=>(index const&) const noexcept = default;
+
+public:
+  int32_t reserved = std::numeric_limits<int32_t>::min();
+};
+
+template <typename T>
+using optional_ref = std::optional<std::reference_wrapper<T>>;
+
+class Pipeline;
+class Node;
+using hnode = handle<Node>;
+
 } // namespace terra

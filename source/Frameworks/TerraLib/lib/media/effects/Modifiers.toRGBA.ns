@@ -1,0 +1,17 @@
+name     = "@local:toRGBA";
+category = "@local:modifiers";
+brief    = "@local:toRGBA_brief";
+help     = "@local:toRGBA_help";
+function = "to_RGBA";
+type     = image;
+
+shaders
+{
+  config default_config
+  {
+    files = ["to_RGBA.comp"];
+  };
+};
+
+param Source(type = source, min = -1.0f, max = 1.0f, default = 1.0);
+param MinMax(type = source);

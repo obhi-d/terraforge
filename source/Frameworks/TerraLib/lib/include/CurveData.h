@@ -1,11 +1,13 @@
 #pragma once
 
-#include "GpuBuffer.h"
+#include "RenderResource.h"
 #include "Serializer.h"
 #include "spline.h"
+#include "RenderDevice.h"
 
 namespace terra
 {
+class Terra;
 struct CurveData
 {
   struct Edit
@@ -26,8 +28,12 @@ struct CurveData
     tk::spline<>              spline;
   };
 
+  std::shared_ptr<RenderDevice> rd;
   tk::spline<> spline;
   Edit         edits;
+
+  GfxBuffer::handle handle;
+  bool              bufferDirty = true;
 
   CurveData()
   {
@@ -42,6 +48,7 @@ struct CurveData
 
     spline = tk::spline<>::spline(cx, cy, type, monotonic, left, leftValue, right, rightValue);
   }
+  ~CurveData();
 
   void beginEdit()
   {
@@ -72,6 +79,7 @@ struct CurveData
     if ((edits.liveUpdate || apply) && edits.edited && edits.dirty)
     {
       spline = edits.spline;
+      bufferDirty = true;
       if (apply)
       {
         edits.edited  = false;
@@ -88,77 +96,10 @@ struct CurveData
     return spline == other.spline;
   }
 
-  bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
-  {
-    size_t s;
-
-    if (!getFromDataStream(dataStream, serialIdx, s))
-      return false;
-
-    std::vector<float> cx, cy;
-
-    cx.resize(s);
-    for (auto& vx : cx)
-    {
-      if (!getFromDataStream(dataStream, serialIdx, vx))
-        return false;
-    }
-
-    if (!getFromDataStream(dataStream, serialIdx, s))
-      return false;
-    cy.resize(s);
-    for (auto& vy : cy)
-    {
-      if (!getFromDataStream(dataStream, serialIdx, vy))
-        return false;
-    }
-
-    tk::spline<>::spline_type type       = tk::spline<>::spline_type::cspline_hermite;
-    tk::spline<>::bd_type     left       = tk::spline<>::second_deriv;
-    tk::spline<>::bd_type     right      = tk::spline<>::first_deriv;
-    float                     leftValue  = 0;
-    float                     rightValue = 0;
-    bool                      monotonic  = false;
-    if (!getFromDataStream(dataStream, serialIdx, left))
-      return false;
-    if (!getFromDataStream(dataStream, serialIdx, leftValue))
-      return false;
-    if (!getFromDataStream(dataStream, serialIdx, right))
-      return false;
-    if (!getFromDataStream(dataStream, serialIdx, rightValue))
-      return false;
-    if (!getFromDataStream(dataStream, serialIdx, monotonic))
-      return false;
-    if (!getFromDataStream(dataStream, serialIdx, type))
-      return false;
-
-    spline = tk::spline<>::spline(cx, cy, type, monotonic, left, leftValue, right, rightValue);
-  }
-
-  void toDataStream(std::vector<uint8_t>& dataStream) const
-  {
-    auto const& cx = spline.get_x();
-    auto const& cy = spline.get_y();
-    addToDataStream(dataStream, cx.size());
-    for (auto const& vx : cx)
-      addToDataStream(dataStream, vx);
-    addToDataStream(dataStream, cy.size());
-    for (auto const& vy : cy)
-      addToDataStream(dataStream, vy);
-    auto left       = spline.get_left_deriv();
-    auto leftValue  = spline.get_left_value();
-    auto right      = spline.get_right_deriv();
-    auto rightValue = spline.get_right_value();
-    auto monotonic  = spline.is_monotonic();
-    auto type       = spline.get_type();
-
-    addToDataStream(dataStream, left);
-    addToDataStream(dataStream, leftValue);
-    addToDataStream(dataStream, right);
-    addToDataStream(dataStream, rightValue);
-    addToDataStream(dataStream, monotonic);
-    addToDataStream(dataStream, type);
-  }
+  void ensure();
+  bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx);
+  void toDataStream(std::vector<uint8_t>& dataStream) const;
+  
 };
 using CurveDataPtr = std::shared_ptr<CurveData>;
 } // namespace terra
