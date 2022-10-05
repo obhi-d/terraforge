@@ -34,8 +34,8 @@ public:
   // Read for the given node list index
   GfxBuffer::handle            readOutputBuffer(int32_t nodeListIdx) const;
   GfxImage2D::handle           readOutputImage(int32_t nodeListIdx) const;
-  std::unique_ptr<std::byte[]> readOutputBufferContent(int32_t nodeIdx) const;
-  std::unique_ptr<std::byte[]> readOutputImageContent(int32_t nodeIdx) const;
+  void                         readOutputBufferContent(int32_t nodeIdx, std::span<std::byte>) const;
+  void                         readOutputImageContent(int32_t nodeIdx, std::span<std::byte>) const;
 
   // Read for the given node
   GfxBuffer::handle  getOutputBuffer(hnode nodeIdx) const;

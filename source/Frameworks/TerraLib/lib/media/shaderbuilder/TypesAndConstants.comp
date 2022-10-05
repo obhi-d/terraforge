@@ -7,26 +7,31 @@
 #define int2   ivec2
 
 
+struct CurveData
+{
+  vec4 xybc;
+  vec4 d;
+};
+
+struct Coord
+{
+  uvec4 x;
+  uvec4 y;
+};
+
 struct EnvParams
 {
     float frequency;
     float wavelength;
-    float2 start;
 
-    float2 size;
-    float2 center;
+    float2 grid_size;
+    float2 recip_grid_size;
 
-    float2 gridSize;
-    float2 recipSize;
+    uint2 size;
+    uint2 start_coord;
 
-    float2 recipGridSize;
-    float2 halfRecipGridSize;
-
-    int2 bufferSize;
-    int2 startCoord;
-
-    int   seed;
-    int   reserved;
+    uint   seed;
+    uint   buffer_array_size; // number of vec4
 };
 
 

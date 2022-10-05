@@ -2,14 +2,18 @@
 
 #pragma once
 
+#include <span>
 #include "RenderResource.h"
+#include "ShaderBuilder.h"
 
 namespace terra
 {
 struct ShaderBuilder;
 struct RenderDevice
 {
+  using Caps = GfxFeature;
 
+  virtual Caps getCaps() const = 0;
   /// @brief Create a buffer of certain size, a suballocator is expected
   /// @param storage Buffer storage on the GPU
   /// @param usage Buffer usage
@@ -31,14 +35,15 @@ struct RenderDevice
   /// @brief Should create a compute shader object
   /// @param sources compute shader sources
   /// @return compute shader handle
-  virtual GfxCompute::handle createComputeShader(std::span<std::string_view> sources, GfxCompute::Language) = 0;
-  virtual void               destroy(GfxCompute::handle)                                                    = 0;
+  virtual GfxProgram::handle createProgram(ShaderOptions const& options, ShaderBuilder const& code) = 0;
+  virtual void               destroy(GfxProgram::handle)                                                    = 0;
   /// @brief Create a descriptor set layout
   /// @param types handle types
   /// @return DescriptorSet handle
   virtual GfxDescriptorSetLayout::handle createDescriptorSetLayout(
     std::span<GfxDescriptorSetLayout::Descriptor> descriptors) = 0;
   virtual void destroy(GfxDescriptorSetLayout::handle)         = 0;
+  virtual void applyLayoutToProgram(GfxProgram::handle program, GfxDescriptorSetLayout::handle) = 0;
   /// @brief Create descriptor set from layout
   virtual GfxDescriptorSet::handle createDescriptorSet(GfxDescriptorSetLayout::handle descriptorLayout) = 0;
   virtual void                     destroy(GfxDescriptorSet::handle)                                    = 0;
@@ -50,20 +55,20 @@ struct RenderDevice
   virtual void unmapBuffer(GfxBuffer::handle buffer) = 0;
 
   /// @brief Update texture
-  virtual void updateImage(GfxImage2D::handle image, std::span<std::byte> data) = 0;
+  virtual void updateImage(GfxImage2D::handle image, std::span<std::byte const> data) = 0;
   /// @brief Update descriptor sett
   virtual void updateDescriptorSet(GfxDescriptorSet::handle, std::span<GfxDescriptorSet::rhandle> handles) = 0;
   /// @brief Readback buffer
-  virtual std::unique_ptr<std::byte[]> readBuffer(GfxBuffer::handle buffer) = 0;
+  virtual void readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<std::byte> out) = 0;
   /// @brief Readback image
-  virtual std::unique_ptr<std::byte[]> readImage(GfxImage2D::handle image) = 0;
+  virtual void readImage(GfxImage2D::handle image, std::span<std::byte> out) = 0;
 
   /// @brief dispatch a compute shader
   /// @param shader shader handle
   /// @param descriptorSets Descriptor set to bind
   /// @param numGroupX dispatch size x
   /// @param numGroupY dispatch size y
-  virtual void dispatchCompute(GfxCompute::handle shader, GfxDescriptorSet::handle descriptorSet, uint32_t numGroupX,
+  virtual void dispatchCompute(GfxProgram::handle shader, GfxDescriptorSet::handle descriptorSet, uint32_t numGroupX,
                                uint32_t numGroupY) = 0;
   /// @brief Buffer barrier
   virtual void barrier(GfxBarrierFlags flags) = 0;
@@ -73,7 +78,7 @@ struct RenderDevice
   virtual void             syncFence(GfxFence::handle) = 0;
 
   /// @brief Create a ShaderBuilder for a specific shader
-  virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(GfxCompute::Language) = 0;
+  virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) = 0;
 
 };
 } // namespace terra

@@ -1,0 +1,17 @@
+type = extern;
+
+version : "1.0.1";
+
+fetch "https://github.com/g-truc/glm.git"
+{
+  license    : "LICENSE";
+  commit     : "cc98465e3508535ba8c7f6208df934c156a018dc";
+  package    : glm;
+  namespace : glm;
+  args
+  {  
+  }
+}
+
+
+

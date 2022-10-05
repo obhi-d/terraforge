@@ -85,7 +85,7 @@ void CurveData::ensure()
   {
     get().getDevice().destroy(handle);
     auto size = (1 + 1 + 5 * (uint32_t)spline.get_x().size()) * 4;
-    handle = get().getDevice().createBuffer(GfxStorageClass::eStaticGPUReadOnly, GfxBuffer::Usage::eStorage, size);
+    handle = get().getDevice().createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::Usage::fStorage, size);
     std::byte* data = get().getDevice().mapBuffer(handle, 0, size);
     auto       nbpts      = (uint32_t)spline.get_x().size();
     *(float*)(data + 0)   = spline.get_c0();

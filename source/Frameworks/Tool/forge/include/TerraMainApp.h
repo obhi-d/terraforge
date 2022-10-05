@@ -1,38 +1,35 @@
+#include "NeoHelper.h"
+#include "Setup.h"
 #include <optional>
+#include <string>
 
-
-#include <Magnum/Platform/GLContext.h>
-#include <ImguiTerraContext.h>
 #include <ImguiTerraWindow.h>
 
-using namespace Magnum;
 namespace terra
 {
-    struct AppSettings
-    {
-        bool hasGPGPU = false;
-        bool verbose  = false;
-    };
 
-    class TerraMainApp
-    {
-    public:
-        TerraMainApp();
-        ~TerraMainApp();
+class TerraMainApp
+{
+public:
+  TerraMainApp();
+  ~TerraMainApp();
 
-        void       initalize();
-        void       createContext();
-        void       updateMonitorScaling();
-        void       run();
-        void       draw();
-        static int Main( int argc, const char* argv[] );
+  void readSettings() {}
+  void writeSettings() {}
+  void initalize();
+  void createContext();
+  void updateMonitorScaling();
+  void run();
+  void draw();
+  void reloadTheme();
 
-    private:
+  static int Main(int argc, const char* argv[]);
 
-        std::optional<Platform::GLContext> context;
-        SDL_GLContext                      glContext = nullptr;
-        std::vector<Vector2>               dpiScaling;
-        AppSettings                        settings;
-        ImguiTerraContext                  imguiContext;
-    };
+private:
+  ImguiTerraWindow       viewer;
+  SDL_GLContext          glContext = nullptr;
+  std::vector<glm::vec2> dpiScaling;
+  AppSettings            settings;
+  neo::registry          themeReader;
+};
 } // namespace terra

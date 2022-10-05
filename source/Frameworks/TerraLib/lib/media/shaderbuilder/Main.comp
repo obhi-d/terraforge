@@ -1,4 +1,4 @@
-layout( local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1 ) in;
+layout( local_size_x = WorkGroupSize, local_size_y = WorkGroupSize, local_size_z = 1 ) in;
 
 void main()
 {

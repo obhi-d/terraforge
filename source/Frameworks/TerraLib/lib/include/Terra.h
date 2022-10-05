@@ -16,7 +16,6 @@ class Terra
 public:
   struct ShaderContent
   {
-    std::string preamble;
     std::string fixedResources;
     std::string main;
     std::string typesAndConstants;
@@ -42,7 +41,7 @@ public:
 
   Content              loadMediaContent(std::string media);
   std::string          loadMediaString(std::string media);
-  ShaderContent const& getShaderContent(GfxCompute::Language) const
+  ShaderContent const& getShaderContent(ShaderLang) const
   {
     return shaderContent;
   }
@@ -115,7 +114,12 @@ public:
     return instance;
   }
 
-private:
+  constexpr uint32_t getWorkGroupSize() const
+  {
+    return 32;
+  }
+
+  private:
   
   static Terra instance;
 

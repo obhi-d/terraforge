@@ -1,11 +1,11 @@
 type = extern;
 
-version : "1.0.0";
+version : "1.88.1";
 
 fetch "https://github.com/ocornut/imgui.git"
 {
   license    : "LICENSE";
-  commit     : "aceab9a877de0258d19d29a5d87a51b63a8999bf";
+  commit     : "69beaa1d0b7fc8f4b448dcf1780b08cfc959da65";
   package    : imgui;
   fetch_content : true;
   args
@@ -17,5 +17,5 @@ fetch "https://github.com/ocornut/imgui.git"
 
 public:
 {
-  dependencies: [ "External.freetype" ];
+  dependencies: [ "External.freetype", "External.sdl2" ];
 }

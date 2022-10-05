@@ -69,3 +69,5 @@ float sample_curve_x(float x)
   [ ] Node Grouping
   [ ] Resource cleanup
   [ ] Dummy localization
+  [ ] Make renderer a plugin
+    [ ] Use Mesa for older computers

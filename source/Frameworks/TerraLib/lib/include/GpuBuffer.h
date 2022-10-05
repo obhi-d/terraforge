@@ -46,7 +46,7 @@ public:
 
 private:
   GfxBuffer::Usage  usage;
-  GfxStorageClass   storage = GfxStorageClass::eStaticGPUReadOnly;
+  GfxStorageClass   storage = GfxStorageClass::eStaticDeviceReadonly;
   GfxBuffer::handle handle;
   uint32_t          size = 0;
 

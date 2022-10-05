@@ -1,24 +1,42 @@
 
 #pragma once
 #include <cstdint>
+#include <span>
 #include <string>
 
 namespace terra
 {
 
+using Options = uint64_t;
+struct ShaderOptions
+{
+  std::span<std::string> names;
+  Options                bitMask = {};
+};
+
 struct ShaderBuilder
 {
+  enum Section
+  {
+    eDecl,
+    eMain
+  };
+
   struct BindingInfo
   {
     std::string content;
     int32_t     binding = 0;
   };
 
-  virtual std::string_view preamble()                                                                = 0;
-  virtual BindingInfo      declBuffer(std::string_view prefix, std::string_view name, bool readOnly) = 0;
-  virtual BindingInfo      declConstants(std::string_view prefix, std::string_view name)             = 0;
-  virtual BindingInfo      declTexture(std::string_view name)                                        = 0;
-  virtual BindingInfo      declImage(std::string_view name)                                          = 0;
+  virtual BindingInfo declBuffer(std::string_view prefix, std::string_view name, Access access) = 0;
+  virtual BindingInfo declConstants(std::string_view prefix, std::string_view name)             = 0;
+  virtual BindingInfo declTexture(std::string_view name)                                        = 0;
+  virtual BindingInfo declImage(std::string_view name, ImageFormat format, Access access)              = 0;
+  virtual void        append(std::string_view)                                                  = 0;
+  virtual void        begin(ShaderType)                                                         = 0;
+  virtual void        end()                                                                     = 0;
+  virtual void        beginSection(Section)                                                     = 0;
+  virtual void        endSection()                                                              = 0;
 };
 
 } // namespace terra

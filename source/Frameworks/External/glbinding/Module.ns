@@ -1,0 +1,22 @@
+type = extern;
+
+version : "1.0.1";
+
+fetch "https://github.com/cginternals/glbinding.git"
+{
+  license    : "LICENSE";
+  commit     : "97bc73a4a76038fc659cdb4eb1897865fc3c38af";
+  package    : glbinding;
+  namespace : glbinding;
+  components : [glbinding, glbinding-aux];
+  args
+  {
+    BUILD_SHARED_LIBS : OFF;
+    OPTION_SELF_CONTAINED : OFF;
+    OPTION_BUILD_TOOLS : OFF;
+    OPTION_BUILD_EXAMPLES : OFF;
+  }
+}
+
+
+

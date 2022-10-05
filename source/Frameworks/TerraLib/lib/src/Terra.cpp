@@ -32,6 +32,7 @@ void Terra::scanShader(std::filesystem::path path)
     if (!sm.fail_bit())
     {
       newMeta.id = path.stem().string();
+      newMeta.buildShaderGLSL(handler.content);
       auto it    = metaMap.find(newMeta.id);
       if (it != metaMap.end())
       {

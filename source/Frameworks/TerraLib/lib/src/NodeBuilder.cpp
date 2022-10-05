@@ -32,7 +32,7 @@ NodeCmdHandler(brief, builder, state, cmd)
 
 NodeCmdHandler(function, builder, state, cmd)
 {
-  builder.meta.function = terra::getIdxParam(cmd, 0);
+  builder.content.function = terra::getIdxParam(cmd, 0);
   return neo::retcode::e_success;
 }
 
@@ -97,8 +97,8 @@ NodeCmdHandler(files, builder, state, cmd)
   auto shaders = terra::getFirstList(cmd);
   for (auto& e : shaders)
   {
-    builder.meta.shaderContent += terra::get().loadMediaString("shaders/" + e);
-    builder.meta.shaderContent += "\n";
+    builder.content.shaderContent += terra::get().loadMediaString("shaders/" + e);
+    builder.content.shaderContent += "\n";
   }
   return neo::retcode::e_success;
 }
@@ -108,9 +108,9 @@ NodeCmdHandler(requires, builder, state, cmd)
   auto extensionList = terra::getFirstList(cmd);
   for (auto& e : extensionList)
   {
-    builder.meta.extensions += "#extension ";
-    builder.meta.extensions += e;
-    builder.meta.extensions += " : require\n";
+    builder.content.extensions += "#extension ";
+    builder.content.extensions += e;
+    builder.content.extensions += " : require\n";
   }
   return neo::retcode::e_success;
 }
@@ -154,6 +154,8 @@ NodeCmdHandler(type, builder, state, cmd)
     {
       if (entry.value() == "unorm16")
         builder.meta.imageFormat = terra::ImageFormat::eUnorm16;
+      else if (entry.value() == "snorm16")
+        builder.meta.imageFormat = terra::ImageFormat::eSnorm16;
       else
         builder.meta.imageFormat = terra::ImageFormat::eFloat;
     }

@@ -47,7 +47,7 @@ void ImageData::ensure()
   auto& main = Terra::get();
 
   if (!handle)
-    handle = main.getDevice().createImage(GfxStorageClass::eStaticGPUReadOnly, width, height, format, data.get());
+    handle = main.getDevice().createImage(GfxStorageClass::eStaticDeviceReadonly, width, height, format, data.get());
 }
 
 bool ImageData::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx)

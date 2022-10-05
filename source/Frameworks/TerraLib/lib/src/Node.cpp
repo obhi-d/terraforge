@@ -6,6 +6,14 @@
 #include <charconv>
 #include <numeric>
 
+namespace tmpl
+{
+#include "glsl/buffer.glsl"
+#include "glsl/curve430.glsl"
+#include "glsl/image.glsl"
+#include "glsl/texture.glsl"
+} // namespace tmpl
+
 namespace terra
 {
 
@@ -119,197 +127,49 @@ void ParameterMeta::modifyOptions(Parameter const& p, Options& option) const
 
 std::string NodeMeta::writeTextureSamplerGLSL(std::string_view name)
 {
-
-  constexpr std::string_view glob = R"_(
-"                                                                                                            
-"float sample_{0}(float u, float v, int x, int y, NodeParams np)                                             
-"{{                                                                                                           
-"  if (has_{0})                                                                                              
-"  {{                                                                                                         
-"    if (is_tile_constrained_{0})                                                                            
-"    {{                                                                                                       
-"      if(!is_within_tile(x, y, np.uniforms.tile_vert_min_{0}, np.uniforms.tile_vert_max_{0}))               
-"        return np.uniforms.{0};                                                                             
-"    }}                                                                                                       
-"    return texture({0}, vec2(u.x * np.uniforms.uv_scale_{0}, v.x * np.uniforms.uv_scale_{0})).r;            
-"  }}                                                                                                         
-"  else                                                                                                      
-"  {{                                                                                                         
-"    return np.uniforms.{0};                                                                                 
-"  }}                                                                                                         
-"}}                                                                                                           
-"                                                                                                            
-"vec4 sample_{0}(vec4 u, vec4 v, int4 x, int4 y, NodeParams np)                                              
-"{{                                                                                                           
-"  return vec4(sample_{0}(u.x, v.x, x.x, y.x, np),                                                           
-"              sample_{0}(u.y, v.y, x.y, y.y, np),                                                           
-"              sample_{0}(u.z, v.z, x.z, y.z, np),                                                           
-"              sample_{0}(u.w, v.w, x.w, y.w, np));                                                          
-"}}                                                                                                           
-"                                                                                                            
-)_";
-
-  return std::format(glob, name);
+  return std::format(tmpl::gs_textureLoad, name);
 }
 
-std::string NodeMeta::writeDataSamplerGLSL(std::string_view name)
+std::string NodeMeta::writeDataSamplerGLSL(RenderDevice::Caps const& caps, std::string_view name)
 {
-  constexpr std::string_view glob = R"_(
- 
-vec4 sample_{0}(int4 x, int4 y, NodeParams np)
-{{ 
-  if (has_{0})
-  {{
-    int4 id = pixel_id(x, y, np);
-    return vec4(
-      {0}.data[id.x],
-      {0}.data[id.y],
-      {0}.data[id.z],
-      {0}.data[id.w]);
-  }}
-  else
-  {{
-    return vec4(np.uniforms.{0});
-  }}
-}}
-
-float sample_{0}(int x, int y, NodeParams np)
-{{ 
-  if (has_{0})
-  {{
-    int id = pixel_id(x, y, np);
-    return {0}.data[id];
-  }}
-  else
-  {{
-    return np.uniforms.{0};
-  }}
-}}
-
-)_";
-
-  return std::format(glob, name);
+  return std::format(tmpl::gs_bufferLoad430, name);
 }
 
-std::string NodeMeta::writeCurveSamplerGLSL(std::string_view name)
+std::string NodeMeta::writeCurveSamplerGLSL(RenderDevice::Caps const& caps, std::string_view name)
 {
-  constexpr std::string_view glob = R"_(
-
-uint closest_{0}(float x, NodeParams np)
-{{
-  for(uint i = 1; i < {0}.npoints; ++i)
-  {{
-    if(x < {0}.data[i])
-      return i-1;
-  }}
-  return {0}.npoints-1;
-}}
-
-float sample_{0}(float x, NodeParams np)
-{{
-  uint n   = {0}.npoints;
-  uint idx = closest_{0}( x );
-  const uint sx = 0;
-  const uint sy = n;
-  const uint sb = n*2;
-  const uint sc = n*3;
-  const uint sd = n*4;
-
-  float h = x - {0}.data[idx];
-  float interpol = 0.0;
-  if( x < {0}.data[0] )
-  {{
-      // extrapolation to the left
-      interpol = ( {0}.c0 * h + {0}.data[sb] ) * h + {0}.data[sy];
-  }}
-  else if( x > {0}.data[n - 1] )
-  {{
-      // extrapolation to the right
-      interpol = ( {0}.data[sc + n - 1] * h + {0}.data[sb + n - 1] ) * h + {0}.data[sy + n - 1];
-  }}
-  else
-  {{
-      // interpolation
-      interpol = ( ( {0}.data[sd + idx] * h + {0}.data[sc + idx] ) * h + {0}.data[sb + idx] ) * h + {0}.data[sy + idx];
-  }}
-  return interpol;
-}}
-
-float sample_{0}(float x, float y, NodeParams np)
-{{
-  return sample_{0}(x, np) + sample_{0}(y, np);
-}}
-
-vec4 sample_{0}(vec4 x, NodeParams np)
-{{
-  return vec4(sample_{0}(x.x, np), sample_{0}(x.y, np), sample_{0}(x.z, np), sample_{0}(x.w, np)); 
-}}
-
-vec4 sample_{0}(vec4 x, vec4 y, NodeParams np)
-{{
-  return sample_{0}(x, np) + sample_{0}(y, np); 
-}}
-
-)_";
-  return std::format(glob, name);
+  return std::format(tmpl::gs_curve430, name);
 }
 
 std::string NodeMeta::writeImageStoreGLSL(std::string_view name)
 {
-  constexpr std::string_view glob = R"_(
-
-void store_{0}(int4 x, int4 y, float4 value, NodeParams np)
-{{
-  // int4 id = pixel_id(x, y, np);
-  imageStore({0}, ivec2(x.x, y.x), vec4(value.x));
-  imageStore({0}, ivec2(x.y, y.y), vec4(value.y));
-  imageStore({0}, ivec2(x.z, y.z), vec4(value.z));
-  imageStore({0}, ivec2(x.w, y.w), vec4(value.w));
-}} 
-
-void store_{0}(int x, int y, float value, NodeParams np)
-{{
-  // int4 id = pixel_id(x, y, np);
-  imageStore({0}, ivec2(x, y), vec4(value));
-}} 
-
-)_";
-  return std::format(glob, name);
+  return std::format(tmpl::gs_imageStore, name);
 }
 
 std::string NodeMeta::writeBufferStoreGLSL(std::string_view name)
 {
-  constexpr std::string_view glob = R"_(
-
-void store_{0}(int4 x, int4 y, float4 value, NodeParams np)
-{{
-  int4 id = pixel_id(x, y, np);
-  {0}.data[id.x] = value.x;
-  {0}.data[id.y] = value.y;
-  {0}.data[id.z] = value.z;
-  {0}.data[id.w] = value.w;
-}} 
-
-void store_{0}(int x, int y, float value, NodeParams np)
-{{
-  int id = pixel_id(x, y, np);
-  {0}.data[id] = value.x;
-}} 
-
-)_";
-  return std::format(glob, name);
+  return std::format(tmpl::gs_bufferStore, name);
 }
 
-void NodeMeta::buildShaderGLSL()
+void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
 {
   auto&       main          = Terra::get();
   auto&       rd            = main.getDevice();
-  auto const& shaderContent = main.getShaderContent(GfxCompute::Language::eGLSL);
+  auto        caps          = rd.getCaps();
+  auto const& commonContent = main.getShaderContent(ShaderLang::eGLSL);
+  shaderBuilder             = rd.createShaderBuilder(ShaderLang::eGLSL);
+
+  shaderBuilder->begin(ShaderType::eCompute);
+  shaderBuilder->beginSection(ShaderBuilder::eDecl);
+  shaderBuilder->append(nodeContent.extensions);
+  shaderBuilder->append(std::format("#define Binding_Node {}\n", nodeContent.function));
+  shaderBuilder->append(commonContent.typesAndConstants);
+  shaderBuilder->append(commonContent.fixedResources);
+  shaderBuilder->append(commonContent.utilityFunctions);
+
   std::string generated;
   std::string nodeParams;
-  auto        shaderBuilder = rd.createShaderBuilder(GfxCompute::Language::eGLSL);
   // generated content
-  int32_t paramOffsets = 0;
+  int32_t paramOffsets = sizeof(EnvParams);
   auto    declOrder    = std::vector<uint32_t>(parameterDef.size());
 
   std::iota(declOrder.begin(), declOrder.end(), 0);
@@ -375,10 +235,10 @@ void NodeMeta::buildShaderGLSL()
       nodeParams += "  float uv_scale_";
       nodeParams += t.name;
       nodeParams += ";\n";
-      nodeParams += "  int2 tile_vert_min_";
+      nodeParams += "  uint2 tile_vert_min_";
       nodeParams += t.name;
       nodeParams += ";\n";
-      nodeParams += "  int2 tile_vert_max_";
+      nodeParams += "  uint2 tile_vert_max_";
       nodeParams += t.name;
       nodeParams += ";\n";
 
@@ -406,114 +266,104 @@ void NodeMeta::buildShaderGLSL()
       generated += ";\n";
       generated += writeTextureSamplerGLSL(t.name);
       t.descriptorIndex = (int)descriptorSetBindings.size();
-      descriptorSetBindings.emplace_back(DT::eReadonlyImage, bi.binding);
+      descriptorSetBindings.emplace_back(DT::eImage, bi.binding, Access::eReadonly);
       break;
     case ParameterType::eDataSource:
       t.optionIndex[0] = (int)options.size();
       options.push_back("Has_" + t.name);
       generated += std::format("const bool has_{0} = Has_{0};\n", t.name);
-      bi = shaderBuilder->declBuffer("U", t.name, true);
+      bi = shaderBuilder->declBuffer("U", t.name, Access::eReadonly);
       generated += bi.content;
       generated += "{ float data[]; }";
       generated += t.name;
       generated += ";\n";
-      generated += writeDataSamplerGLSL(t.name);
+      generated += writeDataSamplerGLSL(caps, t.name);
       t.descriptorIndex = (int)descriptorSetBindings.size();
-      descriptorSetBindings.emplace_back(DT::eReadonlyBuffer, bi.binding);
+      descriptorSetBindings.emplace_back(DT::eBuffer, bi.binding, Access::eReadonly);
       break;
     case ParameterType::eCurveData:
-      bi = shaderBuilder->declBuffer("U", t.name, true);
+      bi = shaderBuilder->declBuffer("U", t.name, Access::eReadonly);
       generated += bi.content;
       generated += "{ float c0; uint npoints; float data[]; }";
       generated += t.name;
       generated += ";\n";
-      generated += writeCurveSamplerGLSL(t.name);
+      generated += writeCurveSamplerGLSL(caps, t.name);
       t.descriptorIndex = (int)descriptorSetBindings.size();
-      descriptorSetBindings.emplace_back(DT::eReadonlyBuffer, bi.binding);
+      descriptorSetBindings.emplace_back(DT::eBuffer, bi.binding, Access::eReadonly);
       break;
     }
   }
 
   if (hasTextureOutput)
   {
-    auto bi = shaderBuilder->declImage("output");
+    shaderBuilder->append("#define HasTextureOutput 1\n");
+    auto bi = shaderBuilder->declImage("output", ImageFormat::eFloat, Access::eWriteonly);
     generated += bi.content;
     generated += ";\n";
     generated += writeImageStoreGLSL("output");
     outputDescriptorIdx = (int)descriptorSetBindings.size();
-    descriptorSetBindings.emplace_back(DT::eImage, bi.binding);
+    descriptorSetBindings.emplace_back(DT::eImage, bi.binding, Access::eWriteonly);
   }
   else
   {
-    auto bi = shaderBuilder->declBuffer("U", "Output", false);
+    shaderBuilder->append("#define HasTextureOutput 0\n");
+    auto bi = shaderBuilder->declBuffer("U", "Output", Access::eWriteonly);
     generated += bi.content;
-    generated += "{ float data[] };\n";
+    generated += "{ vec4 data[] };\n";
     generated += writeBufferStoreGLSL("output");
     outputDescriptorIdx = (int)descriptorSetBindings.size();
-    descriptorSetBindings.emplace_back(DT::eBuffer, bi.binding);
+    descriptorSetBindings.emplace_back(DT::eBuffer, bi.binding, Access::eWriteonly);
   }
 
-  uboSize     = paramOffsets + (int)sizeof(EnvParams);
+  uboSize     = paramOffsets;
   hasUniforms = (!nodeParams.empty() && paramOffsets != sizeof(EnvParams));
+
   if (hasUniforms)
   {
-    code += "#define NodeUniforms_Enabled 1\n";
-    code += "struct NodeUniforms\n{";
-    code += nodeParams;
-    code += "};\n";
+    shaderBuilder->append("#define NodeUniforms_Enabled 1\n"
+                          "struct NodeUniforms\n{");
+    shaderBuilder->append(nodeParams);
+    shaderBuilder->append("};\n");
   }
   else
-    code += "#define NodeUniforms_Enabled 0\n";
-
-  code = std::move(generated);
-  code += "\n";
+    shaderBuilder->append("#define NodeUniforms_Enabled 0\n");
+  shaderBuilder->append(generated);
+  shaderBuilder->append("\n");
   {
     auto bi = shaderBuilder->declConstants("U", "Constants");
-    code += bi.content;
-    code += "{ NodeParams params; };\n";
+    shaderBuilder->append(bi.content);
+    shaderBuilder->append("{ NodeParams params; };\n");
     constantsDescriptorIdx = (int)descriptorSetBindings.size();
-    descriptorSetBindings.emplace_back(DT::eConstants, bi.binding);
+    descriptorSetBindings.emplace_back(DT::eConstants, bi.binding, Access::eReadonly);
   }
-  code += "\n";
   if (options.size() >= 64)
   {
     main.logError(std::format("Too many options for : {}", id));
   }
+  shaderBuilder->endSection();
+  shaderBuilder->beginSection(ShaderBuilder::eMain);
+  shaderBuilder->append(nodeContent.shaderContent);
+  shaderBuilder->append(commonContent.main);
+  shaderBuilder->endSection();
+  shaderBuilder->end();
   nbDescriptors       = (int)descriptorSetBindings.size();
   descriptorSetLayout = main.getDevice().createDescriptorSetLayout(descriptorSetBindings);
 }
 
-GfxCompute::handle NodeMeta::getShaderGLSL(Options optionBitSet)
+GfxProgram::handle NodeMeta::getShaderGLSL(Options optionBitSet)
 {
-  auto&       main            = Terra::get();
-  auto&       rd              = main.getDevice();
-  auto const& shaderFragments = main.getShaderContent(GfxCompute::Language::eGLSL);
-  auto        shaderBuilder   = rd.createShaderBuilder(GfxCompute::Language::eGLSL);
-  auto        it              = shaders.find(optionBitSet);
+  auto& main = Terra::get();
+  auto& rd   = main.getDevice();
+  auto  it   = shaders.find(optionBitSet);
   if (it == shaders.end())
   {
-    std::vector<std::string_view> content;
-    std::string                   defines;
-    for (uint64_t i = 0, end = options.size(); i != end; ++i)
-    {
-      defines += "#define ";
-      defines += options[i];
-      defines += (optionBitSet & (1ull << i)) ? " 1\n" : " 0\n";
-    }
-    content.emplace_back(defines);
-    content.emplace_back(shaderFragments.preamble);
-    content.emplace_back(extensions);
-    content.emplace_back(code);
-    content.emplace_back(shaderFragments.typesAndConstants);
-    content.emplace_back(shaderFragments.fixedResources);
-    content.emplace_back(shaderFragments.utilityFunctions);
-    content.emplace_back(shaderContent);
-    auto shader = rd.createComputeShader(content, GfxCompute::Language::eGLSL);
+    auto shader = rd.createProgram(ShaderOptions{.names = options, .bitMask = optionBitSet}, *shaderBuilder);
     if (!shader)
     {
       main.logError("Failed to compile shader.");
       return {};
     }
+    rd.applyLayoutToProgram(shader, this->descriptorSetLayout);
     shaders.emplace(optionBitSet, shader);
     return shader;
   }
@@ -809,40 +659,50 @@ void Node::enqueue(uint32_t taskId, uint32_t iteration, Pipeline& pipeline)
     scale = iteration * ((uint32_t)std::popcount(meta->outputDownscale - 1));
   else if (meta->outputUpscale)
     scale = iteration * ((uint32_t)std::popcount(meta->outputUpscale - 1));
-
+  uint32_t workGroupSize = get().getWorkGroupSize();
+  tasks[taskId].params   = params;
   if (hasTextureOutput())
   {
-    auto width  = params.bufferSize[0];
-    auto height = params.bufferSize[1];
+    auto width  = params.size[0];
+    auto height = params.size[1];
     if (meta->outputDownscale > 1)
     {
       width >>= scale;
       height >>= scale;
     }
-    else
+    else if (meta->outputUpscale > 1)
     {
       width <<= scale;
       height <<= scale;
     }
-    tasks[taskId].outputX  = width;
-    tasks[taskId].outputY  = height;
-    tasks[taskId].outputId = pipeline.declImage(width, height, meta->imageFormat);
+    tasks[taskId].outputX        = (width + (workGroupSize - 1)) / workGroupSize;
+    tasks[taskId].outputY        = (height + (workGroupSize - 1)) / workGroupSize;
+    tasks[taskId].outputId       = pipeline.declImage(width, height, meta->imageFormat);
+    tasks[taskId].params.size[0] = width;
+    tasks[taskId].params.size[1] = height;
   }
   else
   {
     // two more than requested
-    auto size = (params.bufferSize[0] + 2) * (params.bufferSize[1] + 2);
+    auto size = (params.size[0] + 2) * (params.size[1] + 2);
+    size      = ((size + 3) / 4) * size;
+    workGroupSize *= 4;
     if (meta->outputDownscale > 1)
     {
+      tasks[taskId].params.size[0] >>= (scale >> 1);
+      tasks[taskId].params.size[1] >>= (scale >> 1);
       size >>= scale;
     }
-    else
+    else if (meta->outputUpscale > 1)
     {
+      tasks[taskId].params.size[0] <<= (scale >> 1);
+      tasks[taskId].params.size[1] <<= (scale >> 1);
       size <<= scale;
     }
-    tasks[taskId].outputX  = size / 4;
-    tasks[taskId].outputY  = 1;
-    tasks[taskId].outputId = pipeline.declBuffer(size);
+    tasks[taskId].outputX                = (size + (workGroupSize - 1)) / workGroupSize;
+    tasks[taskId].outputY                = 1;
+    tasks[taskId].outputId               = pipeline.declBuffer(tasks[taskId].outputX * workGroupSize);
+    tasks[taskId].params.bufferArraySize = size / 4;
   }
   tasks[taskId].descriptorSet = terra::get().getDevice().createDescriptorSet(meta->descriptorSetLayout);
   pipeline.getUbo().setSize((uint32_t)meta->uboSize);
@@ -860,7 +720,8 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
   auto&                                  main          = terra::get();
   auto&                                  parameterDefs = meta->parameterDef;
   auto&                                  ubo           = pipeline.getUbo();
-  auto                                   uboData       = ubo.map(sizeof(EnvParams), meta->uboSize);
+  auto                                   uboData       = ubo.map(0, meta->uboSize);
+  std::memcpy(uboData, &tasks[taskId].params, sizeof(EnvParams));
   std::vector<GfxDescriptorSet::rhandle> handles((size_t)meta->nbDescriptors);
   for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
   {

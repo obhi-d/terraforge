@@ -1,13 +1,26 @@
-
+#define NEO_HEADER_ONLY_IMPL
 #include <SDL.h>
 #include <TerraMainApp.h>
 
 #include <iostream>
 #include <stdexcept>
 
+#include "GlGfx.h"
+#include "ImguiTheme.h"
+#include "ResourceUtils.h"
+
+neo_registry(ThemeBuilder);
+
 namespace terra
 {
-TerraMainApp::TerraMainApp() {}
+TerraMainApp::TerraMainApp()
+{
+  // readSettings();
+  if (settings.verbose)
+    Logger::get().open(Logger::Debug);
+  else
+    Logger::get().open(Logger::Info);
+}
 
 TerraMainApp::~TerraMainApp()
 {
@@ -20,19 +33,33 @@ void TerraMainApp::initalize()
   {
     throw std::runtime_error("SDL init failed.");
   }
+  ThemeRegister(ThemeBuilder, themeReader);
+  reloadTheme();
 }
+
+void TerraMainApp::reloadTheme()
+{
+  ImguiTheme         theme;
+  neo::state_machine sm{themeReader, &theme};
+  auto               f1_str = fileContentToString(settings.theme);
+  sm.parse(settings.theme, f1_str);
+  if (!sm.fail_bit())
+  {
+    viewer.setTheme(theme);
+  }
+}
+
 void TerraMainApp::updateMonitorScaling()
 {
-  std::ostream* verbose  = settings.verbose ? Debug::output() : nullptr;
-  int           displays = SDL_GetNumVideoDisplays();
+  int displays = SDL_GetNumVideoDisplays();
   dpiScaling.resize(displays);
   for (int i = 0; i < displays; ++i)
   {
-    Vector2 dpi;
-    if (SDL_GetDisplayDPI(i, nullptr, &dpi.x(), &dpi.y()) == 0)
+    glm::vec2 dpi;
+    if (SDL_GetDisplayDPI(i, nullptr, &dpi.x, &dpi.y) == 0)
     {
-      Vector2 scaling{dpi / 96.0f};
-      Debug{verbose} << "Platform::Sdl2Application: virtual DPI scaling" << scaling;
+      glm::vec2 scaling{dpi / 96.0f};
+      logInfo("Virtual DPI scaling {}.{}", scaling.x, scaling.y);
       dpiScaling[i] = dpi;
     }
   }
@@ -64,23 +91,17 @@ void TerraMainApp::createContext()
     throw std::runtime_error("createContext(): cannot create glContext");
   }
 
-  GL::Context::Configuration configuration;
-  context.emplace(NoCreateT(NoCreateT::Init()));
-  if (!context->tryCreate(configuration))
-  {
-    throw std::runtime_error("createContext(): failed to create magnum context");
-  }
+  tgl::initialize(reinterpret_cast<glb::ProcAddress (*)(const char*)>(SDL_GL_GetProcAddress), false);
 }
 
 void TerraMainApp::run()
 {
   initalize();
   createContext();
-  imguiContext.createWindow("First", Magnum::Vector2i(600, 400), Magnum::Vector2i(0, 0));
-  imguiContext.createWindow("Second", Magnum::Vector2i(600, 400), Magnum::Vector2i(200, 0));
+  viewer.create(glContext, settings);
   do
   {
-    if (!imguiContext.pollEvents())
+    if (!viewer.pollEvents())
       return;
     draw();
   }
@@ -102,8 +123,9 @@ int TerraMainApp::Main(int argc, const char* argv[])
   return 0;
 }
 
-void TerraMainApp::draw() 
+void TerraMainApp::draw()
 {
+  viewer.draw();
 }
 
 } // namespace terra

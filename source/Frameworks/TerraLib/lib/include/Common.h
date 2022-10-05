@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -15,7 +16,8 @@ using int32  = std::int32_t;
 using float2 = std::array<float, 2>;
 using float4 = std::array<float, 4>;
 using int4   = std::array<int, 4>;
-using int2   = std::array<int, 4>;
+using int2   = std::array<int, 2>;
+using uint2  = std::array<uint32, 2>;
 
 struct Content
 {
@@ -89,5 +91,22 @@ using optional_ref = std::optional<std::reference_wrapper<T>>;
 class Pipeline;
 class Node;
 using hnode = handle<Node>;
+
+// default values recommended by http://isthe.com/chongo/tech/comp/fnv/
+/// hash a single byte
+constexpr uint32_t Seed = 0x811C9DC5; // 2166136261
+inline uint32_t    fnv1a(unsigned char oneByte, uint32_t hash = Seed)
+{
+  constexpr uint32_t Prime = 0x01000193; //   16777619
+  return (oneByte ^ hash) * Prime;
+}
+inline uint32_t fnv1a(const void* data, size_t numBytes, uint32_t hash = Seed)
+{
+  assert(data);
+  const unsigned char* ptr = (const unsigned char*)data;
+  while (numBytes--)
+    hash = fnv1a(*ptr++, hash);
+  return hash;
+}
 
 } // namespace terra

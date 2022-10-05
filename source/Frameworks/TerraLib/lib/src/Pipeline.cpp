@@ -12,6 +12,7 @@ Pipeline::Image::~Image()
 void Pipeline::prepare(DispatchTask&& task)
 {
   this->task = task;
+  ubo.setDesc(GfxBuffer::Usage::fUniform, GfxStorageClass::eDynamicDeviceReadonly);
 }
 
 int32_t Pipeline::compute(hnode index)
@@ -76,13 +77,13 @@ void Pipeline::allocateResources()
 
   for (auto& gpu : gpuBuffers)
   {
-    gpu.setDesc(GfxBuffer::Usage::eStorage, GfxStorageClass::eDynamicGPUReadWrite);
+    gpu.setDesc(GfxBuffer::Usage::fStorage, GfxStorageClass::eDynamicDeviceAccess);
     gpu.ensure();
   }
 
   auto& rd = Terra::get().getDevice();
   for (auto& img : images)
-    img.image = rd.createImage(GfxStorageClass::eGPUReadWrite, img.width, img.height, img.format);
+    img.image = rd.createImage(GfxStorageClass::eDeviceAccess, img.width, img.height, img.format);
 }
 
 void Pipeline::prepareNodes(hnode index)
@@ -97,7 +98,7 @@ void Pipeline::prepareNodes(hnode index)
     node.enqueue(task.taskID, 0, *this);
   else
   {
-    auto     totalBufferSize = (task.params.bufferSize[0] + 2) * (task.params.bufferSize[1] + 2);
+    auto     totalBufferSize = (task.params.size[0] + 2) * (task.params.size[1] + 2);
     auto     source          = index;
     uint32_t sourceIdx       = meta.findParam("Source");
     uint32_t iterEnd         = meta.iteration;
@@ -283,14 +284,14 @@ GfxImage2D::handle Pipeline::readOutputImage(int32_t nodeIdx) const
   return getOutputImage(nodes[nodeIdx]);
 }
 
-std::unique_ptr<std::byte[]> Pipeline::readOutputBufferContent(int32_t nodeIdx) const
+void Pipeline::readOutputBufferContent(int32_t nodeIdx, std::span<std::byte> out) const
 {
-  return get().getDevice().readBuffer(readOutputBuffer(nodeIdx));
+  get().getDevice().readBuffer(readOutputBuffer(nodeIdx), 0, out);
 }
 
-std::unique_ptr<std::byte[]> Pipeline::readOutputImageContent(int32_t nodeIdx) const 
+void Pipeline::readOutputImageContent(int32_t nodeIdx, std::span<std::byte> out) const
 {
-  return get().getDevice().readImage(readOutputImage(nodeIdx));
+  get().getDevice().readImage(readOutputImage(nodeIdx), out);
 }
 
 GfxBuffer::handle  Pipeline::getOutputBuffer(hnode nodeIdx) const 
