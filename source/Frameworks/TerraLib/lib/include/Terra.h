@@ -22,7 +22,8 @@ public:
     std::string utilityFunctions;
   };
 
-  void init(std::shared_ptr<RenderDevice>);
+  using Localization = std::function<std::u8string_view(std::string_view)>;
+  void init(std::shared_ptr<RenderDevice> compute, Localization loc);
 
   void addImageCodec(std::u8string ext, std::shared_ptr<ImageCodec> codec)
   {
@@ -37,10 +38,7 @@ public:
   }
 
   void scanShader(std::filesystem::path path);
-  void logError(std::string);
 
-  Content              loadMediaContent(std::string media);
-  std::string          loadMediaString(std::string media);
   ShaderContent const& getShaderContent(ShaderLang) const
   {
     return shaderContent;
@@ -52,13 +50,20 @@ public:
       return it->second;
     return {};
   }
+  ImageData const& getImage(index<ImageData> at) const
+  {
+    return images[at.reserved];
+  }
+
+  ImageData& getImage(index<ImageData> at)
+  {
+    return images[at.reserved];
+  }
 
   hnode createNode(NodeMeta&);
 
-  index<ImageData>     getImage(std::filesystem::path path);
-  ImageData const&     getImage(index<ImageData>) const;
-  ImageData&           getImage(index<ImageData>);
-  GfxSampler::handle   getSampler(ImageSampling sampling);
+  index<ImageData>   getImage(std::filesystem::path path);
+  GfxSampler::handle getSampler(ImageSampling sampling);
 
   NodeMeta* getNodeMeta(std::string name)
   {
@@ -99,12 +104,12 @@ public:
     return frame;
   }
 
-  bool isValid(hnode node) 
+  bool isValid(hnode node)
   {
     return nodes.contains(node.reserved) && getNode(node).getId() == node;
   }
 
-  void destroy(hnode n) 
+  void destroy(hnode n)
   {
     nodes.erase(n.reserved);
   }
@@ -119,15 +124,17 @@ public:
     return 32;
   }
 
-  private:
-  
+  Localization localizationProvider;
+
+private:
   static Terra instance;
 
   using ImageCodecMap = std::unordered_map<std::u8string, std::shared_ptr<ImageCodec>>;
   using SamplerList   = std::vector<std::pair<ImageSampling, GfxSampler::handle>>;
 
-  uint32_t      frame = 0;
-  ShaderContent shaderContent;
+  std::unordered_map<std::string, std::u8string> strings;
+  uint32_t                                       frame = 0;
+  ShaderContent                                  shaderContent;
   using NodeMetaMap = std::map<std::string, uint32_t>;
   std::vector<NodeMeta>         nodeMetaTable;
   NodeMetaMap                   metaMap;

@@ -1,5 +1,6 @@
 
 #include "Node.h"
+#include "Logger.h"
 #include "Pipeline.h"
 #include "ShaderBuilder.h"
 #include "Terra.h"
@@ -39,7 +40,32 @@ auto stringToType(std::string_view stype)
   return type;
 }
 
-void ParameterMeta::setTypeFromString(std::string_view stype)
+Parameter ParameterMeta::getDefault() const 
+{
+  switch (type)
+  {
+  case ParameterType::eBool:
+    return (bool)(values[ValueType::eDefault].ival != 0);
+  case ParameterType::eCurveData:
+    return std::make_shared<CurveData>();
+  case ParameterType::eDataSource:
+    return DataSource();
+  case ParameterType::eFloat:
+    return values[ValueType::eDefault].fval;
+  case ParameterType::eFloat2:
+    return float2{values[ValueType::eDefault].fval, values[ValueType::eDefault].fval};
+  case ParameterType::eImage:
+    return ImageSource();
+  case ParameterType::eInt:
+    return values[ValueType::eDefault].ival;
+  case ParameterType::eInt2:
+    return int2{values[ValueType::eDefault].ival, values[ValueType::eDefault].ival};
+  default:
+    return Parameter();
+  }
+}
+
+void      ParameterMeta::setTypeFromString(std::string_view stype)
 {
   type = stringToType(stype);
 }
@@ -266,7 +292,8 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
       generated += ";\n";
       generated += writeTextureSamplerGLSL(t.name);
       t.descriptorIndex = (int)descriptorSetBindings.size();
-      descriptorSetBindings.emplace_back(DT::eImage, bi.binding, Access::eReadonly);
+      descriptorSetBindings.emplace_back(bi.descriptor);
+
       break;
     case ParameterType::eDataSource:
       t.optionIndex[0] = (int)options.size();
@@ -279,7 +306,8 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
       generated += ";\n";
       generated += writeDataSamplerGLSL(caps, t.name);
       t.descriptorIndex = (int)descriptorSetBindings.size();
-      descriptorSetBindings.emplace_back(DT::eBuffer, bi.binding, Access::eReadonly);
+      descriptorSetBindings.emplace_back(bi.descriptor);
+
       break;
     case ParameterType::eCurveData:
       bi = shaderBuilder->declBuffer("U", t.name, Access::eReadonly);
@@ -289,7 +317,8 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
       generated += ";\n";
       generated += writeCurveSamplerGLSL(caps, t.name);
       t.descriptorIndex = (int)descriptorSetBindings.size();
-      descriptorSetBindings.emplace_back(DT::eBuffer, bi.binding, Access::eReadonly);
+      descriptorSetBindings.emplace_back(bi.descriptor);
+
       break;
     }
   }
@@ -302,7 +331,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     generated += ";\n";
     generated += writeImageStoreGLSL("output");
     outputDescriptorIdx = (int)descriptorSetBindings.size();
-    descriptorSetBindings.emplace_back(DT::eImage, bi.binding, Access::eWriteonly);
+    descriptorSetBindings.emplace_back(bi.descriptor);
   }
   else
   {
@@ -312,7 +341,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     generated += "{ vec4 data[] };\n";
     generated += writeBufferStoreGLSL("output");
     outputDescriptorIdx = (int)descriptorSetBindings.size();
-    descriptorSetBindings.emplace_back(DT::eBuffer, bi.binding, Access::eWriteonly);
+    descriptorSetBindings.emplace_back(bi.descriptor);
   }
 
   uboSize     = paramOffsets;
@@ -334,11 +363,11 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     shaderBuilder->append(bi.content);
     shaderBuilder->append("{ NodeParams params; };\n");
     constantsDescriptorIdx = (int)descriptorSetBindings.size();
-    descriptorSetBindings.emplace_back(DT::eConstants, bi.binding, Access::eReadonly);
+    descriptorSetBindings.emplace_back(bi.descriptor);
   }
   if (options.size() >= 64)
   {
-    main.logError(std::format("Too many options for : {}", id));
+    logError("Too many options for : {}", id);
   }
   shaderBuilder->endSection();
   shaderBuilder->beginSection(ShaderBuilder::eMain);
@@ -360,7 +389,7 @@ GfxProgram::handle NodeMeta::getShaderGLSL(Options optionBitSet)
     auto shader = rd.createProgram(ShaderOptions{.names = options, .bitMask = optionBitSet}, *shaderBuilder);
     if (!shader)
     {
-      main.logError("Failed to compile shader.");
+      logError("Failed to compile shader.");
       return {};
     }
     rd.applyLayoutToProgram(shader, this->descriptorSetLayout);
@@ -383,6 +412,22 @@ void NodeMeta::destroy()
     rd.destroy(shader);
   shaders.clear();
 };
+
+Node::Node(NodeMeta& nm) : meta(&nm)
+{
+  parameters.resize(nm.parameterDef.size());
+  for (uint32_t i = 0; i < parameters.size(); ++i)
+    parameters[i] = nm.parameterDef[i].getDefault();
+}
+
+hnode Node::clone(uint32_t)
+{
+  hnode ret  = get().createNode(*meta);
+  auto& node = get().getNode(ret);
+  node       = *this;
+  node.tasks.clear();
+  return ret;
+}
 
 Node::~Node()
 {
@@ -717,10 +762,10 @@ void Node::deleteTaskData(uint32_t taskId)
 
 void Node::run(uint32_t taskId, Pipeline& pipeline)
 {
-  auto&                                  main          = terra::get();
-  auto&                                  parameterDefs = meta->parameterDef;
-  auto&                                  ubo           = pipeline.getUbo();
-  auto                                   uboData       = ubo.map(0, meta->uboSize);
+  auto& main          = terra::get();
+  auto& parameterDefs = meta->parameterDef;
+  auto& ubo           = pipeline.getUbo();
+  auto  uboData       = ubo.map(0, meta->uboSize);
   std::memcpy(uboData, &tasks[taskId].params, sizeof(EnvParams));
   std::vector<GfxDescriptorSet::rhandle> handles((size_t)meta->nbDescriptors);
   for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)

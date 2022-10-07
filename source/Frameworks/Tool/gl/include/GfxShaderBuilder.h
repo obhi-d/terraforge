@@ -40,7 +40,7 @@ public:
   }
 
 private:
-  friend class GfxDevice;
+  friend class GfxDevice43;
   
   uint32_t                 imageBindingCounter    = 0;
   uint32_t                 textureBindingCounter  = 0;

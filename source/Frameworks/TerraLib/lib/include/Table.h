@@ -30,7 +30,7 @@ public:
       if (free_pool.unused != k_null_32)
       {
         index            = free_pool.unused + lifecycle;
-        free_pool.unused = reinterpret_cast<std::uint32_t&>(pool[free_pool.unused]);
+        free_pool.unused = reinterpret_cast<std::uint32_t&>(pool[free_pool.unused & mask]);
       }
       else
       {

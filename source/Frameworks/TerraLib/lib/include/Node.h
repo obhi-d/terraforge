@@ -91,6 +91,8 @@ struct ParameterMeta
     return type != ParameterType::eInvalid;
   }
 
+  Parameter getDefault() const;
+
   bool affectsOptions() const;
   void modifyOptions(Parameter const&, Options&) const;
   void setTypeFromString(std::string_view);
@@ -109,19 +111,19 @@ public:
   };
 
   std::string                    id;
-  std::u8string                  name;
-  std::u8string                  category;
-  std::u8string                  brief;
-  std::u8string                  help;
+  std::u8string_view             name;
+  std::u8string_view             category;
+  std::u8string_view             brief;
+  std::u8string_view             help;
   std::vector<ParameterMeta>     parameterDef;
   int32_t                        nbDescriptors          = 0;
   int32_t                        outputDescriptorIdx    = 0;
   int32_t                        constantsDescriptorIdx = 0;
-  uint32_t                       outputUpscale   = 1; // multiplier
-  uint32_t                       outputDownscale = 1; // divisor for reduction algo
-  uint32_t                       iteration       = 1;
-  int32_t                        uboSize         = 0;
-  ImageFormat                    imageFormat     = ImageFormat::eFloat;
+  uint32_t                       outputUpscale          = 1; // multiplier
+  uint32_t                       outputDownscale        = 1; // divisor for reduction algo
+  uint32_t                       iteration              = 1;
+  int32_t                        uboSize                = 0;
+  ImageFormat                    imageFormat            = ImageFormat::eFloat;
   GfxDescriptorSetLayout::handle descriptorSetLayout;
   std::vector<std::string>       options;
   bool                           hasTextureOutput = false;
@@ -239,15 +241,14 @@ private:
     EnvParams                params;
   };
 
-  std::u8string                  name;
-  std::vector<TaskData>          tasks;
-  hnode                          id;
-  NodeMeta*                      meta = nullptr;
-  std::vector<Parameter>         parameters;
-  GfxDescriptorSetLayout::handle descriptorSetLayout;
-  GfxProgram::handle             shader;
-  bool                           valueChanged  = false;
-  bool                           optionChanged = false;
+  std::u8string          name;
+  std::vector<TaskData>  tasks;
+  hnode                  id;
+  NodeMeta*              meta = nullptr;
+  std::vector<Parameter> parameters;
+  GfxProgram::handle     shader;
+  bool                   valueChanged  = true;
+  bool                   optionChanged = true;
 
   bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx);
   void toDataStream(std::vector<uint8_t>& dataStream) const;

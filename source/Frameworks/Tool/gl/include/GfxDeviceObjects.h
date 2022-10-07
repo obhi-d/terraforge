@@ -7,6 +7,7 @@ namespace terra
 struct GfxBufferGl
 {
   gl::GLuint       glhandle;
+  gl::GLenum       target;
   GfxStorageClass  storage;
   GfxBuffer::Usage usage;
   uint32_t         size;
@@ -47,16 +48,16 @@ struct GfxProgramGl
 {
   gl::GLuint glhandle;
   gl::GLuint shaders[ShaderTypeCount] = {};
-
-  // for a descriptor set layout, store locations
-  std::vector<gl::GLuint> locations;
 };
 
 struct GfxMeshLayoutGl
 {
-  GfxMesh::Layout const* desc         = nullptr;
-  uint32           usageCounter = 0;
-  gl::GLuint       glhandle;
+  GfxMesh::Layout const* desc = nullptr;
+  GfxBuffer::handle      vertexBuffers[4];
+  GfxBuffer::handle      elementBuffer          = 0;
+  uint32_t               vertexBufferOffsets[4] = {};
+  uint32                 usageCounter           = 0;
+  gl::GLuint             glhandle;
 };
 
 struct GfxResources

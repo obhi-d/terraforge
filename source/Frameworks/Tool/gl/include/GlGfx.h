@@ -4,20 +4,42 @@
 #include "RenderResource.h"
 #include <glbinding/Binding.h>
 #include <glbinding/gl/gl.h>
+#include <glm/glm.hpp>
 
 namespace glb = glbinding;
 namespace terra
 {
 using tgl = glbinding::Binding;
-
-enum class GfxVertexFormat
+enum class BlendMode
 {
-  eFloat,
-  eFloat2, // 2 float
-  eFloat3, // 3 float
-  eUint32,
-  eUnormUint32,
-  eUnormByte4
+  eDisabled,
+  eAdditive
+};
+
+enum class DepthTestMode
+{
+  eDisabled,
+  eLessEq,
+  eGreaterEq
+};
+
+struct GlRect
+{
+  glm::ivec2 offset = glm::vec2(0, 0);
+  glm::ivec2 size   = glm::vec2(1, 1);
+ 
+  inline bool operator==(GlRect const&) const noexcept        = default;
+  inline bool operator!=(GlRect const&) const noexcept = default;
+};
+
+struct GlGfxState
+{
+  BlendMode     blend           = BlendMode::eDisabled;
+  DepthTestMode depthTest       = DepthTestMode::eDisabled;
+  bool          scissorsEnabled = false;
+  GlRect        viewport;
+  GlRect        scissor;
+  bool          flush = false;
 };
 
 struct GfxMesh
@@ -35,36 +57,40 @@ struct GfxMesh
   {
     GfxBuffer::handle handle;
     uint32_t          offset = 0;
-    uint32_t          size   = 0;
+  };
+
+  struct VertexElement
+  {
+    GfxVertexFormat format        = {};
+    uint32_t        relOffset     = 0;
+    int32_t         shaderBinding = -1;
   };
 
   struct VertexBuffer
   {
-    uint32_t          stride = 0;
-    uint32_t          formatCount = 0;
-    GfxVertexFormat   formats[4]  = {};
-    uint32_t          shaderBinding[4] = {};
+    uint32_t      stride       = 0;
+    uint32_t      elementCount = 0;
+    VertexElement elements[8];
   };
 
   struct Layout
   {
     VertexBuffer vertexBuffers[4];
-    uint32_t     indexBufferStride = 0;
     uint32_t     vertexBufferCount = 0;
 
-    inline bool operator==(Layout const& other) const noexcept 
+    inline bool operator==(Layout const& other) const noexcept
     {
       return std::memcmp(&other, this, sizeof(other)) == 0;
     }
     inline bool operator!=(Layout const& other) const noexcept
     {
-      return !(other==*this);
+      return !(other == *this);
     }
   };
 
   struct LayoutHash
   {
-    inline std::size_t operator()(Layout const& l) const noexcept 
+    inline std::size_t operator()(Layout const& l) const noexcept
     {
       return fnv1a(&l, sizeof(l));
     }
@@ -72,12 +98,21 @@ struct GfxMesh
 
   struct Draw
   {
+    handle   layout;
     Buffer   vertexBuffers[4];
     Buffer   indexBuffer;
-    uint32_t baseVertex  = 0;
-    uint32_t vertexCount = 0;
-    uint32_t indexCount  = 0;
-    Type     type        = Type::eTriangles;
+    uint32_t indexBufferStride = 0;
+    uint32_t baseVertex        = 0;
+    uint32_t vertexCount       = 0;
+    uint32_t indexCount        = 0;
+    Type     type              = Type::eTriangles;
   };
 };
+
+struct GfxMaterial
+{
+  GfxProgram::handle       program;
+  GfxDescriptorSet::handle descriptorSet;
+};
+
 } // namespace terra

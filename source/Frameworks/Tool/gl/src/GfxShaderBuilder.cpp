@@ -15,21 +15,27 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declBuffer(std::string_view prefix,
   BindingInfo info;
   info.content = std::format("layout(std430, binding = {}) {} buffer {}{}", 
                              bufferBindingCounter, toString(access), prefix, name);
-  info.binding = bufferBindingCounter++;
+  info.descriptor.access = access;
+  info.descriptor.binding = bufferBindingCounter++;
+  info.descriptor.type    = GfxDescriptorType::eBuffer;
   return info;
 }
 ShaderBuilder::BindingInfo GfxShaderBuilder::declConstants(std::string_view prefix, std::string_view name)
 {
   BindingInfo info;
   info.content = std::format("layout(std140, binding = {}) uniform {}{}", constantBindingCounter, prefix, name);
-  info.binding = constantBindingCounter++;
+  info.descriptor.access  = Access::eReadonly;
+  info.descriptor.binding = constantBindingCounter++;
+  info.descriptor.type    = GfxDescriptorType::eConstants;
   return info;
 }
 ShaderBuilder::BindingInfo GfxShaderBuilder::declTexture(std::string_view name)
 {
   BindingInfo info;
-  info.content = std::format("layout(binding = {}) sampler2D {}", textureBindingCounter, name);
-  info.binding = textureBindingCounter++;
+  info.content = std::format("layout(binding = {}) uniform sampler2D {}", textureBindingCounter, name);
+  info.descriptor.access  = Access::eReadonly;
+  info.descriptor.binding = textureBindingCounter++;
+  info.descriptor.type    = GfxDescriptorType::eTexture;
   return info;
 }
 ShaderBuilder::BindingInfo GfxShaderBuilder::declImage(std::string_view name, ImageFormat format, Access access)
@@ -48,7 +54,9 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declImage(std::string_view name, Im
   }
   info.content = std::format("layout(binding = {}, {}) restrict {} image2D {}", imageBindingCounter, sformat, 
                              toString(access), name);
-  info.binding = imageBindingCounter++;
+  info.descriptor.access  = access;
+  info.descriptor.binding = textureBindingCounter++;
+  info.descriptor.type    = GfxDescriptorType::eImage;
   return info;
 }
 void GfxShaderBuilder::begin(ShaderType t)
@@ -59,6 +67,7 @@ void GfxShaderBuilder::end()
 {
   if (!section.empty())
     output[(uint32_t)type] += section;
+  section.clear();
 }
 
 void GfxShaderBuilder::beginSection(Section s)

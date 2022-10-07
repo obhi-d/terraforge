@@ -6,18 +6,11 @@ public:
     "External.zlib",
     "External.sdl2",
     "External.imgui",
-    "External.imnodes",
+
     "External.libpng",
     "External.glm",
-    "External.freetype",
-    "External.glbinding",
-    "External.neoscript",
-    "TerraLib.lib"
+    "External.freetype"
+
   ];
 
 }
-
-references: [
-  "Tool.gl" 
-];
-

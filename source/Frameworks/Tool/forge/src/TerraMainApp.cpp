@@ -7,15 +7,19 @@
 
 #include "GlGfx.h"
 #include "ImguiTheme.h"
+#include "NeoHelper.h"
 #include "ResourceUtils.h"
+#include "Terra.h"
+#include "GfxDevice45.h"
 
 neo_registry(ThemeBuilder);
+neo_registry(StringBuilder);
 
 namespace terra
 {
 TerraMainApp::TerraMainApp()
 {
-  // readSettings();
+  readSettings();
   if (settings.verbose)
     Logger::get().open(Logger::Debug);
   else
@@ -27,6 +31,37 @@ TerraMainApp::~TerraMainApp()
   SDL_Quit();
 }
 
+void TerraMainApp::readLocalization()
+{
+  auto bytes = fileContentToBytes("localization/" + settings.language + ".nls");
+
+  std::u8string_view ss((char8_t const*)bytes.data(), bytes.size());
+  while (!ss.empty())
+  {
+    auto nameStart = ss.find_first_not_of(u8" \t");
+    if (nameStart == ss.npos)
+      break;
+    auto nameEnd = ss.find_first_of(u8" \t=\n\r", nameStart + 1);
+    if (nameEnd == ss.npos)
+      break;
+    auto name     = ss.substr(nameStart, nameEnd - nameStart);
+    ss            = ss.substr(nameEnd);
+    auto valStart = ss.find(u8"\"\"\"");
+    if (valStart == ss.npos)
+      break;
+    auto valEnd = ss.find(u8"\"\"\";", valStart + 3);
+    if (valEnd == ss.npos)
+      break;
+    auto value = ss.substr(valStart, valEnd - valStart);
+    ss         = ss.substr(valEnd);
+
+    // format is name =
+    // """...
+    // ...""";
+    addString(std::string((char const*)name.data(), (char const*)name.data() + name.length()), std::u8string(value));
+  }
+}
+
 void TerraMainApp::initalize()
 {
   if (SDL_Init(SDL_INIT_EVENTS))
@@ -34,7 +69,7 @@ void TerraMainApp::initalize()
     throw std::runtime_error("SDL init failed.");
   }
   ThemeRegister(ThemeBuilder, themeReader);
-  reloadTheme();
+  readLocalization();
 }
 
 void TerraMainApp::reloadTheme()
@@ -82,23 +117,48 @@ void TerraMainApp::createContext()
   }
 
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 
   glContext = SDL_GL_CreateContext(window);
+  int version = 450;
   if (!glContext)
   {
-    throw std::runtime_error("createContext(): cannot create glContext");
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    glContext = SDL_GL_CreateContext(window);
+
+    if (!glContext)
+      throw std::runtime_error("createContext(): cannot create glContext");
+    version = 430;
   }
 
   tgl::initialize(reinterpret_cast<glb::ProcAddress (*)(const char*)>(SDL_GL_GetProcAddress), false);
+  if (version == 430)
+    device = std::make_shared<GfxDevice43>();
+  else
+    device = std::make_shared<GfxDevice45>();
 }
 
 void TerraMainApp::run()
 {
   initalize();
   createContext();
-  viewer.create(glContext, settings);
+  terra::get().init(device,
+                    [this](std::string_view name) -> std::u8string_view
+                    {
+                      auto it = stringTable.find(std::string(name));
+                      if (it != stringTable.end())
+                        return it->second;
+                      logError("Cound not find string entry for: {}", name);
+                      auto iit = stringTable.emplace(
+                        name, std::u8string((char8_t*)name.data(), (char8_t*)name.data() + name.length()));
+                      return iit.first->second;
+                    });
+  viewer.create(glContext, device, settings);
+  reloadTheme();
+
   do
   {
     if (!viewer.pollEvents())
@@ -117,6 +177,7 @@ int TerraMainApp::Main(int argc, const char* argv[])
   }
   catch (std::exception& ex)
   {
+    logError(ex.what());
     std::cerr << ex.what();
     std::exit(-1);
   }

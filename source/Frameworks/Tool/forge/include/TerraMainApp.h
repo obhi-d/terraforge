@@ -1,3 +1,4 @@
+#include "GfxDevice43.h"
 #include "NeoHelper.h"
 #include "Setup.h"
 #include <optional>
@@ -24,12 +25,20 @@ public:
   void reloadTheme();
 
   static int Main(int argc, const char* argv[]);
+  void       addString(std::string name, std::u8string value)
+  {
+    stringTable[name] = value;
+  }
+
+  void readLocalization();
 
 private:
-  ImguiTerraWindow       viewer;
-  SDL_GLContext          glContext = nullptr;
-  std::vector<glm::vec2> dpiScaling;
-  AppSettings            settings;
-  neo::registry          themeReader;
+  std::unordered_map<std::string, std::u8string> stringTable;
+  std::shared_ptr<GfxDevice43>                     device;
+  ImguiTerraWindow                               viewer;
+  SDL_GLContext                                  glContext = nullptr;
+  std::vector<glm::vec2>                         dpiScaling;
+  AppSettings                                    settings;
+  neo::registry                                  themeReader;
 };
 } // namespace terra

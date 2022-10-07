@@ -93,4 +93,23 @@ inline auto toGlMapBit(Access access)
   return access == Access::eReadonly ? gl::GL_READ_ONLY
                                      : (access == Access::eWriteonly ? gl::GL_WRITE_ONLY : gl::GL_READ_WRITE);
 }
+
+inline auto toGl(GfxImage2D::ComponentValue comp) 
+{
+  switch (comp)
+  {
+  case GfxImage2D::ComponentValue::eRed:
+    return gl::GL_RED;
+  case GfxImage2D::ComponentValue::eGreen:
+    return gl::GL_GREEN;
+  case GfxImage2D::ComponentValue::eBlue:
+    return gl::GL_BLUE;
+  case GfxImage2D::ComponentValue::eAlpha:
+    return gl::GL_ALPHA;
+  case GfxImage2D::ComponentValue::eZero:
+    return gl::GL_ZERO;
+  default:
+    return gl::GL_ONE;
+  }
+}
 }

@@ -1,4 +1,5 @@
 #include "Terra.h"
+#include "Logger.h"
 #include "NodeBuilder.h"
 
 #include <format>
@@ -8,8 +9,11 @@ neo_registry(NoiseBuilder);
 namespace terra
 {
 
-void Terra::init(std::shared_ptr<RenderDevice> dev)
+Terra Terra::instance;
+
+void Terra::init(std::shared_ptr<RenderDevice> dev, Localization l)
 {
+  localizationProvider = l;
   device = dev;
   NodeRegister(NoiseBuilder, registry);
 }
@@ -49,7 +53,7 @@ void Terra::scanShader(std::filesystem::path path)
   }
   else
   {
-    logError(std::format("Failed to open file: {}", path.string()));
+    logError("Failed to open file: {}", path.string());
   }
 }
 

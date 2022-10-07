@@ -11,8 +11,7 @@ add_library(${PROJECT_NAME} STATIC "${fetch_src_dir}/imgui.cpp"
           "${fetch_src_dir}/imgui_widgets.cpp"
           "${fetch_src_dir}/misc/cpp/imgui_stdlib.cpp"
           "${fetch_src_dir}/misc/freetype/imgui_freetype.cpp"
-          "${fetch_src_dir}/backends/imgui_impl_sdl.cpp"
-          "${fetch_src_dir}/backends/imgui_impl_opengl3.cpp")
+          )
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
@@ -76,6 +75,4 @@ install(FILES
         ${fetch_src_dir}/imstb_rectpack.h
         ${fetch_src_dir}/imstb_textedit.h
         ${fetch_src_dir}/imstb_truetype.h
-        ${fetch_src_dir}/backends/imgui_impl_sdl.h
-        ${fetch_src_dir}/backends/imgui_impl_opengl3.h
       DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})

@@ -65,15 +65,15 @@ std::string fileContentToString(std::string name)
   return "";
 }
 
-std::vector<std::byte> fileContentToBytes(std::string name)
+std::vector<char> fileContentToBytes(std::string name)
 {
+
   auto          path = getMediaPath() / name;
-  std::basic_ifstream<std::byte> iff(path, std::ios::binary | std::ios::in);
-  if (iff.is_open())
-  {
-    return std::vector((std::istreambuf_iterator<std::byte>(iff)), std::istreambuf_iterator<std::byte>());
-  }
-  return {};
+  std::ifstream iff(path, std::ios::binary | std::ios::in);
+  size_t                         sz = (size_t)std::filesystem::file_size(path);
+  std::vector<char> content(sz);
+  iff.read(reinterpret_cast<char*>(content.data()), sz);
+  return content;
 }
 
 } // namespace terra

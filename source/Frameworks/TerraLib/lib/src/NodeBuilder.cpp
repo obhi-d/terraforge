@@ -1,8 +1,15 @@
 
+#include "ResourceUtils.h"
 #include "NodeBuilder.h"
 #include "Node.h"
 #include "Terra.h"
 #include <format>
+
+
+std::u8string_view terra::NodeCmdHandler::localizedString(std::string_view name)
+{
+  return terra::get().localizationProvider(name);
+}
 
 NodeTextHandler(textreg, build, state, type, name, content) {}
 
@@ -97,7 +104,7 @@ NodeCmdHandler(files, builder, state, cmd)
   auto shaders = terra::getFirstList(cmd);
   for (auto& e : shaders)
   {
-    builder.content.shaderContent += terra::get().loadMediaString("shaders/" + e);
+    builder.content.shaderContent += terra::fileContentToString("shaders/" + e);
     builder.content.shaderContent += "\n";
   }
   return neo::retcode::e_success;

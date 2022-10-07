@@ -25,7 +25,7 @@ struct ShaderBuilder
   struct BindingInfo
   {
     std::string content;
-    int32_t     binding = 0;
+    GfxDescriptor descriptor;
   };
 
   virtual BindingInfo declBuffer(std::string_view prefix, std::string_view name, Access access) = 0;

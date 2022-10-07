@@ -12,7 +12,7 @@ struct NodeCmdHandler : neo::command_handler
   NodeCmdHandler(NodeMeta& m, L&& eh) : meta(m), errorHandler(std::forward<L>(eh))
   {}
 
-  std::u8string                    localizedString(std::string_view);
+  std::u8string_view               localizedString(std::string_view);
   std::function<void(std::string)> errorHandler;
   NodeMeta::ShaderContent          content;
   NodeMeta&                        meta;

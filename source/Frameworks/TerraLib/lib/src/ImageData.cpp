@@ -1,4 +1,5 @@
 
+#include "ImageCodec.h"
 #include "ImageData.h"
 #include "RenderDevice.h"
 #include "Terra.h"

@@ -23,7 +23,7 @@ public:
 public:
   template <typename ...Args>
   friend constexpr void log(int, std::string_view fmt, Args&&...);
-  std::fstream out;
+  std::ofstream out;
   int level = 0;
 };
 

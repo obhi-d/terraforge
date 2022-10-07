@@ -75,6 +75,19 @@ struct GfxBuffer
 
 struct GfxImage2D
 {
+  enum ComponentValue : uint8_t
+  {
+    eRed, eGreen, eBlue, eAlpha, eZero, eOne
+  };
+
+  struct Swizzle
+  {
+    ComponentValue r = eRed;
+    ComponentValue g = eGreen;
+    ComponentValue b = eBlue;
+    ComponentValue a = eAlpha;
+  };
+
   using handle = terra::handle<GfxImage2D>;
   using Format = ImageFormat;
 };
@@ -99,20 +112,24 @@ static inline constexpr uint32_t ShaderTypeCount = (uint32_t)ShaderType::kCount;
 
 enum class GfxDescriptorType
 {
-  eBuffer,         // storage buffer handle
+  eBuffer, // storage buffer handle
   eImage,
+  eTexture,
   eConstants // ubo buffer handle
 };
+
+struct GfxDescriptor
+{
+  GfxDescriptorType type;
+  int32_t        binding;
+  Access         access;
+};
+
 struct GfxDescriptorSetLayout
 {
   using handle         = terra::handle<GfxDescriptorSetLayout>;
   using DescriptorType = GfxDescriptorType;
-  struct Descriptor
-  {
-    DescriptorType type;
-    int32_t        binding;
-    Access         access;
-  };
+  using Descriptor     = GfxDescriptor;
 };
 
 struct GfxDescriptorSet
@@ -138,9 +155,19 @@ enum class GlGfxSupport
   eUnsupported
 };
 
+enum class GfxVertexFormat
+{
+  eFloat,
+  eFloat2, // 2 float
+  eFloat3, // 3 float
+  eUint32,
+  eUnormUint32,
+  eUnormByte4
+};
+
 struct GfxFeature
 {
-  int          version                      = 450; // min version is 430
+  int version = 450; // min version is 430
   // GlGfxSupport ARB_program_interface_query      = GlGfxSupport::eUnsupported;
   // GlGfxSupport EXT_shader_image_load_store  = GlGfxSupport::eUnsupported;
   // GlGfxSupport ARB_shading_language_420pack = GlGfxSupport::eUnsupported;

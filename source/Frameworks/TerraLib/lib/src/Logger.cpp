@@ -1,12 +1,14 @@
 
+#include "ResourceUtils.h"
 #include "Logger.h"
+
 namespace terra
 {
 Logger logger;
 
 void   Logger::open(int level)
 {
-  out.open("terra.log");
+  out = std::move(std::ofstream(getMediaPath() / "terra.log"));
   this->level = level;
 }
 
