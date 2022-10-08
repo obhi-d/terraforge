@@ -2,6 +2,7 @@
 #pragma once
 #include "ImguiTheme.h"
 #include "Setup.h"
+#include <tuple>
 #include <GfxDevice43.h>
 #include <GlGfx.h>
 #include <imgui/imgui.h>
@@ -10,12 +11,13 @@ namespace terra
 {
 enum class ImWith
 {
-  fMinimize = 1 << 0,
-  fMaximize = 1 << 1,
-  fRestore  = 1 << 2,
-  fClose    = 1 << 3,
-  fMenu     = 1 << 4,
-  fLogo     = 1 << 5,
+  fMinimize   = 1 << 0,
+  fMaximize   = 1 << 1,
+  fRestore    = 1 << 2,
+  fClose      = 1 << 3,
+  fMenu       = 1 << 4,
+  fLogo       = 1 << 5,
+  fResizeCtrl = 1 << 6,
 };
 
 ENUM_FLAGS(ImWith);
@@ -28,6 +30,7 @@ enum class WindowAction
   eMaximize,
   eRestore,
   eDrag,
+  eResize,
   eClose
 };
 
@@ -46,19 +49,32 @@ public:
   void applyTheme(ImguiTheme const&);
 
   // Draw Helpers
-  ImAlign align(ImAlign align, float padding = 1.0f);
+  void    setRegion(glm::ivec2 start, glm::ivec2 size);
+  ImAlign setLayout(glm::ivec2 start, glm::ivec2 size, ImAlign align, float padding = 1.0f);
+  ImAlign align(ImAlign);
   // Draw a titlebar with flags, returns the button name clicked
   // if Menu flag is used, cursor is placed at next menu draw
   // You can right align to draw from right
-  TitlebarAction beginTitlebar(ImVec2 size, ImWith flags);
-  void       endTitlebar();
-  void       textCentered(std::string_view text, ImVec2 pos, ImVec2 size);
-  void       imageIcon(ImageName, ImVec2 size, Color tint);
-  bool       iconButton(std::string_view name, ImVec2 size, Color color, Color hover);
-  bool       drawResizeControl(glm::ivec2 windowSize);
-  
+  WindowAction windowDecoration(ImWith flags);
+  void         endTitlebar();
+  void         textCentered(std::string_view text, ImVec2 pos, ImVec2 size);
+  bool         iconButton(std::string_view name, ImVec2 size, Color color, Color hover);
+  bool         drawResizeControl(glm::ivec2 windowSize);
+  bool         iconButton(char16_t, glm::ivec2 size,  int iconSize, bool inlay = true);
+  bool         iconButton(ImageName, glm::ivec2 size, int iconSize, bool inlay = true);
 
 private:
+  std::tuple<bool, glm::ivec2, Color> iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay);
+  bool isIntersecting();
+  
+  static bool isIntersecting(glm::ivec2 mouse, glm::ivec2 pos, glm::ivec2 size) 
+  {
+    return (pos.x <= mouse.x && mouse.x <= pos.x + size.x) && (pos.y <= mouse.y && mouse.y <= pos.y + size.y);
+  }
+  void drawIcon(ImageName, glm::ivec2 location, glm::ivec2 size, Color color);
+  void drawIcon(char16_t, glm::ivec2 location, glm::ivec2 size, Color color);
+  void pushQuad(glm::ivec2 location, glm::ivec2 size, glm::vec2 uv0, glm::vec2 uv1, Color color=0xffffffff);
+  
   void createDeviceObjects();
   void draw(glm::vec2 frameSize, ImDrawData*);
   void createBuffers(ImDrawData*);
@@ -74,8 +90,8 @@ private:
 
   struct PackUV
   {
-    ImVec2 uv0 = ImVec2(0, 0);
-    ImVec2 uv1 = ImVec2(0, 0);
+    glm::vec2 uv0 = glm::vec2(0, 0);
+    glm::vec2 uv1 = glm::vec2(0, 0);
   };
 
   struct Params
@@ -86,28 +102,38 @@ private:
 
   struct Extends
   {
-    float left  = 0;
-    float right = 0;
+    glm::ivec2 min;
+    glm::ivec2 max;
+    int        dx() const
+    {
+      return max.x - min.x;
+    }
+    int        dy() const
+    {
+      return max.y - min.y;
+    }
     float padding = 1.0f;
   };
 
   ImAlign alignment = ImAlign::eLeft;
   Extends currentRegExtends;
 
-  ImThemeColors                            colors;
+  glm::vec2                                whiteUV;
+  std::vector<ImDrawVert>                  internalDrawVtx;
+  std::vector<ImDrawIdx>                   internalDrawIdx;
+  ImguiTheme                               theme;
   Params                                   paramData;
   std::array<PackUV, ImagePackCount>       packUVs;
   std::array<GfxDescriptorSet::rhandle, 2> descriptors;
   GfxImage2D::handle                       font;
-  GfxImage2D::handle                       image;
   GfxSampler::handle                       sampler;
   GfxDescriptorSetLayout::handle           descriptorSetLayout;
   GfxDescriptorSet::handle                 descriptorSet;
   GfxBuffer::handle                        vertexData;
   GfxBuffer::handle                        indexData;
   GfxBuffer::handle                        params;
-  uint32_t                                 vertexDataSize    = 0;
-  uint32_t                                 indexDataSize     = 0;
+  uint32_t                                 vertexDataSize = 0;
+  uint32_t                                 indexDataSize  = 0;
   GfxMesh::handle                          layout;
   GfxProgram::handle                       effect;
   glm::vec4                                clearColor;

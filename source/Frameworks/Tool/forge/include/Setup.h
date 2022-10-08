@@ -22,7 +22,7 @@ struct AppSettings
   std::string name;
   std::string language    = "en-US";
   glm::ivec2  viewerSize  = glm::ivec2(1024, 768);
-  glm::ivec2  viewerPos   = glm::ivec2(0, 0);
+  glm::ivec2  viewerPos   = glm::ivec2(20, 20);
   std::string theme       = "themes/default.tns";
   int         glslVersion = 130;
   bool        verbose     = true;

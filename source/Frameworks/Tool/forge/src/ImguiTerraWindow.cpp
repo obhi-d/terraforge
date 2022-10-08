@@ -16,7 +16,7 @@ void ImguiTerraWindow::create(SDL_GLContext glContext, std::shared_ptr<GfxDevice
   Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_BORDERLESS;
 
   window = SDL_CreateWindow(settings.name.data(), position.x, position.y, size.x, size.y,
-                            SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_BORDERLESS);
+                            SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI );
 
   if (!window)
     throw std::runtime_error("Could not create window!");
@@ -62,6 +62,24 @@ bool ImguiTerraWindow::pollEvents()
       return false;
     switch (event.type)
     {
+    case SDL_WINDOWEVENT:
+    {
+      switch (event.window.event)
+      {
+      case SDL_WINDOWEVENT_CLOSE:
+        if (event.window.windowID == SDL_GetWindowID(window))
+          return false;
+        break;
+      case SDL_WINDOWEVENT_SIZE_CHANGED:
+        size.x       = event.window.data1;
+        size.y = event.window.data2;
+        break;
+      }
+    }
+    }
+    /*
+    switch (event.type)
+    {
     case SDL_MOUSEBUTTONUP:
       if (event.button.button == SDL_BUTTON_LEFT)
         mouseDragging = false;
@@ -80,7 +98,10 @@ bool ImguiTerraWindow::pollEvents()
         break;
       case SDL_WINDOWEVENT_MINIMIZED:
         if (event.window.windowID == SDL_GetWindowID(window))
+        {
+          savedState = state;
           state = eMinimized;
+        }
         break;
       case SDL_WINDOWEVENT_MAXIMIZED:
         if (event.window.windowID == SDL_GetWindowID(window))
@@ -92,11 +113,15 @@ bool ImguiTerraWindow::pollEvents()
         {
           if (state == eMinimized)
           {
-            windowSize = size;
-            SDL_SetWindowSize(window, size.x, size.y);
-            SDL_SetWindowPosition(window, position.x, position.y);
+            if (savedState == eWindowed)
+            {
+              windowSize = size;
+              SDL_SetWindowSize(window, size.x, size.y);
+              SDL_SetWindowPosition(window, position.x, position.y);
+              state = eWindowed;
+            }
+            
           }
-          state = eWindowed;
           SDL_SetWindowInputFocus(window);
         }
         break;
@@ -104,48 +129,52 @@ bool ImguiTerraWindow::pollEvents()
     }
     break;
     }
+  */
   }
 
   return true;
 }
 
-void ImguiTerraWindow::drawTitlebar()
+void ImguiTerraWindow::drawWindowDecoration()
 {
-  auto& io = ImGui::GetIO();
-
-  ImGui::SetNextWindowPos(ImVec2(4, 2));
-  auto flags = ImWith::fClose | ImWith::fMenu | ImWith::fMinimize | ImWith::fLogo;
+  /* auto& io    = ImGui::GetIO();
+  auto  flags = ImWith::fClose | ImWith::fMenu | ImWith::fMinimize | ImWith::fLogo | ImWith::fResizeCtrl;
   if (state == eMaximized)
     flags = flags | ImWith::fRestore;
   else
     flags = flags | ImWith::fMaximize;
-
-  switch (backend.beginTitlebar(ImVec2(io.DisplaySize.x - 8, 36), flags))
+  
+  glm::ivec2 start, size;
+  SDL_GetWindowPosition(window, &start.x, &start.y);
+  size.x = (int)io.DisplaySize.x;
+  size.y = (int)io.DisplaySize.y;
+  backend.setRegion(start, size);
+  switch (backend.windowDecoration(flags))
   {
-  case TitlebarAction::eClose:
+  case WindowAction::eClose:
   {
     SDL_Event quit;
     quit.type = SDL_QUIT;
     SDL_PushEvent(&quit);
   }
-  case TitlebarAction::eMaximize:
+  case WindowAction::eMaximize:
   {
     SDL_MaximizeWindow(window);
   }
   break;
-  case TitlebarAction::eRestore:
+  case WindowAction::eRestore:
   {
     SDL_RestoreWindow(window);
   }
   break;
-  case TitlebarAction::eMinimize:
+  case WindowAction::eMinimize:
   {
     SDL_GetWindowSize(window, &size.x, &size.y);
     SDL_GetWindowPosition(window, &position.x, &position.y);
     SDL_MinimizeWindow(window);
   }
   break;
-  case TitlebarAction::eDrag:
+  case WindowAction::eDrag:
   {
     if (!windowDragging)
     {
@@ -155,7 +184,7 @@ void ImguiTerraWindow::drawTitlebar()
     }
   }
   break;
-  case TitlebarAction::eToggleSize:
+  case WindowAction::eToggleSize:
   {
     if (state == eMaximized)
       SDL_RestoreWindow(window);
@@ -163,39 +192,33 @@ void ImguiTerraWindow::drawTitlebar()
       SDL_MaximizeWindow(window);
   }
   break;
-  }
-  backend.endTitlebar();
-}
-
-void ImguiTerraWindow::drawResizeControl()
-{
-  if (backend.drawResizeControl(windowSize))
-  {
+  case WindowAction::eResize:
     if (!windowResizing)
     {
-      size = windowSize;
+      SDL_GetWindowSize(window, &this->size.x, &this->size.y);
       SDL_GetGlobalMouseState(&mouseLast.x, &mouseLast.y);
+      mouseLatest   = mouseLast;
       mouseDragging = windowResizing = true;
     }
-  }
+    break;
+  }*/
 }
 
 void ImguiTerraWindow::draw()
 {
-  if (state == eMinimized)
-    return;
   auto& io = ImGui::GetIO();
   assert(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable);
   ImGui_ImplSDL2_NewFrame();
   ImGui::NewFrame();
-  drawTitlebar();
-  drawResizeControl();
+  //drawWindowDecoration();
+  //drawResizeControl();
   nodeEditor.drawNodeEditor(backend);
   // Rendering
   ImGui::Render();
   backend.draw();
   SDL_GL_SwapWindow(window);
   // pending evvents
+  /*
   if (windowDragging)
   {
     SDL_GetGlobalMouseState(&mouseLatest.x, &mouseLatest.y);
@@ -209,7 +232,7 @@ void ImguiTerraWindow::draw()
     auto delta = mouseLatest - mouseLast;
     SDL_SetWindowSize(window, size.x + delta.x, size.y + delta.y);
     windowResizing = mouseDragging;
-  }
+  }*/
   
 }
 } // namespace terra

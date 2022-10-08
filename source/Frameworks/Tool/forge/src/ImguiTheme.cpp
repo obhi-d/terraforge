@@ -4,8 +4,7 @@
 
 ThemeTextHandler(notxt, build, state, type, name, content) {}
 
-constexpr std::array<std::string_view, terra::ImagePackCount> ImagePackNames =
-{"font", "iconfont", "logo"};
+constexpr std::array<std::string_view, terra::ImagePackCount> ImagePackNames = {"font", "iconfont", "logo", "resize"};
 
 ThemeCmdHandler(tint, theme, state, cmd) 
 {

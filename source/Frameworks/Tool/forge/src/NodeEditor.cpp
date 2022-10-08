@@ -18,8 +18,7 @@ void NodeEditor::scanNodeMetas()
 
 void NodeEditor::drawNodeEditor(ImguiBackend& backend) 
 {
-  bool show_demo_window = true;
-  ImGui::ShowDemoWindow(&show_demo_window);
+ 
 }
 
 }

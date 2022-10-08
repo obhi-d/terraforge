@@ -265,4 +265,84 @@ void ImageSerializer::loadImageRgba(std::span<std::byte*> rows, uint32_t xwidth,
   return;
 }
 
+void ImageSerializer::loadImageGray(std::span<std::byte*> rows, uint32_t xwidth, uint32_t xheight,
+                                    std::filesystem::path path)
+{
+  int           bitDepth        = 0;
+  int           colorType       = 0;
+  int           interlaceType   = 0;
+  int           compressionType = 0;
+  int           filterMethod    = 0;
+  uint32_t      width           = 0;
+  uint32_t      height          = 0;
+  size_t        rowbytes        = 0;
+  char          channels        = 0;
+  auto          row_pointers    = std::vector<png_bytep>();
+  std::ifstream file(path, std::ios::binary);
+  if (!file)
+  {
+    logError("Failed to open file : {}", path.string());
+    return;
+  }
+  png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+  if (!png_ptr)
+    return;
+  png_infop info_ptr = png_create_info_struct(png_ptr);
+  if (!info_ptr)
+  {
+    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+    return;
+  }
+
+ 
+  png_set_read_fn(png_ptr, &file, readPNG);
+  png_read_info(png_ptr, info_ptr);
+
+  png_get_IHDR(png_ptr, info_ptr, &width, &height, &bitDepth, &colorType, &interlaceType, &compressionType,
+               &filterMethod);
+  if (width != xwidth || height != xheight)
+  {
+    logError("Cannot read this file of different dimensions");
+    return;
+  }
+  
+  png_set_alpha_mode(png_ptr, PNG_ALPHA_PREMULTIPLIED, PNG_GAMMA_LINEAR);
+  png_set_strip_alpha(png_ptr);
+
+  if (colorType == PNG_COLOR_TYPE_PALETTE)
+  {
+    png_set_palette_to_rgb(png_ptr);
+    png_read_update_info(png_ptr, info_ptr);
+    colorType = png_get_color_type(png_ptr, info_ptr);
+  }
+  if (colorType == PNG_COLOR_TYPE_RGB || colorType == PNG_COLOR_TYPE_RGBA)
+  {
+    png_set_rgb_to_gray(png_ptr, 1, 0.0f, 0.0f);
+    png_read_update_info(png_ptr, info_ptr);
+    colorType = png_get_color_type(png_ptr, info_ptr);
+  }
+  if (colorType != PNG_COLOR_TYPE_GRAY)
+  {
+    logError("PNG format not supported! : {}", colorType);
+    return;
+  }
+
+  if (bitDepth != 8)
+  {
+    if (bitDepth == 16)
+    {
+      png_set_strip_16(png_ptr);
+    }
+  }
+
+  rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+  assert(rowbytes == width);
+  channels = png_get_channels(png_ptr, info_ptr);
+  assert(channels == 1);
+  png_read_image(png_ptr, (png_bytepp)rows.data());
+  png_read_end(png_ptr, NULL);
+  png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+  return;
+}
+
 }

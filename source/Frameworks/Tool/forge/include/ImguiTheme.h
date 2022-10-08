@@ -14,6 +14,7 @@ enum ImageName
   eFont,
   eIconFont,
   eLogo,
+  eResize,
   kCount
 };
 
@@ -89,7 +90,9 @@ struct ImThemeColors
   Color clear = 0xffffffff;
   Color text  = 0xffffffff;
   Color logo  = 0xffffffff;
+  Color icon   = 0xff212121;
   Color iconHover = 0xff2f2f2f;
+  Color iconPressed = 0xff2222ff;
 };
 
 struct ImguiTheme : neo::command_handler

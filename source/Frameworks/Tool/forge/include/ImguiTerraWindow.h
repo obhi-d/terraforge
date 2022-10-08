@@ -20,9 +20,8 @@ public:
   bool pollEvents();
   void draw();
   void setTheme(ImguiTheme const&);
-  void drawTitlebar();
-  void drawResizeControl();
-  
+  void drawWindowDecoration();
+ 
 private:
   enum WindowState
   {
@@ -31,13 +30,14 @@ private:
     eWindowed
   };
 
-  WindowState state    = WindowState::eWindowed;
+ // WindowState state      = WindowState::eWindowed;
+ // WindowState savedState = WindowState::eWindowed;
 
   glm::ivec2 position = glm::ivec2(0, 0);
   glm::ivec2 size     = glm::ivec2(1024, 768);
-  glm::ivec2  windowSize= glm::ivec2(1024, 768);
-  glm::ivec2  mouseLatest = glm::ivec2(0, 0); 
-  glm::ivec2  mouseLast = glm::ivec2(0, 0); 
+  //glm::ivec2  windowSize= glm::ivec2(1024, 768);
+  //glm::ivec2  mouseLatest = glm::ivec2(0, 0); 
+  //glm::ivec2  mouseLast = glm::ivec2(0, 0); 
 
   NodeEditor    nodeEditor;
   ImguiBackend  backend;
@@ -45,8 +45,8 @@ private:
   ImGuiContext* imguiContext = nullptr;
   uint32        windowID     = 0;
 
-  bool mouseDragging  = false;
-  bool windowResizing = false;
-  bool windowDragging = false;
+  //bool mouseDragging  = false;
+  //bool windowResizing = false;
+  //bool windowDragging = false;
 };
 } // namespace terra
