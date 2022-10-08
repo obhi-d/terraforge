@@ -30,6 +30,9 @@ enum class ParameterType
   eInvalid
 };
 
+ParameterType    stringToType(std::string_view);
+std::string_view typeToString(ParameterType);
+
 enum class DrawHint
 {
   eDefault,  // newline
@@ -52,8 +55,8 @@ struct EnvParams
   float frequency;
   float wavelength;
 
-  float2 gridSize;
-  float2 recipGridSize;
+  vec2 gridSize;
+  vec2 recipGridSize;
 
   uint2 size;
   uint2 startCoord;
@@ -62,7 +65,7 @@ struct EnvParams
   uint32_t bufferArraySize;
 };
 
-using Parameter = std::variant<std::monostate, int, float, int2, float2, bool, DataSource, ImageSource, CurveDataPtr>;
+using Parameter = std::variant<std::monostate, int, float, ivec2, vec2, bool, DataSource, ImageSource, CurveDataPtr>;
 
 struct ParameterMeta
 {
@@ -70,8 +73,11 @@ struct ParameterMeta
   int32         uboOffset       = -1;
   int32         descriptorIndex = -1;
   ParameterType type            = ParameterType::eInvalid;
+  ParameterType      scalarSubType   = ParameterType::eFloat;
   DrawHint      drawHint        = DrawHint::eDefault;
   std::string   sampler;
+  std::u8string_view help;
+  std::u8string_view tooltip;
 
   std::array<int, 2> optionIndex = {};
 
@@ -124,6 +130,7 @@ public:
   uint32_t                       iteration              = 1;
   int32_t                        uboSize                = 0;
   ImageFormat                    imageFormat            = ImageFormat::eFloat;
+  ParameterType                  outputSubType          = ParameterType::eFloat;
   GfxDescriptorSetLayout::handle descriptorSetLayout;
   std::vector<std::string>       options;
   bool                           hasTextureOutput = false;

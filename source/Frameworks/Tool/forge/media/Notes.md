@@ -18,7 +18,7 @@ bool  has_source_x;
 
 Functions generated.
 ```glsl
-float4 sample_x(int pixel)
+vec4 sample_x(int pixel)
 {
   if (params.has_source_x)
   {
@@ -39,8 +39,8 @@ Declaration of parameters
 Allowed types:
 - `float`
 - `int`
-- `float2`
-- `int2`
+- `vec2`
+- `ivec2`
 - `source`
 - `bool`
 - `texture`

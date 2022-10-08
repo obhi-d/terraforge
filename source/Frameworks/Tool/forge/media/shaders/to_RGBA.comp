@@ -1,0 +1,7 @@
+
+vec4 to_RGBA(NodeParams noise)
+{
+  sample_MinMax
+  Coord coords = get_offset(noise);
+
+}

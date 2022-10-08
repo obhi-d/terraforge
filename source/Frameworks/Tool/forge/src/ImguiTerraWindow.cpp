@@ -10,13 +10,16 @@ namespace terra
 
 void ImguiTerraWindow::create(SDL_GLContext glContext, std::shared_ptr<GfxDevice43> device, AppSettings const& settings)
 {
-  this->size     = settings.viewerSize;
-  this->position = settings.viewerPos;
+  auto size     = settings.viewerSize;
+  auto position = settings.viewerPos;
 
   Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_BORDERLESS;
 
+  SDL_SetHint("SDL_BORDERLESS_WINDOWED_STYLE", "1");
+  SDL_SetHint("SDL_BORDERLESS_RESIZABLE_STYLE", "1");
+
   window = SDL_CreateWindow(settings.name.data(), position.x, position.y, size.x, size.y,
-                            SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI );
+                            SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
 
   if (!window)
     throw std::runtime_error("Could not create window!");
@@ -60,24 +63,7 @@ bool ImguiTerraWindow::pollEvents()
     ImGui_ImplSDL2_ProcessEvent(&event);
     if (event.type == SDL_QUIT)
       return false;
-    switch (event.type)
-    {
-    case SDL_WINDOWEVENT:
-    {
-      switch (event.window.event)
-      {
-      case SDL_WINDOWEVENT_CLOSE:
-        if (event.window.windowID == SDL_GetWindowID(window))
-          return false;
-        break;
-      case SDL_WINDOWEVENT_SIZE_CHANGED:
-        size.x       = event.window.data1;
-        size.y = event.window.data2;
-        break;
-      }
-    }
-    }
-    /*
+  
     switch (event.type)
     {
     case SDL_MOUSEBUTTONUP:
@@ -93,43 +79,18 @@ bool ImguiTerraWindow::pollEvents()
           return false;
         break;
       case SDL_WINDOWEVENT_SIZE_CHANGED:
-        windowSize.x = event.window.data1;
-        windowSize.y = event.window.data2;
         break;
       case SDL_WINDOWEVENT_MINIMIZED:
-        if (event.window.windowID == SDL_GetWindowID(window))
-        {
-          savedState = state;
-          state = eMinimized;
-        }
         break;
       case SDL_WINDOWEVENT_MAXIMIZED:
-        if (event.window.windowID == SDL_GetWindowID(window))
-          state = eMaximized;
-
         break;
       case SDL_WINDOWEVENT_RESTORED:
-        if (event.window.windowID == SDL_GetWindowID(window))
-        {
-          if (state == eMinimized)
-          {
-            if (savedState == eWindowed)
-            {
-              windowSize = size;
-              SDL_SetWindowSize(window, size.x, size.y);
-              SDL_SetWindowPosition(window, position.x, position.y);
-              state = eWindowed;
-            }
-            
-          }
-          SDL_SetWindowInputFocus(window);
-        }
         break;
       }
     }
     break;
     }
-  */
+  
   }
 
   return true;
@@ -137,9 +98,10 @@ bool ImguiTerraWindow::pollEvents()
 
 void ImguiTerraWindow::drawWindowDecoration()
 {
-  /* auto& io    = ImGui::GetIO();
+   auto& io    = ImGui::GetIO();
   auto  flags = ImWith::fClose | ImWith::fMenu | ImWith::fMinimize | ImWith::fLogo | ImWith::fResizeCtrl;
-  if (state == eMaximized)
+   
+  if (SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED)
     flags = flags | ImWith::fRestore;
   else
     flags = flags | ImWith::fMaximize;
@@ -169,8 +131,6 @@ void ImguiTerraWindow::drawWindowDecoration()
   break;
   case WindowAction::eMinimize:
   {
-    SDL_GetWindowSize(window, &size.x, &size.y);
-    SDL_GetWindowPosition(window, &position.x, &position.y);
     SDL_MinimizeWindow(window);
   }
   break;
@@ -178,15 +138,16 @@ void ImguiTerraWindow::drawWindowDecoration()
   {
     if (!windowDragging)
     {
-      SDL_GetWindowPosition(window, &position.x, &position.y);
-      SDL_GetGlobalMouseState(&mouseLast.x, &mouseLast.y);
+      SDL_GetWindowSize(window, &dragData.startSize.x, &dragData.startSize.y);
+      SDL_GetWindowPosition(window, &dragData.startPosition.x, &dragData.startPosition.y);
+      SDL_GetGlobalMouseState(&dragData.mouse.x, &dragData.mouse.y);
       mouseDragging = windowDragging = true;
     }
   }
   break;
   case WindowAction::eToggleSize:
   {
-    if (state == eMaximized)
+    if (SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED)
       SDL_RestoreWindow(window);
     else
       SDL_MaximizeWindow(window);
@@ -195,13 +156,13 @@ void ImguiTerraWindow::drawWindowDecoration()
   case WindowAction::eResize:
     if (!windowResizing)
     {
-      SDL_GetWindowSize(window, &this->size.x, &this->size.y);
-      SDL_GetGlobalMouseState(&mouseLast.x, &mouseLast.y);
-      mouseLatest   = mouseLast;
+      SDL_GetWindowSize(window, &dragData.startSize.x, &dragData.startSize.y);
+      SDL_GetWindowPosition(window, &dragData.startPosition.x, &dragData.startPosition.y);
+      SDL_GetGlobalMouseState(&dragData.mouse.x, &dragData.mouse.y);
       mouseDragging = windowResizing = true;
     }
     break;
-  }*/
+  }
 }
 
 void ImguiTerraWindow::draw()
@@ -210,7 +171,7 @@ void ImguiTerraWindow::draw()
   assert(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable);
   ImGui_ImplSDL2_NewFrame();
   ImGui::NewFrame();
-  //drawWindowDecoration();
+  drawWindowDecoration();
   //drawResizeControl();
   nodeEditor.drawNodeEditor(backend);
   // Rendering
@@ -218,21 +179,23 @@ void ImguiTerraWindow::draw()
   backend.draw();
   SDL_GL_SwapWindow(window);
   // pending evvents
-  /*
+  
   if (windowDragging)
   {
+    glm::ivec2 mouseLatest;
     SDL_GetGlobalMouseState(&mouseLatest.x, &mouseLatest.y);
-    auto delta = mouseLatest - mouseLast;
-    SDL_SetWindowPosition(window, (int)(position.x + delta.x), (int)(position.y + delta.y));
+    auto delta = mouseLatest - dragData.mouse;
+    SDL_SetWindowPosition(window, (int)(dragData.startPosition.x + delta.x), (int)(dragData.startPosition.y + delta.y));
     windowDragging = mouseDragging;
   }
-  if (windowResizing)
+  else if (windowResizing)
   {
+    glm::ivec2 mouseLatest;
     SDL_GetGlobalMouseState(&mouseLatest.x, &mouseLatest.y);
-    auto delta = mouseLatest - mouseLast;
-    SDL_SetWindowSize(window, size.x + delta.x, size.y + delta.y);
+    auto delta = mouseLatest - dragData.mouse;
+    SDL_SetWindowSize(window, dragData.startSize.x + delta.x, dragData.startSize.y + delta.y);
     windowResizing = mouseDragging;
-  }*/
+  }
   
 }
 } // namespace terra

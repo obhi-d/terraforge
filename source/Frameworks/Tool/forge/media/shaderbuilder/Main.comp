@@ -1,0 +1,6 @@
+layout( local_size_x = WorkGroupSize, local_size_y = WorkGroupSize, local_size_z = 1 ) in;
+
+void main()
+{  
+    store_output( Binding_Node( constants.params ) );
+}

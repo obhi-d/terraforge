@@ -85,7 +85,19 @@ NodeCmdHandler(param, builder, state, cmd)
         meta.drawHint = terra::DrawHint::eSameline;
       else if (entry.value() == "hidden")
         meta.drawHint = terra::DrawHint::eHidden;
-    }        
+    } 
+    else if (entry.name() == "help")
+    {
+      meta.help = builder.localizedString(entry.value());
+    }
+    else if (entry.name() == "tooltip")
+    {
+      meta.tooltip = builder.localizedString(entry.value());
+    }
+    else if (entry.name() == "subtype")
+    {
+      meta.scalarSubType = terra::stringToType(entry.value());
+    }
   }
   if (meta.isValid())
   {
@@ -140,7 +152,7 @@ NodeCmdHandler(type, builder, state, cmd)
   if (type == "height")
     builder.meta.hasTextureOutput = false;
   else if (type == "image")
-    builder.meta.hasTextureOutput = false;
+    builder.meta.hasTextureOutput = true;
   auto const& params = cmd.params().value();
   for (auto& p : params)
   {
@@ -163,8 +175,14 @@ NodeCmdHandler(type, builder, state, cmd)
         builder.meta.imageFormat = terra::ImageFormat::eUnorm16;
       else if (entry.value() == "snorm16")
         builder.meta.imageFormat = terra::ImageFormat::eSnorm16;
+      else if (entry.value() == "unorm8")
+        builder.meta.imageFormat = terra::ImageFormat::eUnorm8;
       else
         builder.meta.imageFormat = terra::ImageFormat::eFloat;
+    }
+    else if (entry.name() == "subtype")
+    {
+      builder.meta.outputSubType = terra::stringToType(entry.value());
     }
   }
   return neo::retcode::e_success;

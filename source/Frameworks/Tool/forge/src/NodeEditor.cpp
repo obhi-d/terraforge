@@ -3,6 +3,7 @@
 #include "NodeEditor.h"
 #include "ResourceUtils.h"
 #include "ImguiBackend.h"
+#include "imnodes.h"
 
 namespace terra
 {
@@ -18,7 +19,17 @@ void NodeEditor::scanNodeMetas()
 
 void NodeEditor::drawNodeEditor(ImguiBackend& backend) 
 {
- 
+  if (ImGui::Begin("Node Editor", nullptr))
+  {
+    auto newSize = ImGui::GetWindowSize();
+
+    ImNodes::BeginNodeEditor();
+
+    ImNodes::MiniMap(0.2f, ImNodesMiniMapLocation_BottomLeft);
+
+    ImNodes::EndNodeEditor();
+  }
+  ImGui::End();
 }
 
 }

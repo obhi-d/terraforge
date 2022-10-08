@@ -66,17 +66,17 @@ public:
 
   inline operator glm::vec4() const
   {
-    return toFloat4<glm::vec4>();
+    return tovec4<glm::vec4>();
   }
 
   inline operator ImVec4() const
   {
-    return toFloat4<ImVec4>();
+    return tovec4<ImVec4>();
   }
 
 private:
   template <typename T>
-  T toFloat4() const
+  T tovec4() const
   {
     return T{color.r / 255.f, color.g / 255.f, color.b / 255.f, color.a / 255.f};
   }

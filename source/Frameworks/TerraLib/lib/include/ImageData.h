@@ -44,8 +44,8 @@ struct ImageSource
 
   float              defaultValue      = 0.0f; // outside tile consraint or when image is not present
   float              uvScale           = 1.0f;
-  int2               tileConstraintMin = {0, 0};
-  int2               tileConstraintMax = {0, 0};
+  ivec2               tileConstraintMin = {0, 0};
+  ivec2               tileConstraintMax = {0, 0};
   ImageSampling      sampling;
   GfxSampler::handle sampler;
 

@@ -1,9 +1,9 @@
-name     = "@local:toRGBA";
-category = "@local:modifiers";
-brief    = "@local:toRGBA_brief";
-help     = "@local:toRGBA_help";
+name     = "@ToRGBA";
+category = "@Modifiers";
+brief    = "@ToRGBABrief";
+help     = "@ToRGBAHelp";
 function = "to_RGBA";
-type     = image;
+type     = image (format = unorm8);
 
 shaders
 {
@@ -13,5 +13,5 @@ shaders
   };
 };
 
-param Source(type = source, min = -1.0f, max = 1.0f, default = 1.0);
-param MinMax(type = source);
+param Source(type = source, min = -1.0f, max = 1.0f, default = 1.0, tooltip=@InputSource);
+param MinMax(type = source, tooltip=@MinMaxSource, subtype = vec2);

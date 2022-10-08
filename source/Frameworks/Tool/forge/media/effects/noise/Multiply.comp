@@ -1,4 +1,0 @@
-
-vec4 multiply(ivec4 x, ivec4 y, noise_params noise, env_params env)
-{
-}

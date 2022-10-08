@@ -411,9 +411,9 @@ bool ImguiBackend::iconButton(std::string_view name, ImVec2 size, Color color, C
   ImGui::SameLine();
   textCentered(name.data(), pos, size);
   if (alignment == ImAlign::eRight)
-    currentRegExtends.max.x -= (size.x + currentRegExtends.padding);
+    currentRegExtends.max.x -= int(size.x + currentRegExtends.padding);
   else
-    currentRegExtends.min.x += (size.x + currentRegExtends.padding);
+    currentRegExtends.min.x += int(size.x + currentRegExtends.padding);
   return clicked;
 }
 std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay)
@@ -425,10 +425,10 @@ std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 siz
   Color sel;
   if (alignment == ImAlign::eRight)
   {
-    pos.x = currentRegExtends.max.x - (size.x + currentRegExtends.padding);
+    pos.x = currentRegExtends.max.x - int(size.x + currentRegExtends.padding);
   }
   else
-    pos.x = currentRegExtends.min.x + (currentRegExtends.padding);
+    pos.x = currentRegExtends.min.x + int(currentRegExtends.padding);
 
   if (isIntersecting(glm::ivec2((int)io.MousePos.x, (int)io.MousePos.y), pos, size))
   {

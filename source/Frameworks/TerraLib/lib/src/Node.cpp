@@ -18,16 +18,76 @@ namespace tmpl
 namespace terra
 {
 
-auto stringToType(std::string_view stype)
+std::string_view bufferReadType(ParameterType type)
+{
+  switch (type)
+  {
+  case ParameterType::eInt:
+    return "int";
+  case ParameterType::eInt2:
+    return "ivec2";
+  case ParameterType::eFloat:
+    return "float";
+  case ParameterType::eFloat2:
+    return "vec2";
+  case ParameterType::eBool:
+    return "bool";
+  }
+  return "invalid";
+}
+
+std::string_view bufferWriteType(ParameterType type)
+{
+  switch (type)
+  {
+  case ParameterType::eInt:
+    return "ivec4";
+  case ParameterType::eInt2:
+    return "imat2x4";
+  case ParameterType::eFloat:
+    return "vec4";
+  case ParameterType::eFloat2:
+    return "vec2x4";
+  case ParameterType::eBool:
+    return "bvec4";
+  }
+  return "invalid";
+}
+
+std::string_view typeToString(ParameterType type) 
+{
+  switch (type)
+  {
+  case ParameterType::eInt:
+    return "int";
+  case ParameterType::eInt2:
+    return "ivec2";
+  case ParameterType::eFloat:
+    return "float";
+  case ParameterType::eFloat2:
+    return "vec2";
+  case ParameterType::eBool:
+    return "bool";
+  case ParameterType::eImage:
+    return "image";
+  case ParameterType::eDataSource:
+    return "source";
+  case ParameterType::eCurveData:
+    return "curve";
+  }
+  return "invalid";
+}
+
+ParameterType stringToType(std::string_view stype)
 {
   ParameterType type = ParameterType::eInvalid;
   if (stype == "int")
     type = ParameterType::eInt;
   else if (stype == "float")
     type = ParameterType::eFloat;
-  else if (stype == "int2")
+  else if (stype == "ivec2")
     type = ParameterType::eInt2;
-  else if (stype == "float2")
+  else if (stype == "vec2")
     type = ParameterType::eFloat2;
   else if (stype == "bool")
     type = ParameterType::eBool;
@@ -53,13 +113,13 @@ Parameter ParameterMeta::getDefault() const
   case ParameterType::eFloat:
     return values[ValueType::eDefault].fval;
   case ParameterType::eFloat2:
-    return float2{values[ValueType::eDefault].fval, values[ValueType::eDefault].fval};
+    return vec2{values[ValueType::eDefault].fval, values[ValueType::eDefault].fval};
   case ParameterType::eImage:
     return ImageSource();
   case ParameterType::eInt:
     return values[ValueType::eDefault].ival;
   case ParameterType::eInt2:
-    return int2{values[ValueType::eDefault].ival, values[ValueType::eDefault].ival};
+    return ivec2{values[ValueType::eDefault].ival, values[ValueType::eDefault].ival};
   default:
     return Parameter();
   }
@@ -187,7 +247,11 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   shaderBuilder->begin(ShaderType::eCompute);
   shaderBuilder->beginSection(ShaderBuilder::eDecl);
   shaderBuilder->append(nodeContent.extensions);
-  shaderBuilder->append(std::format("#define Binding_Node {}\n", nodeContent.function));
+  shaderBuilder->append(std::format(
+    "#define Binding_Node {}\n"
+    "#define WorkGroupSize {}\n", 
+    "#define output_t {}\n", 
+    nodeContent.function, get().getWorkGroupSize(), bufferWriteType(outputSubType)));
   shaderBuilder->append(commonContent.typesAndConstants);
   shaderBuilder->append(commonContent.fixedResources);
   shaderBuilder->append(commonContent.utilityFunctions);
@@ -301,10 +365,15 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
       generated += std::format("const bool has_{0} = Has_{0};\n", t.name);
       bi = shaderBuilder->declBuffer("U", t.name, Access::eReadonly);
       generated += bi.content;
-      generated += "{ float data[]; }";
+      generated += std::format("{ {0}_t data[]; }", t.name);
       generated += t.name;
       generated += ";\n";
       generated += writeDataSamplerGLSL(caps, t.name);
+      shaderBuilder->append(std::format("#define {0}_t {1}\n"
+                                        "#define {0}_t4 {2}\n",
+                                        t.name,
+                                        bufferReadType(t.scalarSubType),
+                                        bufferWriteType(outputSubType)));
       t.descriptorIndex = (int)descriptorSetBindings.size();
       descriptorSetBindings.emplace_back(bi.descriptor);
 
@@ -323,6 +392,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     }
   }
 
+  
   if (hasTextureOutput)
   {
     shaderBuilder->append("#define HasTextureOutput 1\n");
@@ -338,7 +408,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     shaderBuilder->append("#define HasTextureOutput 0\n");
     auto bi = shaderBuilder->declBuffer("U", "Output", Access::eWriteonly);
     generated += bi.content;
-    generated += "{ vec4 data[] };\n";
+    generated += "{ output_t data[]; }";    
     generated += writeBufferStoreGLSL("output");
     outputDescriptorIdx = (int)descriptorSetBindings.size();
     descriptorSetBindings.emplace_back(bi.descriptor);
@@ -537,7 +607,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
     break;
     case ParameterType::eInt2: // int
     {
-      int2 value;
+      ivec2 value;
       if (!terra::getFromDataStream(dataStream, serialIdx, value))
         return false;
       p = value;
@@ -545,7 +615,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
     break;
     case ParameterType::eFloat2: // int
     {
-      float2 value;
+      vec2 value;
       if (!terra::getFromDataStream(dataStream, serialIdx, value))
         return false;
       p = value;
@@ -776,8 +846,8 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
     {
     case ParameterType::eInt2:
     {
-      auto val = std::get<int2>(pval);
-      std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(int2));
+      auto val = std::get<ivec2>(pval);
+      std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(ivec2));
     }
     break;
     case ParameterType::eInt:
@@ -788,8 +858,8 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
     break;
     case ParameterType::eFloat2:
     {
-      auto val = std::get<float2>(pval);
-      std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(float2));
+      auto val = std::get<vec2>(pval);
+      std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(vec2));
     }
     break;
     case ParameterType::eFloat:
@@ -804,8 +874,8 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
 
       *(float*)(uboData + (size_t)pdef.uboOffset)     = val.defaultValue;
       *(float*)(uboData + (size_t)pdef.uboOffset + 4) = val.uvScale;
-      *(int2*)(uboData + (size_t)pdef.uboOffset + 8)  = val.tileConstraintMin;
-      *(int2*)(uboData + (size_t)pdef.uboOffset + 16) = val.tileConstraintMax;
+      *(ivec2*)(uboData + (size_t)pdef.uboOffset + 8)  = val.tileConstraintMin;
+      *(ivec2*)(uboData + (size_t)pdef.uboOffset + 16) = val.tileConstraintMax;
 
       if (std::holds_alternative<ImageDataIdx>(val.source))
         handles[pdef.descriptorIndex].first = main.getImage(std::get<ImageDataIdx>(val.source)).handle;

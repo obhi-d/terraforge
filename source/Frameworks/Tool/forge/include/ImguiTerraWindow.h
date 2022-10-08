@@ -3,11 +3,11 @@
 #include <memory>
 #include <string>
 
-#include <SDL.h>
-#include "imgui.h"
-#include "ImguiTheme.h"
 #include "ImguiBackend.h"
+#include "ImguiTheme.h"
 #include "NodeEditor.h"
+#include "imgui.h"
+#include <SDL.h>
 
 namespace terra
 {
@@ -21,23 +21,14 @@ public:
   void draw();
   void setTheme(ImguiTheme const&);
   void drawWindowDecoration();
- 
+
 private:
-  enum WindowState
+  struct DragData
   {
-    eMinimized,
-    eMaximized,
-    eWindowed
+    glm::ivec2 startPosition;
+    glm::ivec2 startSize;
+    glm::ivec2 mouse = glm::ivec2(0, 0);
   };
-
- // WindowState state      = WindowState::eWindowed;
- // WindowState savedState = WindowState::eWindowed;
-
-  glm::ivec2 position = glm::ivec2(0, 0);
-  glm::ivec2 size     = glm::ivec2(1024, 768);
-  //glm::ivec2  windowSize= glm::ivec2(1024, 768);
-  //glm::ivec2  mouseLatest = glm::ivec2(0, 0); 
-  //glm::ivec2  mouseLast = glm::ivec2(0, 0); 
 
   NodeEditor    nodeEditor;
   ImguiBackend  backend;
@@ -45,8 +36,9 @@ private:
   ImGuiContext* imguiContext = nullptr;
   uint32        windowID     = 0;
 
-  //bool mouseDragging  = false;
-  //bool windowResizing = false;
-  //bool windowDragging = false;
+  DragData dragData;
+  bool mouseDragging  = false;
+  bool windowResizing = false;
+  bool windowDragging = false;
 };
 } // namespace terra

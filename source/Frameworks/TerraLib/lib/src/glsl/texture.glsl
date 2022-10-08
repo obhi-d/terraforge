@@ -19,7 +19,7 @@ float sample_{0}(float u, float v, uint x, uint y, NodeParams np)
   }}                                                                                                         
 }}                                                                                                           
                                                                                                             
-vec4 sample_{0}(vec4 u, vec4 v, uint4 x, uint4 y, NodeParams np)                                              
+vec4 sample_{0}(vec4 u, vec4 v, uvec4 x, uvec4 y, NodeParams np)                                              
 {{                                                                                                           
   return vec4(sample_{0}(u.x, v.x, x.x, y.x, np),                                                           
               sample_{0}(u.y, v.y, x.y, y.y, np),                                                           

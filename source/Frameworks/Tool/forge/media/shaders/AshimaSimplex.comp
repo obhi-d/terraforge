@@ -12,13 +12,13 @@ float salt( float seed )
 
 float noisexy( vec2 v )
 {
-    const float4 C = float4( 0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439 );
+    const vec4 C = vec4( 0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439 );
 
     vec2 i  = floor( v + dot( v, C.yy ) );
     vec2 x0 = v - i + dot( i, C.xx );
     vec2 i1;
     i1         = ( x0.x > x0.y ) ? vec2( 1.0, 0.0 ) : vec2( 0.0, 1.0 );
-    float4 x12 = x0.xyxy + C.xxzz;
+    vec4 x12 = x0.xyxy + C.xxzz;
     x12.xy -= i1;
     i       = mod( i, 289.0 );
     vec3 p  = permute( permute( i.y + vec3( 0.0, i1.y, 1.0 ) ) + i.x + vec3( 0.0, i1.x, 1.0 ) );
@@ -36,9 +36,9 @@ float noisexy( vec2 v )
     return 130.0 * dot( m, g );
 }
 
-float4 noise( float4 x, float4 y, int3 pixel, env_params params )
+vec4 noise( vec4 x, vec4 y, int3 pixel, env_params params )
 {
     float seed = salt( float( params.seed ) );
-    return float4( noisexy( vec2( x.x + seed, y.x + seed ) ), noisexy( vec2( x.y + seed, y.y + seed ) ),
+    return vec4( noisexy( vec2( x.x + seed, y.x + seed ) ), noisexy( vec2( x.y + seed, y.y + seed ) ),
                    noisexy( vec2( x.z + seed, y.z + seed ) ), noisexy( vec2( x.w + seed, y.w + seed ) ) );
 }
