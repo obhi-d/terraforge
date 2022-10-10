@@ -54,12 +54,13 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
   imne::SetCurrentEditor(editorContext);
   if (ImGui::Begin((const char*)nodeEditor.data()))
   {
-    if (imne::Begin((const char*)nodeEditor.data(), ImVec2(0, 0)))
+    imne::Begin((const char*)nodeEditor.data(), ImVec2(0, 0));
     {
       auto newSize = ImGui::GetWindowSize();
       imne::Suspend();
       if (imne::ShowBackgroundContextMenu())
-        doContextMenu(app);
+        ImGui::OpenPopup("new_node");
+      doContextMenu(app);
       imne::Resume();
       doNodes(app, backend);
       imne::End();
@@ -79,13 +80,13 @@ void NodeEditor::doContextMenu(TerraMainApp& app)
     eNone
   };
 
-  ImVec2 drag     = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
-  float  distance = sqrtf(ImDot(drag, drag));
+  
   Action todo     = Action::eNone;
   NodeMeta const* clicked  = nullptr;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
   ImVec2 pos;
-  if (distance < 5.0f && ImGui::BeginPopupContextWindow("new_node", 1))
+  
+  if (ImGui::BeginPopup("new_node"))
   {
     pos = ImGui::GetMousePosOnOpeningCurrentPopup();
     for (auto& c : cachedMetas)
@@ -102,10 +103,12 @@ void NodeEditor::doContextMenu(TerraMainApp& app)
               clicked = &entry;
               todo    = Action::eCreate;
             }
-            ImGui::BeginTooltip();
-            ImGui::TextUnformatted((const char*)entry.brief.data());
-            ImGui::EndTooltip();
-      
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+            {
+              ImGui::BeginTooltip();
+              ImGui::TextUnformatted((const char*)entry.brief.data());
+              ImGui::EndTooltip();
+            }
           }
           ImGui::EndMenu();
         }

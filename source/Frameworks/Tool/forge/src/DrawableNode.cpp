@@ -69,16 +69,16 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, bool& preview
   ImGui::TextUnformatted((const char*)node.getName().data());
     
   ImGui::PushID(id.reserved);
-  auto outPin = pinStartId + 1;
-  if (node.hasTextureOutput())
+
+  imne::BeginPin(pinStartId + 1, imne::PinKind::Output);
   {
-    imne::BeginPin(outPin, imne::PinKind::Output);
     imne::PinPivotAlignment(ImVec2(1.0f, 0.5f));
     imne::PinPivotSize(ImVec2(0, 0));
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + width() - 4);
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + width() - (style.pinSize + 4));
     drawPinIcon(style, node.getMeta().format, node.isDetached());
     imne::EndPin();
   }
+
   bool showTooltip = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort);
   bool showHelp    = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal);
   if (showTooltip || showHelp)
@@ -100,9 +100,12 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend)
 {
   imne::EndNode();
   if (firstDraw)
+  {
     ImGui::EndGroup();
-  min = ImGui::GetItemRectMin();
-  max = ImGui::GetItemRectMax();
+    min = ImGui::GetItemRectMin();
+    max = ImGui::GetItemRectMax();
+  }
   ImGui::PopID();
+  firstDraw = false;
 }
 }

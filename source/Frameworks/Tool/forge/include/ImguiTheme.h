@@ -1,11 +1,11 @@
 
 #pragma once
-#include "NeoHelper.h"
-#include <filesystem>
-#include <array>
-#include "imgui.h"
-#include "glm/glm.hpp"
 #include "IconsFontAwesome6.h"
+#include "NeoHelper.h"
+#include "glm/glm.hpp"
+#include "imgui.h"
+#include <array>
+#include <filesystem>
 
 namespace terra
 {
@@ -45,10 +45,10 @@ public:
 
   inline Color(ImVec4 f4)
   {
-    color.r = (uint8_t)(f4.x * 255.f);            // Extract the RR byte
-    color.g = (uint8_t)(f4.y * 255.f);            // Extract the GG byte
-    color.b = (uint8_t)(f4.z * 255.f);            // Extract the GG byte
-    color.a = (uint8_t)(f4.w * 255.f);            // Extract the BB byte
+    color.r = (uint8_t)(f4.x * 255.f); // Extract the RR byte
+    color.g = (uint8_t)(f4.y * 255.f); // Extract the GG byte
+    color.b = (uint8_t)(f4.z * 255.f); // Extract the GG byte
+    color.a = (uint8_t)(f4.w * 255.f); // Extract the BB byte
   }
 
   inline Color(glm::vec4 f4)
@@ -86,26 +86,26 @@ private:
 
 struct ImThemeColors
 {
-  Color tint  = 0xffffffff;
-  Color clear = 0xffffffff;
-  Color text  = 0xffffffff;
-  Color logo  = 0xffffffff;
-  Color icon   = 0xff212121;
-  Color iconHover = 0xff2f2f2f;
+  Color tint        = 0xffffffff;
+  Color clear       = 0xffffffff;
+  Color text        = 0xffffffff;
+  Color logo        = 0xffffffff;
+  Color icon        = 0xff212121;
+  Color iconHover   = 0xff2f2f2f;
   Color iconPressed = 0xff2222ff;
 };
 
 struct NodeStyle
 {
   std::string name;
-  float       pinSize = 8.0f;
-  Color       pinColor;
-  Color       pinFillColor;
-  Color       title;
-  Color       titleHovered;
-  Color       titleSelected;
-  Color       textColor;
-  Color       textSelected;
+  float       pinSize       = 8.0f;
+  Color       pinColor      = 0xefefefef;
+  Color       pinFillColor  = 0xffffffff;
+  Color       title         = 0xeeeeeeee;
+  Color       titleHovered  = 0xaaaaaaaa;
+  Color       titleSelected = 0xff111111;
+  Color       textColor     = 0xffffffff;
+  Color       textSelected  = 0xff1e62fe;
 };
 
 struct ImguiTheme : neo::command_handler
@@ -114,15 +114,14 @@ struct ImguiTheme : neo::command_handler
   std::filesystem::path  source;
   Packs                  images;
   ImThemeColors          themeColors;
-  std::vector<NodeStyle> nodeStyles;
-
+  std::vector<NodeStyle> nodeStyles = std::vector<NodeStyle>(1);
 
   NodeStyle const& getNodeStyle(uint32_t s) const
   {
     return nodeStyles[s];
   }
 
-  uint32_t               getNodeStyle(std::string_view name) const 
+  uint32_t getNodeStyle(std::string_view name) const
   {
     for (uint32_t i = 0; i < nodeStyles.size(); ++i)
     {
@@ -131,7 +130,6 @@ struct ImguiTheme : neo::command_handler
     }
     return 0;
   }
-
 };
 
 #define ThemeCmdHandler(FnName, iObj, iState, iCmd) neo_cmd_handler(FnName, terra::ImguiTheme, iObj, iState, iCmd)

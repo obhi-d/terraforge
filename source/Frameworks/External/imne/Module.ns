@@ -1,0 +1,21 @@
+type = extern;
+
+version : "1.88.1";
+
+fetch "https://github.com/obhi-d/imgui-node-editor.git"
+{
+  license    : "LICENSE";
+  commit     : "78b2026bf8153655f751b8f19191bd6f387aec14";
+  package    : imne;
+  fetch_content : true;
+  args
+  {
+  
+  }
+}
+
+
+public:
+{
+  dependencies: [ "External.imgui" ];
+}
