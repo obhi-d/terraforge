@@ -15,7 +15,7 @@ add_library(${PROJECT_NAME} STATIC
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC freetype)
+target_link_libraries(${PROJECT_NAME} PUBLIC imgui::imgui)
 
 target_include_directories(
     ${PROJECT_NAME} PUBLIC

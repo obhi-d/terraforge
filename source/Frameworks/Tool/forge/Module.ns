@@ -11,13 +11,13 @@ public:
     "External.freetype",
     "External.glbinding",
     "External.neoscript",
+    "External.imne",
     "TerraLib.lib"
   ];
 
 }
 
 references: [
-  "Tool.gl",
-  "Tool.imne"
+  "Tool.gl"
 ];
 
