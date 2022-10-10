@@ -97,7 +97,8 @@ struct ParameterMeta
     eCount
   };
 
-  DataValue values[ValueType::eCount];
+  DataValue values[ValueType::eCount] = {};
+  
 
   inline bool isValid() const
   {
@@ -187,6 +188,10 @@ public:
   {
     optionChanged = true;
   }
+  uint32_t getNumParams() const
+  {
+    return (uint32_t)parameters.size();
+  }
   auto& getMeta() const
   {
     return *meta;
@@ -250,6 +255,21 @@ public:
   std::u8string_view getName() const
   {
     return name;
+  }
+
+  auto const& param(uint32 i) const
+  {
+    return parameters[i];
+  }
+  
+  auto& param(uint32 i) 
+  {
+    return parameters[i];
+  }
+
+  auto const& paramMeta(uint32 i) const 
+  {
+    return meta->parameterDef[i];
   }
 
 private:

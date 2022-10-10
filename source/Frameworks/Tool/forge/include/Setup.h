@@ -4,6 +4,7 @@
 #include <cassert>
 #include <glm/glm.hpp>
 #include <string>
+#include <cstdint>
 
 #define ENUM_FLAGS(Enum)                                                                                               \
   inline Enum operator|(Enum a, Enum b)                                                                                \
@@ -13,7 +14,22 @@
   inline bool operator&(Enum a, Enum b)                                                                                \
   {                                                                                                                    \
     return ((uint32_t)a & (uint32_t)b) != 0;                                                                           \
+  }                                                                                                                    \
+  inline Enum& operator&=(Enum& a, Enum b)                                                                             \
+  {                                                                                                                    \
+    return (Enum&)((uint32_t&)a &= (uint32_t)b);                                                                       \
+  }                                                                                                                    \
+  inline Enum& operator|=(Enum& a, Enum b)                                                                             \
+  {                                                                                                                    \
+    return (Enum&)((uint32_t&)a |= (uint32_t)b);                                                                       \
+  }                                                                                                                    \
+  inline bool operator!(Enum a)                                                                                        \
+  {                                                                                                                    \
+    return ((uint32_t)a != 0);                                                                                         \
   }
+
+
+
 
 namespace terra
 {
@@ -26,5 +42,6 @@ struct AppSettings
   std::string theme       = "themes/default.tns";
   int         glslVersion = 130;
   bool        verbose     = true;
+  bool        wasLoaded   = false;
 };
 } // namespace terra

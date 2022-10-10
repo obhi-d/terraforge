@@ -2,32 +2,22 @@
 
 include(GNUInstallDirs)
 
-find_package(freetype REQUIRED PATHS ${fetch_sdk_dir} NO_DEFAULT_PATH)
 
 add_library(${PROJECT_NAME} STATIC "${fetch_src_dir}/imgui.cpp"  
           "${fetch_src_dir}/imgui_draw.cpp" 
           "${fetch_src_dir}/imgui_tables.cpp"
           "${fetch_src_dir}/imgui_widgets.cpp"
           "${fetch_src_dir}/misc/cpp/imgui_stdlib.cpp"
-          "${fetch_src_dir}/misc/freetype/imgui_freetype.cpp"
+         
           )
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-
-target_link_libraries(${PROJECT_NAME} PUBLIC freetype)
 
 target_include_directories(
     ${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${fetch_src_dir}>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}>
 )
-
-target_compile_definitions(
-  ${PROJECT_NAME} PUBLIC
-  $<BUILD_INTERFACE:IMGUI_ENABLE_FREETYPE>
-  $<INSTALL_INTERFACE:IMGUI_ENABLE_FREETYPE>
-)
-
 install(TARGETS ${PROJECT_NAME}
         EXPORT ${PROJECT_NAME}_Targets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

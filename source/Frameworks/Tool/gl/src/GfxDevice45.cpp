@@ -37,7 +37,8 @@ GfxBuffer::handle GfxDevice45::createBuffer(GfxStorageClass storage, GfxBuffer::
 }
 
 GfxImage2D::handle GfxDevice45::createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                            ImageFormat format, std::byte const* data, GfxImage2D::Swizzle swizzle)
+                                            ImageFormat format, std::byte const* data, GfxImage2D::Swizzle swizzle,
+                                            uint32 mipLevels)
 {
   auto  h     = resources.images.emplace();
   auto& res   = resources.images.at(h);
@@ -57,6 +58,8 @@ GfxImage2D::handle GfxDevice45::createImage(GfxStorageClass storage, uint32_t wi
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_A, toGl(swizzle.a));
+  if (mipLevels > 1)
+    gl45::glGenerateTextureMipmap(res.glhandle);
   return h;
 }
 

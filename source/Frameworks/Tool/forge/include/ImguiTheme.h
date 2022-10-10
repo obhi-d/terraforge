@@ -97,11 +97,13 @@ struct ImThemeColors
 
 struct NodeStyle
 {
-  std::string name;
-  float       pinSize       = 8.0f;
+  std::string name          = "default";
+  float       fixedWidth    = 40.f;
+  float       pinSize       = 16.0f;
   Color       pinColor      = 0xefefefef;
+  Color       pinHoverColor = 0xffffffff;
   Color       pinFillColor  = 0xffffffff;
-  Color       title         = 0xeeeeeeee;
+  Color       title         = 0x7d313aff;
   Color       titleHovered  = 0xaaaaaaaa;
   Color       titleSelected = 0xff111111;
   Color       textColor     = 0xffffffff;

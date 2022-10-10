@@ -14,4 +14,4 @@ shaders
   };
 };
 
-param Source(type = source, min = -1.0f, max = 1.0f, default = 1.0);
+param Source(type = source, min = -1.0f, max = 1.0f, default = 1.0, step = 0.1f);

@@ -1,6 +1,7 @@
 type = extern;
 
 version : "1.88.1";
+include_when = ready;
 
 fetch "https://github.com/obhi-d/imgui-node-editor.git"
 {

@@ -27,7 +27,8 @@ struct RenderDevice
   /// @param height image height
   /// @return Returns the image handle
   virtual GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
-                                         std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {}) = 0;
+                                         std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
+                                         uint32 mipLevels = 1) = 0;
   virtual void               destroy(GfxImage2D::handle)                  = 0;
   /// @brief Create a sampler
   virtual GfxSampler::handle createSampler(ImageSampling) = 0;

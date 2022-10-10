@@ -13,9 +13,3 @@ fetch "https://github.com/ocornut/imgui.git"
   
   }
 }
-
-
-public:
-{
-  dependencies: [ "External.freetype" ];
-}

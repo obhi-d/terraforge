@@ -160,7 +160,8 @@ void GfxDevice43::destroy(GfxBuffer::handle h)
   resources.buffers.erase(h);
 }
 GfxImage2D::handle GfxDevice43::createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                            ImageFormat format, std::byte const* data, GfxImage2D::Swizzle swizzle)
+                                            ImageFormat format, std::byte const* data, GfxImage2D::Swizzle swizzle,
+                                            uint32 mipLevels)
 {
   auto  h     = resources.images.emplace();
   auto& res   = resources.images.at(h);
@@ -171,12 +172,16 @@ GfxImage2D::handle GfxDevice43::createImage(GfxStorageClass storage, uint32_t wi
   gl43::glGenTextures(1, &res.glhandle);
   gl43::glActiveTexture(gl43::GL_TEXTURE0);
   gl43::glBindTexture(gl43::GL_TEXTURE_2D, res.glhandle);
-  gl43::glTexStorage2D(gl43::GL_TEXTURE_2D, 1, toGlFormat(format), width, height);
+  gl43::glTexStorage2D(gl43::GL_TEXTURE_2D, mipLevels, toGlFormat(format), width, height);
   gl43::glTexSubImage2D(gl43::GL_TEXTURE_2D, 0, 0, 0, width, height, toGlDataFormat(format), toGlType(format), data);
   gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_R, toGl(swizzle.r));
   gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
   gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));
   gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_A, toGl(swizzle.a));
+  if (mipLevels > 1)
+  {
+    gl43::glGenerateMipmap(gl43::GL_TEXTURE_2D);
+  }
   return h;
 }
 void GfxDevice43::destroy(GfxImage2D::handle h)

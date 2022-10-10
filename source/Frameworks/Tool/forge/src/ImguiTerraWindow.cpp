@@ -40,7 +40,8 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
-
+  io.HoverDelayNormal = 1.2f;
+  io.HoverDelayShort  = 0.5f;
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
   ImGuiStyle& style                 = ImGui::GetStyle();

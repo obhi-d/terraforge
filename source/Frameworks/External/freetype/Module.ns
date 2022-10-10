@@ -1,6 +1,7 @@
 type = extern;
 
 version : "2.12.1";
+include_when = ready;
 
 fetch "https://github.com/freetype/freetype.git"
 {

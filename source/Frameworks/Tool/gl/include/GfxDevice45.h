@@ -14,7 +14,7 @@ public:
 
   GfxBuffer::handle  createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
   GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
-                                 std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {}) override;
+                                 std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {}, uint32 mipLevels = 1) override;
   GfxMesh::handle    createMeshLayout(GfxMesh::Layout const&) override;
   std::byte*         mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size) override;
   void               unmapBuffer(GfxBuffer::handle buffer) override;

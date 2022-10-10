@@ -8,16 +8,15 @@ public:
     "External.imgui",    
     "External.libpng",
     "External.glm",
-    "External.freetype",
     "External.glbinding",
-    "External.neoscript",
-    "External.imne",
+    "External.neoscript",    
     "TerraLib.lib"
   ];
 
 }
 
 references: [
-  "Tool.gl"
+  "Tool.gl",
+  "Tool.imne"
 ];
 

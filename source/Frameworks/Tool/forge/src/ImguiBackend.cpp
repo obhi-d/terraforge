@@ -76,17 +76,24 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
 
   io.Fonts->Clear();
   {
-    ImFontConfig fontConfig;
-    fontConfig.FontDataOwnedByAtlas = false;
+    ImFontConfig config;
+    config.FontDataOwnedByAtlas     = false;
+    config.OversampleH              = 4;
+    config.OversampleV              = 4;
+    config.PixelSnapH               = false;
     auto font                       = fileContentToBytes(theme.images[ImageName::eFont].path);
     io.Fonts->AddFontFromMemoryTTF(reinterpret_cast<char*>(font.data()), (int)font.size(),
-                                   (float)theme.images[ImageName::eFont].size.y, &fontConfig);
+                                   (float)theme.images[ImageName::eFont].size.y, &config);
   }
+
   {
     ImFontConfig config;
     config.FontDataOwnedByAtlas = false;
     config.MergeMode            = true;
     config.GlyphMinAdvanceX     = 13.0f;
+    config.OversampleH            = 4;
+    config.OversampleV            = 4;
+    config.PixelSnapH             = false;
 
     static const ImWchar ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
 
@@ -137,7 +144,8 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
                                GfxImage2D::Swizzle{.r = GfxImage2D::ComponentValue::eOne,
                                                    .g = GfxImage2D::ComponentValue::eOne,
                                                    .b = GfxImage2D::ComponentValue::eOne,
-                                                   .a = GfxImage2D::ComponentValue::eRed});
+                                                        .a = GfxImage2D::ComponentValue::eRed},
+                                    1);
   whiteUV.x = io.Fonts->TexUvWhitePixel.x;
   whiteUV.y = io.Fonts->TexUvWhitePixel.y;
   io.Fonts->SetTexID((ImTextureID)0);
@@ -235,6 +243,7 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
       ImVec2 clipMax((pcmd.ClipRect.z - clipOff.x) * clipScale.x, (pcmd.ClipRect.w - clipOff.y) * clipScale.y);
       if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
         continue;
+      state.scissorsEnabled  = true;
       state.scissor.offset.x = (int)clipMin.x;
       state.scissor.offset.y = (fbHeight - (int)clipMax.y);
       state.scissor.size.x   = (int)(clipMax.x - clipMin.x);
@@ -417,7 +426,8 @@ bool ImguiBackend::iconButton(std::string_view name, ImVec2 size, Color color, C
   return clicked;
 }
 
-std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay)
+std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay,
+                                                                  Color normal, Color hover, Color pressed)
 {
   auto const& io      = ImGui::GetIO();
   bool        clicked = false;
@@ -436,21 +446,21 @@ std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 siz
     if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
     {
       if (inlay)
-      pushQuad(pos, size, whiteUV, whiteUV, theme->themeColors.iconPressed);
-      sel     = theme->themeColors.iconPressed;
+      pushQuad(pos, size, whiteUV, whiteUV, pressed);
+      sel     = pressed;
       clicked = true;
     }
     else
     {
       if (inlay)
-        pushQuad(pos, size, whiteUV, whiteUV, theme->themeColors.iconHover);
-      sel = theme->themeColors.iconHover;
+        pushQuad(pos, size, whiteUV, whiteUV, hover);
+      sel = hover;
     }
   }
   else
   {
     if (inlay)
-      pushQuad(pos, size, whiteUV, whiteUV, theme->themeColors.icon);
+      pushQuad(pos, size, whiteUV, whiteUV, normal);
     sel = theme->themeColors.icon;
 
   }
@@ -461,18 +471,20 @@ std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 siz
   return {clicked, pos, sel};
 }
 
-bool ImguiBackend::iconButton(char16_t cc, glm::ivec2 size, int iconSize, bool inlay)
+bool ImguiBackend::iconButton(char16_t cc, glm::ivec2 size, int iconSize, Color normal, Color hover,
+                              Color pressed, bool inlay)
 {
-  auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay);
+  auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay, normal, hover, pressed);
   glm::ivec2 ics(iconSize, 0);
 
   drawIcon(cc, pos + (size - ics) / 2 - currentRegExtends.min, ics, inlay ? theme->themeColors.text : color);
   return clicked;
 }
 
-bool ImguiBackend::iconButton(ImageName cc, glm::ivec2 size, int iconSize, bool inlay)
+bool ImguiBackend::iconButton(ImageName cc, glm::ivec2 size, int iconSize, Color normal, Color hover,
+                              Color pressed, bool inlay)
 {
-  auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay);
+  auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay, normal, hover, pressed);
   glm::ivec2 ics(iconSize, iconSize);
   drawIcon(cc, pos + (size - ics) / 2 - currentRegExtends.min, ics, inlay ? theme->themeColors.text : color);
   return clicked;
@@ -495,26 +507,27 @@ WindowAction ImguiBackend::windowDecoration(ImWith flags)
   {
     drawIcon(ImageName::eLogo, glm::ivec2(0, 0), glm::ivec2(60, 60), theme->themeColors.logo);
   }
+  auto const& color  = theme->themeColors;
   auto iconSz = theme->images[ImageName::eFont].size.y - 4;
   align(ImAlign::eRight);
   if (flags & ImWith::fClose)
   {
-    if (iconButton(0xf00d, glm::ivec2(30, 30), iconSz ))
+    if (iconButton(0xf00d, glm::ivec2(30, 30), iconSz, color.icon, color.iconPressed,  color.iconHover))
       name = WindowAction::eClose;
   }
   if (flags & ImWith::fMaximize)
   {
-    if (iconButton(0xf2d0, glm::ivec2(30, 30), iconSz))
+    if (iconButton(0xf2d0, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
       name = WindowAction::eMaximize;
   }    
   if (flags & ImWith::fRestore)
   {
-    if (iconButton(0xf2d2, glm::ivec2(30, 30), iconSz))
+    if (iconButton(0xf2d2, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
       name = WindowAction::eRestore;
   }
   if (flags & ImWith::fMinimize)
   {
-    if (iconButton(0xf2d1, glm::ivec2(30, 30), iconSz))
+    if (iconButton(0xf2d1, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
       name = WindowAction::eMinimize;
   }
   align(ImAlign::eLeft);
@@ -532,11 +545,11 @@ WindowAction ImguiBackend::windowDecoration(ImWith flags)
     else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
       name = WindowAction::eToggleSize;
   }
-  setLayout(glm::ivec2(saveX, saveY - 30), glm::ivec2(dx, 30),
+  setLayout(glm::ivec2(saveX, saveY - 26), glm::ivec2(dx, 30),
             ImAlign::eRight, 1);
   if (flags & ImWith::fResizeCtrl)
   {
-    if (iconButton(ImageName::eResize, glm::ivec2(20, 20), 18, false))
+    if (iconButton(ImageName::eResize, glm::ivec2(20, 20), 18, color.icon, color.iconHover, color.iconPressed, false))
       name = WindowAction::eResize;
   }
   

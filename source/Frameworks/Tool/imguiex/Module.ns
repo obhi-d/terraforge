@@ -8,8 +8,7 @@ public:
     "External.imgui",
 
     "External.libpng",
-    "External.glm",
-    "External.freetype"
+    "External.glm"
 
   ];
 

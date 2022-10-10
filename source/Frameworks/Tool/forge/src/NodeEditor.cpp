@@ -1,9 +1,12 @@
+#define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <filesystem>
 #include "NodeEditor.h"
 #include "ResourceUtils.h"
 #include "ImguiBackend.h"
 #include "imgui_node_editor.h"
+#include "imgui_node_editor_internal.h"
+#include "imgui/imgui_internal.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
 #include "TerraMainApp.h"
@@ -47,6 +50,10 @@ void NodeEditor::init(TerraMainApp& app)
   imne::Config config;
   config.SettingsFile = "terra-nodes.json";
   editorContext                      = imne::CreateEditor(&config);
+  imne::SetCurrentEditor(editorContext);
+  auto& style = imne::GetStyle();
+  style.NodeRounding = 4.0f;
+  style.PinRounding  = 2.0f;
 }
 
 void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
@@ -55,12 +62,16 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
   if (ImGui::Begin((const char*)nodeEditor.data()))
   {
     imne::Begin((const char*)nodeEditor.data(), ImVec2(0, 0));
+    imne::Detail::EditorContext* ec = (imne::Detail::EditorContext*)(editorContext);
+    auto rc = ec->GetViewRect();
     {
       auto newSize = ImGui::GetWindowSize();
+      auto openPopupPosition = ImGui::GetMousePos();
       imne::Suspend();
       if (imne::ShowBackgroundContextMenu())
         ImGui::OpenPopup("new_node");
-      doContextMenu(app);
+      doContextMenu(app, openPopupPosition);
+     
       imne::Resume();
       doNodes(app, backend);
       imne::End();
@@ -70,7 +81,7 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
   ImGui::End();
 }
 
-void NodeEditor::doContextMenu(TerraMainApp& app) 
+void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
 {
   enum class Action
   {
@@ -83,12 +94,9 @@ void NodeEditor::doContextMenu(TerraMainApp& app)
   
   Action todo     = Action::eNone;
   NodeMeta const* clicked  = nullptr;
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-  ImVec2 pos;
-  
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));  
   if (ImGui::BeginPopup("new_node"))
   {
-    pos = ImGui::GetMousePosOnOpeningCurrentPopup();
     for (auto& c : cachedMetas)
     {
       if (!c.second.empty())
@@ -130,7 +138,7 @@ void NodeEditor::doContextMenu(TerraMainApp& app)
   switch (todo)
   {
   case Action::eCreate:
-    createNode(app, *clicked, pos);
+    createNode(app, *clicked, openPopupPosition);
     break;
 
   }

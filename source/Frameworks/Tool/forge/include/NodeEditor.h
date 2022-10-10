@@ -11,7 +11,7 @@ class NodeEditor
 public:
   void init(TerraMainApp& app);
   void drawNodeEditor(TerraMainApp&, ImguiBackend&);
-  void doContextMenu(TerraMainApp&);
+  void doContextMenu(TerraMainApp&, ImVec2 pos);
   void doNodes(TerraMainApp&, ImguiBackend&);
   void createNode(TerraMainApp&, NodeMeta const& meta, ImVec2);
 

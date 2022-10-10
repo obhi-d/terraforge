@@ -7,7 +7,7 @@ namespace terra
 template <typename T, bool IsPOD = std::is_trivial_v<T>>
 class table
 {
-  static inline constexpr uint32_t k_null_32 = std::numeric_limits<uint32_t>::max();
+  static inline constexpr uint32_t k_null_32 = 0;
   static inline constexpr uint32_t mask      = 0x00ffffff;
   static inline constexpr uint32_t lifecycle = 0x01000000;
 
@@ -34,7 +34,7 @@ public:
       }
       else
       {
-        index = static_cast<std::uint32_t>(pool.size());
+        index = pool.empty() ? 1 : static_cast<std::uint32_t>(pool.size());
         pool.resize(index + 1);
       }
       pool[index & mask] = T(std::forward<Args>(args)...);
@@ -50,6 +50,8 @@ public:
       }
       else
       {
+        if (pool.empty())
+          pool.emplace_back();
         index = static_cast<std::uint32_t>(pool.size());
         pool.emplace_back(std::forward<Args>(args)...);
       }

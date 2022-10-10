@@ -2,10 +2,10 @@
 #pragma once
 #include "ImguiTheme.h"
 #include "Setup.h"
-#include <tuple>
 #include <GfxDevice43.h>
 #include <GlGfx.h>
 #include <imgui/imgui.h>
+#include <tuple>
 
 namespace terra
 {
@@ -60,22 +60,24 @@ public:
   void         textCentered(std::string_view text, ImVec2 pos, ImVec2 size);
   bool         iconButton(std::string_view name, ImVec2 size, Color color, Color hover);
   bool         drawResizeControl(glm::ivec2 windowSize);
-  bool         iconButton(char16_t, glm::ivec2 size,  int iconSize, bool inlay = true);
-  bool         iconButton(ImageName, glm::ivec2 size, int iconSize, bool inlay = true);
-  bool         toggleButton(std::string_view name, bool& toggled, ImVec2 size, std::u8string_view tip, float padding = 0.0f);
+  bool iconButton(char16_t, glm::ivec2 size, int iconSize, Color normal, Color hover, Color pressed, bool inlay = true);
+  bool iconButton(ImageName, glm::ivec2 size, int iconSize, Color normal, Color hover, Color pressed,
+                  bool inlay = true);
+  bool toggleButton(std::string_view name, bool& toggled, ImVec2 size, std::u8string_view tip, float padding = 0.0f);
 
 private:
-  std::tuple<bool, glm::ivec2, Color> iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay);
-  bool isIntersecting();
-  
-  static bool isIntersecting(glm::ivec2 mouse, glm::ivec2 pos, glm::ivec2 size) 
+  std::tuple<bool, glm::ivec2, Color> iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay, Color normal,
+                                                      Color hover, Color pressed);
+  bool                                isIntersecting();
+
+  static bool isIntersecting(glm::ivec2 mouse, glm::ivec2 pos, glm::ivec2 size)
   {
     return (pos.x <= mouse.x && mouse.x <= pos.x + size.x) && (pos.y <= mouse.y && mouse.y <= pos.y + size.y);
   }
   void drawIcon(ImageName, glm::ivec2 location, glm::ivec2 size, Color color);
   void drawIcon(char16_t, glm::ivec2 location, glm::ivec2 size, Color color);
-  void pushQuad(glm::ivec2 location, glm::ivec2 size, glm::vec2 uv0, glm::vec2 uv1, Color color=0xffffffff);
-  
+  void pushQuad(glm::ivec2 location, glm::ivec2 size, glm::vec2 uv0, glm::vec2 uv1, Color color = 0xffffffff);
+
   void createDeviceObjects();
   void draw(glm::vec2 frameSize, ImDrawData*);
   void createBuffers(ImDrawData*);
@@ -109,7 +111,7 @@ private:
     {
       return max.x - min.x;
     }
-    int        dy() const
+    int dy() const
     {
       return max.y - min.y;
     }

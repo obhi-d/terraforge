@@ -91,6 +91,10 @@ NodeCmdHandler(param, builder, state, cmd)
     {
       meta.setValueFromString(terra::ParameterMeta::ValueType::eDefault, entry.value());
     }
+    else if (entry.name() == "step")
+    {
+      meta.setValueFromString(terra::ParameterMeta::ValueType::eStep, entry.value());
+    }
     else if (entry.name() == "hint")
     {
       if (entry.value() == "sameline")

@@ -175,4 +175,17 @@ struct GfxFeature
   // bool std430Packing = false;
 };
 
+inline uint32_t getMipLevels(uint32_t width, uint32_t height) 
+{
+  uint32_t           lvl       = 1;
+  constexpr uint32_t minLvlDim = 1;
+  while (width > minLvlDim || height > minLvlDim)
+  {
+    width =
+    std::max(width >> 1, minLvlDim);
+    height = std::max(height >> 1, minLvlDim);
+    lvl++;
+  }
+  return lvl;
+}
 } // namespace terra
