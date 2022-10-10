@@ -1,9 +1,9 @@
-name        = "@local:getMinMax";
-category    = "@local:utility";
-brief       = "@local:getMinMax_brief";
-help        = "@local:getMinMax_help";
+name        = "@GetMinMax";
+category    = "@Utility";
+brief       = "@GetMinMaxBrief";
+help        = "@GetMinMaxHelp";
 function    = "get_min_max";
-type        = heights (downscale = 16);
+output      = vec2 (downscale = 16);
 iteration   = inf;
 
 shaders

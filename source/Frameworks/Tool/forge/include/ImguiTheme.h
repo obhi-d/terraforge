@@ -95,12 +95,43 @@ struct ImThemeColors
   Color iconPressed = 0xff2222ff;
 };
 
+struct NodeStyle
+{
+  std::string name;
+  float       pinSize = 8.0f;
+  Color       pinColor;
+  Color       pinFillColor;
+  Color       title;
+  Color       titleHovered;
+  Color       titleSelected;
+  Color       textColor;
+  Color       textSelected;
+};
+
 struct ImguiTheme : neo::command_handler
 {
   using Packs = std::array<ImagePack, ImagePackCount>;
-  std::filesystem::path source;
-  Packs                 images;
-  ImThemeColors         themeColors;
+  std::filesystem::path  source;
+  Packs                  images;
+  ImThemeColors          themeColors;
+  std::vector<NodeStyle> nodeStyles;
+
+
+  NodeStyle const& getNodeStyle(uint32_t s) const
+  {
+    return nodeStyles[s];
+  }
+
+  uint32_t               getNodeStyle(std::string_view name) const 
+  {
+    for (uint32_t i = 0; i < nodeStyles.size(); ++i)
+    {
+      if (nodeStyles[i].name == name)
+        return i;
+    }
+    return 0;
+  }
+
 };
 
 #define ThemeCmdHandler(FnName, iObj, iState, iCmd) neo_cmd_handler(FnName, terra::ImguiTheme, iObj, iState, iCmd)

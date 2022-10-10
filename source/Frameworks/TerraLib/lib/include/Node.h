@@ -17,7 +17,7 @@
 namespace terra
 {
 class Terra;
-enum class ParameterType
+enum class DataType
 {
   eInt2,
   eFloat2,
@@ -30,8 +30,8 @@ enum class ParameterType
   eInvalid
 };
 
-ParameterType    stringToType(std::string_view);
-std::string_view typeToString(ParameterType);
+DataType    stringToType(std::string_view);
+std::string_view typeToString(DataType);
 
 enum class DrawHint
 {
@@ -40,14 +40,14 @@ enum class DrawHint
   eHidden
 };
 
-union ParamValue
+union DataValue
 {
   float fval;
   int   ival = 0;
 
-  ParamValue() = default;
-  ParamValue(float val) : fval(val) {}
-  ParamValue(int val) : ival(val) {}
+  DataValue() = default;
+  DataValue(float val) : fval(val) {}
+  DataValue(int val) : ival(val) {}
 };
 
 struct EnvParams
@@ -67,15 +67,22 @@ struct EnvParams
 
 using Parameter = std::variant<std::monostate, int, float, ivec2, vec2, bool, DataSource, ImageSource, CurveDataPtr>;
 
+struct DataFormat
+{
+  DataType type          = DataType::eInvalid;
+  DataType scalarSubType = DataType::eFloat;
+  uint32_t      semantic = 0; // Strict rule for matching input
+  inline auto operator<=>(const DataFormat&) const noexcept = default;
+};
+
 struct ParameterMeta
 {
   std::string   name;
   int32         uboOffset       = -1;
   int32         descriptorIndex = -1;
-  ParameterType type            = ParameterType::eInvalid;
-  ParameterType      scalarSubType   = ParameterType::eFloat;
-  DrawHint      drawHint        = DrawHint::eDefault;
-  std::string   sampler;
+  DataFormat         format;
+  DrawHint           drawHint = DrawHint::eDefault;
+  std::string        sampler;
   std::u8string_view help;
   std::u8string_view tooltip;
 
@@ -90,11 +97,11 @@ struct ParameterMeta
     eCount
   };
 
-  ParamValue values[ValueType::eCount];
+  DataValue values[ValueType::eCount];
 
   inline bool isValid() const
   {
-    return type != ParameterType::eInvalid;
+    return format.type != DataType::eInvalid;
   }
 
   Parameter getDefault() const;
@@ -117,10 +124,12 @@ public:
   };
 
   std::string                    id;
+  std::u8string                  icon;
   std::u8string_view             name;
   std::u8string_view             category;
   std::u8string_view             brief;
   std::u8string_view             help;
+  std::string                    style;
   std::vector<ParameterMeta>     parameterDef;
   int32_t                        nbDescriptors          = 0;
   int32_t                        outputDescriptorIdx    = 0;
@@ -129,14 +138,15 @@ public:
   uint32_t                       outputDownscale        = 1; // divisor for reduction algo
   uint32_t                       iteration              = 1;
   int32_t                        uboSize                = 0;
+  uint32_t                       outputSemantic         = 0;
   ImageFormat                    imageFormat            = ImageFormat::eFloat;
-  ParameterType                  outputSubType          = ParameterType::eFloat;
+  DataFormat                     format;
   GfxDescriptorSetLayout::handle descriptorSetLayout;
   std::vector<std::string>       options;
   bool                           hasTextureOutput = false;
   bool                           hasUniforms      = false;
 
-  uint32_t findParam(std::string_view name)
+  uint32_t findParam(std::string_view name) const
   {
     for (uint32_t i = 0; i < (uint32_t)parameterDef.size(); ++i)
       if (parameterDef[i].name == name)
@@ -144,7 +154,7 @@ public:
     return ~0u;
   }
 
-  GfxProgram::handle getShaderGLSL(Options optionBitSet);
+  GfxProgram::handle getShaderGLSL(Options optionBitSet) const;
 
   ~NodeMeta();
   void destroy();
@@ -152,8 +162,8 @@ public:
   void buildShaderGLSL(ShaderContent const&);
 
 private:
-  std::shared_ptr<ShaderBuilder>                  shaderBuilder;
-  std::unordered_map<Options, GfxProgram::handle> shaders;
+  std::shared_ptr<ShaderBuilder>                          shaderBuilder;
+  mutable std::unordered_map<Options, GfxProgram::handle> shaders;
 
   static std::string writeTextureSamplerGLSL(std::string_view);
   static std::string writeDataSamplerGLSL(RenderDevice::Caps const& caps, std::string_view);
@@ -166,7 +176,7 @@ class Node : public Dependency
 {
 public:
   Node() = default;
-  Node(NodeMeta&);
+  Node(NodeMeta const&);
   ~Node();
 
   void markValueChanged()
@@ -203,7 +213,7 @@ public:
     int32_t hasEdges = 0;
     for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
     {
-      if (meta->parameterDef[i].type == ParameterType::eDataSource)
+      if (meta->parameterDef[i].format.type == DataType::eDataSource)
       {
         auto node = std::get<DataSource>(parameters[i]).node;
         if (node && isValid(node))
@@ -225,6 +235,7 @@ public:
     return tasks[task].outputId;
   }
 
+  bool        isInputCompatible(uint32_t i, DataFormat const&);
   void        setValue(uint32_t i, Parameter&& value);
   void        prepare();
   bool        isReadyToExecute(uint32_t taskId);
@@ -235,6 +246,11 @@ public:
   int32_t     incomingEdges() const;
   hnode       clone(uint32_t iteration);
   static bool isValid(hnode);
+
+  std::u8string_view getName() const
+  {
+    return name;
+  }
 
 private:
   struct TaskData
@@ -251,7 +267,7 @@ private:
   std::u8string          name;
   std::vector<TaskData>  tasks;
   hnode                  id;
-  NodeMeta*              meta = nullptr;
+  NodeMeta const*        meta = nullptr;
   std::vector<Parameter> parameters;
   GfxProgram::handle     shader;
   bool                   valueChanged  = true;

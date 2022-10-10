@@ -19,6 +19,12 @@ NodeCmdHandler(name, builder, state, cmd)
   return neo::retcode::e_success;
 }
 
+NodeCmdHandler(icon, builder, state, cmd)
+{  
+  builder.meta.icon = terra::parseU8(terra::getIdxParam(cmd, 0));
+  return neo::retcode::e_success;
+}
+
 NodeCmdHandler(help, builder, state, cmd)
 {
   builder.meta.help = builder.localizedString(terra::getIdxParam(cmd, 0));
@@ -34,6 +40,12 @@ NodeCmdHandler(category, builder, state, cmd)
 NodeCmdHandler(brief, builder, state, cmd)
 {
   builder.meta.brief = builder.localizedString(terra::getIdxParam(cmd, 0));
+  return neo::retcode::e_success;
+}
+
+NodeCmdHandler(style, builder, state, cmd)
+{
+  builder.meta.style = terra::getIdxParam(cmd, 0);
   return neo::retcode::e_success;
 }
 
@@ -96,7 +108,7 @@ NodeCmdHandler(param, builder, state, cmd)
     }
     else if (entry.name() == "subtype")
     {
-      meta.scalarSubType = terra::stringToType(entry.value());
+      meta.format.scalarSubType = terra::stringToType(entry.value());
     }
   }
   if (meta.isValid())
@@ -146,13 +158,15 @@ NodeCmdHandler(shaders, builder, state, cmd)
   return neo::retcode::e_success;
 }
 
-NodeCmdHandler(type, builder, state, cmd)
+NodeCmdHandler(output, builder, state, cmd)
 {
-  auto type = terra::getIdxParam(cmd, 0, "height");
-  if (type == "height")
-    builder.meta.hasTextureOutput = false;
-  else if (type == "image")
-    builder.meta.hasTextureOutput = true;
+  auto type = terra::getIdxParam(cmd, 0, "float");
+  
+  builder.meta.format.scalarSubType = terra::stringToType(type);
+  builder.meta.hasTextureOutput               = builder.meta.format.scalarSubType == terra::DataType::eImage;
+  builder.meta.format.type          = builder.meta.format.scalarSubType == terra::DataType::eImage
+                                        ? terra::DataType::eImage
+                                        : terra::DataType::eDataSource;
   auto const& params = cmd.params().value();
   for (auto& p : params)
   {
@@ -180,10 +194,6 @@ NodeCmdHandler(type, builder, state, cmd)
       else
         builder.meta.imageFormat = terra::ImageFormat::eFloat;
     }
-    else if (entry.name() == "subtype")
-    {
-      builder.meta.outputSubType = terra::stringToType(entry.value());
-    }
   }
   return neo::retcode::e_success;
 }
@@ -197,7 +207,11 @@ NodeRegistry(NoiseBuilder)
   NodeCmd(category);
   NodeCmd(brief);
   NodeCmd(function);
-  NodeCmd(type);
+  NodeCmd(output);
+  NodeCmd(iteration);
+  NodeCmd(icon);
+  NodeCmd(style);
+
   NodeScopeDef(shaders)
   {
     NodeScopeDef(config)

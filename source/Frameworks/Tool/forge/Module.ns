@@ -5,8 +5,7 @@ public:
   dependencies: [ 
     "External.zlib",
     "External.sdl2",
-    "External.imgui",
-    "External.imnodes",
+    "External.imgui",    
     "External.libpng",
     "External.glm",
     "External.freetype",
@@ -18,6 +17,7 @@ public:
 }
 
 references: [
-  "Tool.gl" 
+  "Tool.gl",
+  "Tool.imne"
 ];
 

@@ -1,0 +1,20 @@
+
+
+vec4 get_min_max(NodeParams np)
+{
+  const uint out_range = OutputDownscale*4;
+  
+  uint start = gl_GlobalInvocationID.x;
+  float min = sample_Source((0 + start) * 4 + 0, np);
+  float max = min;
+  for(uint i = 1; i < out_range; ++i)
+  {
+    float sample = sample_Source((i + start) * out_range, np);
+    if (sample < min)
+      min = sample;
+    if (sample > max)
+      max = sample;
+  }
+  vec2 minmax = vec2(min, max);
+  store_output(output_t(minmax, minmax, minmax, minmax), noise);
+}

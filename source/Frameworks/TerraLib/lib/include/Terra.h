@@ -60,7 +60,7 @@ public:
     return images[at.reserved];
   }
 
-  hnode createNode(NodeMeta&);
+  hnode createNode(NodeMeta const&);
 
   index<ImageData>   getImage(std::filesystem::path path);
   GfxSampler::handle getSampler(ImageSampling sampling);
@@ -126,15 +126,26 @@ public:
 
   Localization localizationProvider;
 
+  template <typename L>
+  void forEachMeta(L&& l)
+  {
+    // ordered traversal using map
+    for (auto& m : metaMap)
+      l(m.first, m.second, nodeMetaTable[m.second]);
+  }
+
+  uint32_t getSemantic(std::string_view from);
+
 private:
   static Terra instance;
 
   using ImageCodecMap = std::unordered_map<std::u8string, std::shared_ptr<ImageCodec>>;
   using SamplerList   = std::vector<std::pair<ImageSampling, GfxSampler::handle>>;
 
-  std::unordered_map<std::string, std::u8string> strings;
   uint32_t                                       frame = 0;
   ShaderContent                                  shaderContent;
+  std::vector<std::string>                       semantics;
+
   using NodeMetaMap = std::map<std::string, uint32_t>;
   std::vector<NodeMeta>         nodeMetaTable;
   NodeMetaMap                   metaMap;

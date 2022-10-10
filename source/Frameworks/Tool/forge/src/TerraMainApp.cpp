@@ -38,7 +38,7 @@ void TerraMainApp::readLocalization()
   std::u8string_view ss((char8_t const*)bytes.data(), bytes.size());
   while (!ss.empty())
   {
-    auto nameStart = ss.find_first_not_of(u8" \t");
+    auto nameStart = ss.find_first_not_of(u8" \t\n\r");
     if (nameStart == ss.npos)
       break;
     auto nameEnd = ss.find_first_of(u8" \t=\n\r", nameStart + 1);
@@ -49,11 +49,12 @@ void TerraMainApp::readLocalization()
     auto valStart = ss.find(u8"\"\"\"");
     if (valStart == ss.npos)
       break;
-    auto valEnd = ss.find(u8"\"\"\";", valStart + 3);
+    valStart += 3;
+    auto valEnd = ss.find(u8"\"\"\";", valStart);
     if (valEnd == ss.npos)
       break;
     auto value = ss.substr(valStart, valEnd - valStart);
-    ss         = ss.substr(valEnd);
+    ss         = ss.substr(valEnd + 4);
 
     // format is name =
     // """...
@@ -74,7 +75,6 @@ void TerraMainApp::initalize()
 
 void TerraMainApp::reloadTheme()
 {
-  ImguiTheme         theme;
   neo::state_machine sm{themeReader, &theme};
   auto               f1_str = fileContentToString(settings.theme);
   sm.parse(settings.theme, f1_str);
@@ -148,15 +148,10 @@ void TerraMainApp::run()
   terra::get().init(device,
                     [this](std::string_view name) -> std::u8string_view
                     {
-                      auto it = stringTable.find(std::string(name));
-                      if (it != stringTable.end())
-                        return it->second;
-                      logError("Cound not find string entry for: {}", name);
-                      auto iit = stringTable.emplace(
-                        name, std::u8string((char8_t*)name.data(), (char8_t*)name.data() + name.length()));
-                      return iit.first->second;
+                      return getLocalizedString(name);
                     });
-  viewer.create(glContext, device, settings);
+
+  viewer.init(*this);
   reloadTheme();
 
   do
@@ -186,7 +181,7 @@ int TerraMainApp::Main(int argc, const char* argv[])
 
 void TerraMainApp::draw()
 {
-  viewer.draw();
+  viewer.draw(*this);
 }
 
 } // namespace terra

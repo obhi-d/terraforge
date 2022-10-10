@@ -62,6 +62,7 @@ public:
   bool         drawResizeControl(glm::ivec2 windowSize);
   bool         iconButton(char16_t, glm::ivec2 size,  int iconSize, bool inlay = true);
   bool         iconButton(ImageName, glm::ivec2 size, int iconSize, bool inlay = true);
+  bool         toggleButton(std::string_view name, bool& toggled, ImVec2 size, std::u8string_view tip, float padding = 0.0f);
 
 private:
   std::tuple<bool, glm::ivec2, Color> iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay);
@@ -121,7 +122,7 @@ private:
   glm::vec2                                whiteUV;
   std::vector<ImDrawVert>                  internalDrawVtx;
   std::vector<ImDrawIdx>                   internalDrawIdx;
-  ImguiTheme                               theme;
+  ImguiTheme const*                        theme = nullptr;
   Params                                   paramData;
   std::array<PackUV, ImagePackCount>       packUVs;
   std::array<GfxDescriptorSet::rhandle, 2> descriptors;

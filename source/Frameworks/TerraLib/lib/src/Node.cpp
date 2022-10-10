@@ -18,107 +18,123 @@ namespace tmpl
 namespace terra
 {
 
-std::string_view bufferReadType(ParameterType type)
+uint32 subtypeSize(DataType type)
 {
   switch (type)
   {
-  case ParameterType::eInt:
+  case DataType::eFloat:
+  case DataType::eInt:
+    return 4;
+  case DataType::eInt2:
+  case DataType::eFloat2:
+    return 8;
+  case DataType::eBool:
+    return 1;
+  }
+  return 0;
+}
+
+std::string_view bufferReadType(DataType type)
+{
+  switch (type)
+  {
+  case DataType::eInt:
     return "int";
-  case ParameterType::eInt2:
+  case DataType::eInt2:
     return "ivec2";
-  case ParameterType::eFloat:
+  case DataType::eFloat:
     return "float";
-  case ParameterType::eFloat2:
+  case DataType::eFloat2:
     return "vec2";
-  case ParameterType::eBool:
+  case DataType::eBool:
     return "bool";
   }
   return "invalid";
 }
 
-std::string_view bufferWriteType(ParameterType type)
+std::string_view bufferWriteType(DataType type)
 {
   switch (type)
   {
-  case ParameterType::eInt:
+  case DataType::eInt:
     return "ivec4";
-  case ParameterType::eInt2:
+  case DataType::eInt2:
     return "imat2x4";
-  case ParameterType::eFloat:
+  case DataType::eFloat:
     return "vec4";
-  case ParameterType::eFloat2:
+  case DataType::eFloat2:
     return "vec2x4";
-  case ParameterType::eBool:
+  case DataType::eBool:
     return "bvec4";
   }
   return "invalid";
 }
 
-std::string_view typeToString(ParameterType type) 
+std::string_view typeToString(DataType type) 
 {
   switch (type)
   {
-  case ParameterType::eInt:
+  case DataType::eInt:
     return "int";
-  case ParameterType::eInt2:
+  case DataType::eInt2:
     return "ivec2";
-  case ParameterType::eFloat:
+  case DataType::eFloat:
     return "float";
-  case ParameterType::eFloat2:
+  case DataType::eFloat2:
     return "vec2";
-  case ParameterType::eBool:
+  case DataType::eBool:
     return "bool";
-  case ParameterType::eImage:
+  case DataType::eImage:
     return "image";
-  case ParameterType::eDataSource:
+  case DataType::eDataSource:
     return "source";
-  case ParameterType::eCurveData:
+  case DataType::eCurveData:
     return "curve";
   }
   return "invalid";
 }
 
-ParameterType stringToType(std::string_view stype)
+DataType stringToType(std::string_view stype)
 {
-  ParameterType type = ParameterType::eInvalid;
+  DataType type = DataType::eInvalid;
   if (stype == "int")
-    type = ParameterType::eInt;
+    type = DataType::eInt;
   else if (stype == "float")
-    type = ParameterType::eFloat;
+    type = DataType::eFloat;
   else if (stype == "ivec2")
-    type = ParameterType::eInt2;
+    type = DataType::eInt2;
   else if (stype == "vec2")
-    type = ParameterType::eFloat2;
+    type = DataType::eFloat2;
   else if (stype == "bool")
-    type = ParameterType::eBool;
+    type = DataType::eBool;
   else if (stype == "image")
-    type = ParameterType::eImage;
+    type = DataType::eImage;
   else if (stype == "source")
-    type = ParameterType::eDataSource;
+    type = DataType::eDataSource;
   else if (stype == "curve")
-    type = ParameterType::eCurveData;
+    type = DataType::eCurveData;
   return type;
 }
 
 Parameter ParameterMeta::getDefault() const 
 {
-  switch (type)
+  switch (format.type)
   {
-  case ParameterType::eBool:
+  case DataType::eBool:
     return (bool)(values[ValueType::eDefault].ival != 0);
-  case ParameterType::eCurveData:
+  case DataType::eCurveData:
     return std::make_shared<CurveData>();
-  case ParameterType::eDataSource:
+  case DataType::eDataSource:
     return DataSource();
-  case ParameterType::eFloat:
+  case DataType::eFloat:
     return values[ValueType::eDefault].fval;
-  case ParameterType::eFloat2:
+  case DataType::eFloat2:
     return vec2{values[ValueType::eDefault].fval, values[ValueType::eDefault].fval};
-  case ParameterType::eImage:
+  case DataType::eImage:
     return ImageSource();
-  case ParameterType::eInt:
+  case DataType::eInt:
     return values[ValueType::eDefault].ival;
-  case ParameterType::eInt2:
+  case DataType::eInt2:
     return ivec2{values[ValueType::eDefault].ival, values[ValueType::eDefault].ival};
   default:
     return Parameter();
@@ -127,22 +143,22 @@ Parameter ParameterMeta::getDefault() const
 
 void      ParameterMeta::setTypeFromString(std::string_view stype)
 {
-  type = stringToType(stype);
+  format.type = stringToType(stype);
 }
 
 void ParameterMeta::setValueFromString(ValueType valType, std::string_view value)
 {
   auto setter = [this, valType](auto value)
   {
-    values[valType] = ParamValue(value);
+    values[valType] = DataValue(value);
   };
   int   ivalue = 0;
   float fvalue = 0;
-  switch (type)
+  switch (format.type)
   {
-  case ParameterType::eBool:
-  case ParameterType::eInt2:
-  case ParameterType::eInt:
+  case DataType::eBool:
+  case DataType::eInt2:
+  case DataType::eInt:
     if (value == "inf")
       ivalue = std::numeric_limits<int>::max();
     else if (value == "-inf")
@@ -155,11 +171,11 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
       std::from_chars(value.data(), value.data() + value.size(), ivalue);
     setter(ivalue);
     break;
-  case ParameterType::eCurveData:
-  case ParameterType::eImage:
-  case ParameterType::eDataSource:
-  case ParameterType::eFloat:
-  case ParameterType::eFloat2:
+  case DataType::eCurveData:
+  case DataType::eImage:
+  case DataType::eDataSource:
+  case DataType::eFloat:
+  case DataType::eFloat2:
     if (value == "inf")
       fvalue = std::numeric_limits<float>::max();
     else if (value == "-inf")
@@ -173,11 +189,11 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
 
 bool ParameterMeta::affectsOptions() const
 {
-  switch (type)
+  switch (format.type)
   {
-  case ParameterType::eImage:
-  case ParameterType::eDataSource:
-  case ParameterType::eBool:
+  case DataType::eImage:
+  case DataType::eDataSource:
+  case DataType::eBool:
     return true;
   }
   return false;
@@ -185,9 +201,9 @@ bool ParameterMeta::affectsOptions() const
 
 void ParameterMeta::modifyOptions(Parameter const& p, Options& option) const
 {
-  switch (type)
+  switch (format.type)
   {
-  case ParameterType::eImage:
+  case DataType::eImage:
   {
     auto& image = std::get<ImageSource>(p);
     if (image.isValidSource())
@@ -197,14 +213,14 @@ void ParameterMeta::modifyOptions(Parameter const& p, Options& option) const
       option |= 1ull << (Options)optionIndex[1];
     break;
   }
-  case ParameterType::eDataSource:
+  case DataType::eDataSource:
   {
     auto& data = std::get<DataSource>(p);
     if (data.node)
       option |= 1ull << (Options)optionIndex[0];
     break;
   }
-  case ParameterType::eBool:
+  case DataType::eBool:
     if (std::get<bool>(p))
       option |= 1ull << (Options)optionIndex[0];
     break;
@@ -218,7 +234,7 @@ std::string NodeMeta::writeTextureSamplerGLSL(std::string_view name)
 
 std::string NodeMeta::writeDataSamplerGLSL(RenderDevice::Caps const& caps, std::string_view name)
 {
-  return std::format(tmpl::gs_bufferLoad430, name);
+  return std::format(tmpl::gs_bufferLoad, name);
 }
 
 std::string NodeMeta::writeCurveSamplerGLSL(RenderDevice::Caps const& caps, std::string_view name)
@@ -251,7 +267,8 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     "#define Binding_Node {}\n"
     "#define WorkGroupSize {}\n", 
     "#define output_t {}\n", 
-    nodeContent.function, get().getWorkGroupSize(), bufferWriteType(outputSubType)));
+    nodeContent.function, get().getWorkGroupSize(),
+                                    bufferWriteType(format.scalarSubType)));
   shaderBuilder->append(commonContent.typesAndConstants);
   shaderBuilder->append(commonContent.fixedResources);
   shaderBuilder->append(commonContent.utilityFunctions);
@@ -266,7 +283,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   std::sort(declOrder.begin(), declOrder.end(),
             [this](uint32_t first, uint32_t second)
             {
-              return parameterDef[first].type < parameterDef[second].type;
+              return parameterDef[first].format.type < parameterDef[second].format.type;
             });
 
   std::vector<GfxDescriptorSetLayout::Descriptor> descriptorSetBindings;
@@ -276,49 +293,48 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   for (auto o : declOrder)
   {
     auto& t = parameterDef[o];
-    switch (t.type)
+    switch (t.format.type)
     {
-    case ParameterType::eInt:
+    case DataType::eInt:
       nodeParams += "  int ";
       nodeParams += t.name;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 4;
       break;
-    case ParameterType::eFloat:
+    case DataType::eFloat:
       nodeParams += "  float ";
       nodeParams += t.name;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 4;
       break;
-    case ParameterType::eInt2:
+    case DataType::eInt2:
       nodeParams += "  ivec2 ";
       nodeParams += t.name;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 8;
       break;
-    case ParameterType::eFloat2:
+    case DataType::eFloat2:
       nodeParams += "  vec2 ";
       nodeParams += t.name;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 8;
       break;
-    case ParameterType::eBool:
+    case DataType::eBool:
       t.optionIndex[0] = (int)options.size();
       options.push_back(t.name + "_Enabled");
       generated += std::format("const bool {0} = {0}_Enabled;\n", t.name);
       break;
-    case ParameterType::eDataSource:
-      nodeParams += "  float ";
+    case DataType::eDataSource:
+      nodeParams += std::format("  {0}_t {0};\n", t.name);
       nodeParams += t.name;
-      nodeParams += ";\n";
       t.uboOffset = paramOffsets;
-      paramOffsets += 4;
+      paramOffsets += subtypeSize(t.format.scalarSubType);
       break;
-    case ParameterType::eImage:
+    case DataType::eImage:
       nodeParams += "  float ";
       nodeParams += t.name;
       nodeParams += ";\n";
@@ -342,9 +358,9 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   {
     auto&                      t = parameterDef[o];
     ShaderBuilder::BindingInfo bi;
-    switch (t.type)
+    switch (t.format.type)
     {
-    case ParameterType::eImage:
+    case DataType::eImage:
       t.optionIndex[0] = (int)options.size();
       options.push_back("Has_" + t.name);
       t.optionIndex[1] = (int)options.size();
@@ -359,26 +375,24 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
       descriptorSetBindings.emplace_back(bi.descriptor);
 
       break;
-    case ParameterType::eDataSource:
+    case DataType::eDataSource:
       t.optionIndex[0] = (int)options.size();
       options.push_back("Has_" + t.name);
       generated += std::format("const bool has_{0} = Has_{0};\n", t.name);
       bi = shaderBuilder->declBuffer("U", t.name, Access::eReadonly);
       generated += bi.content;
-      generated += std::format("{ {0}_t data[]; }", t.name);
+      generated += std::format("{{ {0}_t data[]; }}", t.name);
       generated += t.name;
       generated += ";\n";
       generated += writeDataSamplerGLSL(caps, t.name);
       shaderBuilder->append(std::format("#define {0}_t {1}\n"
                                         "#define {0}_t4 {2}\n",
-                                        t.name,
-                                        bufferReadType(t.scalarSubType),
-                                        bufferWriteType(outputSubType)));
+                                        t.name, bufferReadType(t.format.scalarSubType), bufferWriteType(t.format.scalarSubType)));
       t.descriptorIndex = (int)descriptorSetBindings.size();
       descriptorSetBindings.emplace_back(bi.descriptor);
 
       break;
-    case ParameterType::eCurveData:
+    case DataType::eCurveData:
       bi = shaderBuilder->declBuffer("U", t.name, Access::eReadonly);
       generated += bi.content;
       generated += "{ float c0; uint npoints; float data[]; }";
@@ -405,7 +419,6 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   }
   else
   {
-    shaderBuilder->append("#define HasTextureOutput 0\n");
     auto bi = shaderBuilder->declBuffer("U", "Output", Access::eWriteonly);
     generated += bi.content;
     generated += "{ output_t data[]; }";    
@@ -413,6 +426,10 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     outputDescriptorIdx = (int)descriptorSetBindings.size();
     descriptorSetBindings.emplace_back(bi.descriptor);
   }
+  if (outputDownscale > 1)
+    shaderBuilder->append(std::format("#define OutputDownscale {}\n", outputDownscale));
+  else if (outputUpscale > 1)
+    shaderBuilder->append(std::format("#define OutputUpscale {}\n", outputUpscale));
 
   uboSize     = paramOffsets;
   hasUniforms = (!nodeParams.empty() && paramOffsets != sizeof(EnvParams));
@@ -449,7 +466,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   descriptorSetLayout = main.getDevice().createDescriptorSetLayout(descriptorSetBindings);
 }
 
-GfxProgram::handle NodeMeta::getShaderGLSL(Options optionBitSet)
+GfxProgram::handle NodeMeta::getShaderGLSL(Options optionBitSet) const
 {
   auto& main = Terra::get();
   auto& rd   = main.getDevice();
@@ -483,11 +500,12 @@ void NodeMeta::destroy()
   shaders.clear();
 };
 
-Node::Node(NodeMeta& nm) : meta(&nm)
+Node::Node(NodeMeta const& nm) : meta(&nm)
 {
   parameters.resize(nm.parameterDef.size());
   for (uint32_t i = 0; i < parameters.size(); ++i)
     parameters[i] = nm.parameterDef[i].getDefault();
+  name = nm.name;
 }
 
 hnode Node::clone(uint32_t)
@@ -507,13 +525,13 @@ Node::~Node()
     return;
   for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
   {
-    if (meta->parameterDef[i].type == ParameterType::eDataSource)
+    if (meta->parameterDef[i].format.type == DataType::eDataSource)
     {
       auto oldNode = std::get<DataSource>(parameters[i]).node;
       if (oldNode && main.isValid(oldNode))
         main.getNode(oldNode).remove(id);
     }
-    else if (meta->parameterDef[i].type == ParameterType::eImage)
+    else if (meta->parameterDef[i].format.type == DataType::eImage)
     {
       auto& oldNode = std::get<ImageSource>(parameters[i]).source;
       if (std::holds_alternative<ImageDataIdx>(oldNode) && std::get<ImageDataIdx>(oldNode))
@@ -587,9 +605,9 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
     uint8_t type;
     if (!terra::getFromDataStream(dataStream, serialIdx, type))
       return false;
-    switch (m.type)
+    switch (m.format.type)
     {
-    case ParameterType::eInt: // int
+    case DataType::eInt: // int
     {
       int value;
       if (!terra::getFromDataStream(dataStream, serialIdx, value))
@@ -597,7 +615,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
       p = value;
     }
     break;
-    case ParameterType::eFloat: // int
+    case DataType::eFloat: // int
     {
       float value;
       if (!terra::getFromDataStream(dataStream, serialIdx, value))
@@ -605,7 +623,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
       p = value;
     }
     break;
-    case ParameterType::eInt2: // int
+    case DataType::eInt2: // int
     {
       ivec2 value;
       if (!terra::getFromDataStream(dataStream, serialIdx, value))
@@ -613,7 +631,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
       p = value;
     }
     break;
-    case ParameterType::eFloat2: // int
+    case DataType::eFloat2: // int
     {
       vec2 value;
       if (!terra::getFromDataStream(dataStream, serialIdx, value))
@@ -621,7 +639,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
       p = value;
     }
     break;
-    case ParameterType::eBool: // int
+    case DataType::eBool: // int
     {
       bool value;
       if (!terra::getFromDataStream(dataStream, serialIdx, value))
@@ -629,7 +647,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
       p = value;
     }
     break;
-    case ParameterType::eDataSource: // int
+    case DataType::eDataSource: // int
     {
       DataSource value;
       if (!value.fromDataStream(dataStream, serialIdx))
@@ -637,7 +655,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
       p = std::move(value);
     }
     break;
-    case ParameterType::eImage: // int
+    case DataType::eImage: // int
     {
       ImageSource value;
       if (!value.fromDataStream(dataStream, serialIdx))
@@ -645,7 +663,7 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
       p = std::move(value);
     }
     break;
-    case ParameterType::eCurveData: // int
+    case DataType::eCurveData: // int
     {
       CurveDataPtr value = std::make_shared<CurveData>();
       if (!value->fromDataStream(dataStream, serialIdx))
@@ -701,13 +719,20 @@ void Node::prepare()
   }
 }
 
+bool Node::isInputCompatible(uint32_t i, DataFormat const& f) 
+{
+  if (!meta)
+    return false;
+  return (meta->parameterDef[i].format == f);
+}
+
 void Node::setValue(uint32_t i, Parameter&& value)
 {
   Terra& main = Terra::get();
   if (!meta)
     return;
   assert(parameters[i].index() == value.index());
-  if (meta->parameterDef[i].type == ParameterType::eDataSource)
+  if (meta->parameterDef[i].format.type == DataType::eDataSource)
   {
     auto oldNode = std::get<DataSource>(parameters[i]).node;
     if (oldNode && isValid(oldNode))
@@ -716,7 +741,7 @@ void Node::setValue(uint32_t i, Parameter&& value)
     if (newNode)
       main.getNode(newNode).add(id);
   }
-  else if (meta->parameterDef[i].type == ParameterType::eImage)
+  else if (meta->parameterDef[i].format.type == DataType::eImage)
   {
     auto& oldNode = std::get<ImageSource>(parameters[i]).source;
     if (std::holds_alternative<ImageDataIdx>(oldNode) && std::get<ImageDataIdx>(oldNode))
@@ -747,7 +772,7 @@ int32_t Node::incomingEdges() const
   int32_t nb = 0;
   for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
   {
-    if (meta->parameterDef[i].type == ParameterType::eDataSource)
+    if (meta->parameterDef[i].format.type == DataType::eDataSource)
     {
       auto node = std::get<DataSource>(parameters[i]).node;
       if (node && isValid(node))
@@ -799,9 +824,9 @@ void Node::enqueue(uint32_t taskId, uint32_t iteration, Pipeline& pipeline)
   else
   {
     // two more than requested
+    auto divisor = (1 << scale);
     auto size = (params.size[0] + 2) * (params.size[1] + 2);
-    size      = ((size + 3) / 4) * size;
-    workGroupSize *= 4;
+    size         = ((size + (divisor - 1)) / divisor) * size;
     if (meta->outputDownscale > 1)
     {
       tasks[taskId].params.size[0] >>= (scale >> 1);
@@ -814,9 +839,11 @@ void Node::enqueue(uint32_t taskId, uint32_t iteration, Pipeline& pipeline)
       tasks[taskId].params.size[1] <<= (scale >> 1);
       size <<= scale;
     }
+    // Recompute size divided by 4 floats we compute at a time
+    size = ((size + 3) / 4);
     tasks[taskId].outputX                = (size + (workGroupSize - 1)) / workGroupSize;
     tasks[taskId].outputY                = 1;
-    tasks[taskId].outputId               = pipeline.declBuffer(tasks[taskId].outputX * workGroupSize);
+    tasks[taskId].outputId               = pipeline.declBuffer(tasks[taskId].outputX * workGroupSize * 16);
     tasks[taskId].params.bufferArraySize = size / 4;
   }
   tasks[taskId].descriptorSet = terra::get().getDevice().createDescriptorSet(meta->descriptorSetLayout);
@@ -842,33 +869,33 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
   {
     auto& pdef = parameterDefs[i];
     auto& pval = parameters[i];
-    switch (pdef.type)
+    switch (pdef.format.type)
     {
-    case ParameterType::eInt2:
+    case DataType::eInt2:
     {
       auto val = std::get<ivec2>(pval);
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(ivec2));
     }
     break;
-    case ParameterType::eInt:
+    case DataType::eInt:
     {
       auto val = std::get<int>(pval);
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(int));
     }
     break;
-    case ParameterType::eFloat2:
+    case DataType::eFloat2:
     {
       auto val = std::get<vec2>(pval);
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(vec2));
     }
     break;
-    case ParameterType::eFloat:
+    case DataType::eFloat:
     {
       auto val = std::get<float>(pval);
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(float));
     }
     break;
-    case ParameterType::eImage:
+    case DataType::eImage:
     {
       auto& val = std::get<ImageSource>(pval);
 
@@ -884,13 +911,13 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
       handles[pdef.descriptorIndex].second = val.sampler;
     }
     break;
-    case ParameterType::eCurveData:
+    case DataType::eCurveData:
     {
       auto& val                           = std::get<CurveDataPtr>(pval);
       handles[pdef.descriptorIndex].first = val->handle;
     }
     break;
-    case ParameterType::eDataSource:
+    case DataType::eDataSource:
     {
       auto& val                                   = std::get<DataSource>(pval);
       *(float*)(uboData + (size_t)pdef.uboOffset) = val.constValue;

@@ -4,22 +4,27 @@
 #include <ImguiTerraWindow.h>
 #include <imgui.h>
 #include <imgui_impl_sdl.h>
+#include "TerraMainApp.h"
 
 namespace terra
 {
 
-void ImguiTerraWindow::create(SDL_GLContext glContext, std::shared_ptr<GfxDevice43> device, AppSettings const& settings)
+void ImguiTerraWindow::init(TerraMainApp& app)
 {
+  SDL_GLContext glContext = app.getGlContext();
+  std::shared_ptr<GfxDevice43> device    = app.getDevice();
+  AppSettings const& settings = app.getSettings();
+
   auto size     = settings.viewerSize;
   auto position = settings.viewerPos;
 
-  Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_BORDERLESS;
+  Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_RESIZABLE | SDL_WINDOW_BORDERLESS;
 
   SDL_SetHint("SDL_BORDERLESS_WINDOWED_STYLE", "1");
   SDL_SetHint("SDL_BORDERLESS_RESIZABLE_STYLE", "1");
 
   window = SDL_CreateWindow(settings.name.data(), position.x, position.y, size.x, size.y,
-                            SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI | SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
+                            flags);
 
   if (!window)
     throw std::runtime_error("Could not create window!");
@@ -45,7 +50,7 @@ void ImguiTerraWindow::create(SDL_GLContext glContext, std::shared_ptr<GfxDevice
   // Setup Platform/Renderer backends
   ImGui_ImplSDL2_InitForOpenGL(window, glContext);
   backend.init(device);
-  //nodeEditor.scanNodeMetas();
+  nodeEditor.init(app);
 }
 
 void ImguiTerraWindow::setTheme(ImguiTheme const& theme)
@@ -165,7 +170,7 @@ void ImguiTerraWindow::drawWindowDecoration()
   }
 }
 
-void ImguiTerraWindow::draw()
+void ImguiTerraWindow::draw(TerraMainApp& app)
 {
   auto& io = ImGui::GetIO();
   assert(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable);
@@ -173,7 +178,7 @@ void ImguiTerraWindow::draw()
   ImGui::NewFrame();
   drawWindowDecoration();
   //drawResizeControl();
-  nodeEditor.drawNodeEditor(backend);
+  nodeEditor.drawNodeEditor(app, backend);
   // Rendering
   ImGui::Render();
   backend.draw();

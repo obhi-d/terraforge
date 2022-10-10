@@ -18,10 +18,13 @@ namespace gl43 = gl43core;
 void MessageCallback(gl43::GLenum source, gl43::GLenum type, gl43::GLuint id, gl43::GLenum severity,
                      gl43::GLsizei length, const gl43::GLchar* message, const void* userParam)
 {
-  logError("GL CALLBACK: {} type = {}, severity = {}, message = {}\n",
-           (type == gl43::GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), (int)type, (int)severity, (char const*)message);
   if (type == gl43::GL_DEBUG_TYPE_ERROR)
+  {
+    logError("GL CALLBACK: {} type = {}, severity = {}, message = {}\n",
+             (type == gl43::GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""), (int)type, (int)severity,
+             (char const*)message);
     throw std::runtime_error("OpenGL error");
+  }
 }
 
 void GfxDevice43::init()
@@ -34,8 +37,10 @@ void GfxDevice43::init()
     throw std::runtime_error("Failed to initalize device");
   }
   features.version = (int)version.majorVersion() * 100 + (int)version.minorVersion() * 10;
+  #ifndef NDEBUG
   gl43::glEnable(gl43::GL_DEBUG_OUTPUT);
   gl43::glDebugMessageCallback(MessageCallback, nullptr);
+  #endif
   logInfo("OpenGL {}.{} - {}", version.majorVersion(), version.minorVersion(), glbinding::aux::ContextInfo::vendor());
 }
 

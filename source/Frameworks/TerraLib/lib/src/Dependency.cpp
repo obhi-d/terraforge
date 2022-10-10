@@ -7,7 +7,7 @@ namespace terra
 
 void Dependency::propagate(NodeEvent nev)
 {
-  for (auto i : dependencies)
+  for (auto i : dependents)
   {
     Terra::get().propagate(i, nev);
   }

@@ -13,12 +13,13 @@ namespace terra
 {
 class GfxDevice43;
 class ImguiTerraContext;
+class TerraMainApp;
 class ImguiTerraWindow
 {
 public:
-  void create(SDL_GLContext, std::shared_ptr<GfxDevice43> device, AppSettings const&);
+  void init(TerraMainApp&);
   bool pollEvents();
-  void draw();
+  void draw(TerraMainApp&);
   void setTheme(ImguiTheme const&);
   void drawWindowDecoration();
 

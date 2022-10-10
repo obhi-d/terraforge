@@ -10,7 +10,7 @@ namespace terra
 using Options = uint64_t;
 struct ShaderOptions
 {
-  std::span<std::string> names;
+  std::span<std::string const> names;
   Options                bitMask = {};
 };
 

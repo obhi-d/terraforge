@@ -49,7 +49,7 @@ void ImguiBackend::destroy()
 void ImguiBackend::applyTheme(ImguiTheme const& theme)
 {
   renderer->destroy(font);
-  this->theme                 = theme;
+  this->theme                 = &theme;
   paramData.tint              = theme.themeColors.tint;
   clearColor                  = theme.themeColors.clear;
   auto& style                 = ImGui::GetStyle();
@@ -416,6 +416,7 @@ bool ImguiBackend::iconButton(std::string_view name, ImVec2 size, Color color, C
     currentRegExtends.min.x += int(size.x + currentRegExtends.padding);
   return clicked;
 }
+
 std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay)
 {
   auto const& io      = ImGui::GetIO();
@@ -435,22 +436,22 @@ std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 siz
     if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
     {
       if (inlay)
-      pushQuad(pos, size, whiteUV, whiteUV, theme.themeColors.iconPressed);
-      sel     = theme.themeColors.iconPressed;
+      pushQuad(pos, size, whiteUV, whiteUV, theme->themeColors.iconPressed);
+      sel     = theme->themeColors.iconPressed;
       clicked = true;
     }
     else
     {
       if (inlay)
-        pushQuad(pos, size, whiteUV, whiteUV, theme.themeColors.iconHover);
-      sel = theme.themeColors.iconHover;
+        pushQuad(pos, size, whiteUV, whiteUV, theme->themeColors.iconHover);
+      sel = theme->themeColors.iconHover;
     }
   }
   else
   {
     if (inlay)
-      pushQuad(pos, size, whiteUV, whiteUV, theme.themeColors.icon);
-    sel = theme.themeColors.icon;
+      pushQuad(pos, size, whiteUV, whiteUV, theme->themeColors.icon);
+    sel = theme->themeColors.icon;
 
   }
   if (alignment == ImAlign::eRight)
@@ -465,7 +466,7 @@ bool ImguiBackend::iconButton(char16_t cc, glm::ivec2 size, int iconSize, bool i
   auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay);
   glm::ivec2 ics(iconSize, 0);
 
-  drawIcon(cc, pos + (size - ics) / 2 - currentRegExtends.min, ics, inlay ? theme.themeColors.text : color);
+  drawIcon(cc, pos + (size - ics) / 2 - currentRegExtends.min, ics, inlay ? theme->themeColors.text : color);
   return clicked;
 }
 
@@ -473,7 +474,7 @@ bool ImguiBackend::iconButton(ImageName cc, glm::ivec2 size, int iconSize, bool 
 {
   auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay);
   glm::ivec2 ics(iconSize, iconSize);
-  drawIcon(cc, pos + (size - ics) / 2 - currentRegExtends.min, ics, inlay ? theme.themeColors.text : color);
+  drawIcon(cc, pos + (size - ics) / 2 - currentRegExtends.min, ics, inlay ? theme->themeColors.text : color);
   return clicked;
 }
 void ImguiBackend::textCentered(std::string_view text, ImVec2 pos, ImVec2 windowWidth)
@@ -492,9 +493,9 @@ WindowAction ImguiBackend::windowDecoration(ImWith flags)
   WindowAction name = WindowAction::eNone;
   if (flags & ImWith::fLogo)
   {
-    drawIcon(ImageName::eLogo, glm::ivec2(0, 0), glm::ivec2(60, 60), theme.themeColors.logo);
+    drawIcon(ImageName::eLogo, glm::ivec2(0, 0), glm::ivec2(60, 60), theme->themeColors.logo);
   }
-  auto iconSz = theme.images[ImageName::eFont].size.y - 4;
+  auto iconSz = theme->images[ImageName::eFont].size.y - 4;
   align(ImAlign::eRight);
   if (flags & ImWith::fClose)
   {
@@ -556,8 +557,50 @@ bool ImguiBackend::drawResizeControl(glm::ivec2 windowSize)
 
   ImGui::GetWindowDrawList()->AddTriangleFilled(
     ImVec2(windowSize.x - 4.f, windowSize.y - 20.f), ImVec2(windowSize.x - 4.f, windowSize.y - 4.f),
-    ImVec2(windowSize.x - 20.f, windowSize.y - 4.f), theme.themeColors.text);
+    ImVec2(windowSize.x - 20.f, windowSize.y - 4.f), theme->themeColors.text);
   ImGui::End();
   return isDragging;
 }
+
+bool ImguiBackend::toggleButton(std::string_view name, bool& toggled, ImVec2 size, std::u8string_view tip,
+                                float padding)
+{
+  bool        clicked = false;
+  std::string nameAlt = "##";
+  nameAlt += name;
+  auto x = ImGui::GetCursorPosX();
+  auto y = ImGui::GetCursorPosY();
+  if (ImGui::InvisibleButton(nameAlt.c_str(), size))
+    clicked = true;
+
+  if (ImGui::IsItemHovered())
+  {
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.f, 4.f));
+    ImGui::BeginTooltip();
+    ImGui::TextUnformatted((const char*)tip.data());
+    ImGui::EndTooltip();
+    ImGui::PopStyleVar();
+
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_ButtonHovered));
+  }
+  else if (toggled)
+  {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+  }
+  else
+    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
+
+  ImGui::SameLine();
+  if (padding)
+    ImGui::SetCursorPosY(y + padding);
+  ImGui::SetCursorPosX(x + padding);
+  ImGui::Text(name.data());
+
+  ImGui::PopStyleColor();
+
+  if (clicked)
+    toggled = !toggled;
+  return clicked;
+}
+
 } // namespace terra

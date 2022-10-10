@@ -18,29 +18,29 @@ class Dependency
 public:
   virtual void add(hnode node)
   {
-    dependencies.emplace(node);
+    dependents.emplace(node);
   }
 
   virtual void remove(hnode node)
   {
-    dependencies.erase(node);
+    dependents.erase(node);
   }
 
   bool isDetached() const
   {
-    return dependencies.empty();
+    return dependents.empty();
   }
 
   template <typename L>
   void forEachDependent(L&& lambda) const
   {
-    std::for_each(dependencies.begin(), dependencies.end(), lambda);
+    std::for_each(dependents.begin(), dependents.end(), lambda);
   }
 
   void propagate(NodeEvent);
 
 private:
-  std::unordered_set<int32_t> dependencies;
+  std::unordered_set<int32_t> dependents;
 };
 
 }

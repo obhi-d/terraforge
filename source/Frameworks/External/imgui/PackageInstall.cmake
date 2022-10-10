@@ -2,7 +2,6 @@
 
 include(GNUInstallDirs)
 
-find_package(SDL2 REQUIRED PATHS ${fetch_sdk_dir} NO_DEFAULT_PATH)
 find_package(freetype REQUIRED PATHS ${fetch_sdk_dir} NO_DEFAULT_PATH)
 
 add_library(${PROJECT_NAME} STATIC "${fetch_src_dir}/imgui.cpp"  
@@ -15,7 +14,7 @@ add_library(${PROJECT_NAME} STATIC "${fetch_src_dir}/imgui.cpp"
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PUBLIC freetype SDL2::SDL2)
+target_link_libraries(${PROJECT_NAME} PUBLIC freetype)
 
 target_include_directories(
     ${PROJECT_NAME} PUBLIC

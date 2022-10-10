@@ -50,6 +50,13 @@ void Terra::scanShader(std::filesystem::path path)
         nodeMetaTable.emplace_back(newMeta);
       }
     }
+    else
+    {
+      sm.for_each_error(
+        [](std::string_view err) {
+          logError(err);
+        });
+    }
   }
   else
   {
@@ -78,11 +85,22 @@ index<ImageData> Terra::getImage(std::filesystem::path path)
   return images.emplace(path);
 }
 
-hnode Terra::createNode(NodeMeta& meta)
+hnode Terra::createNode(NodeMeta const& meta)
 {
   auto lnk = nodes.emplace(meta);
   nodes.at(lnk).setId(lnk);
   return lnk;
+}
+
+uint32_t Terra::getSemantic(std::string_view from)
+{
+  for (uint32_t i = 0; i < semantics.size(); ++i)
+  {
+    if (semantics[i] == from)
+      return i + 1;
+  }
+  semantics.emplace_back(from);
+  return semantics.size() - 1;
 }
 
 } // namespace terra

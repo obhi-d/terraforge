@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <cctype>
 
 namespace terra
 {
@@ -59,6 +60,11 @@ struct handle
 
   constexpr auto operator<=>(handle const&) const noexcept = default;
 
+  constexpr uint32_t value() const
+  {
+    return 0x00ffffff & reserved;
+  }
+
 public:
   uint32_t reserved = std::numeric_limits<uint32_t>::max();
 };
@@ -109,4 +115,36 @@ inline uint32_t fnv1a(const void* data, size_t numBytes, uint32_t hash = Seed)
   return hash;
 }
 
+inline std::u8string parseU8(std::string_view from) 
+{
+  std::u8string out;
+  auto hexchar = [](char c) -> char8_t
+  {
+    c = std::toupper(c);
+    return (c >= 'A') ? (c - 'A' + 10) : (c - '0');
+  };
+  for (size_t i = 0; i != from.size();)
+  {
+    if (from[i] == '\\')
+    {
+      i++;
+      if (i < from.size())
+      {
+        if (from[i] == 'x' && i + 2 < from.size())
+        {
+          auto a = hexchar(from[i + 1]);
+          a      = a << 4 | hexchar(from[i + 2]);
+          out.push_back(a);
+          i += 3;
+          continue;
+        }
+      }
+      else
+        break;
+    }
+    out.push_back(from[i]);
+    i++;
+  }
+  return out;
+}
 } // namespace terra

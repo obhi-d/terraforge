@@ -3,7 +3,8 @@ category = "@Modifiers";
 brief    = "@ToRGBABrief";
 help     = "@ToRGBAHelp";
 function = "to_RGBA";
-type     = image (format = unorm8);
+output   = image (format = unorm8);
+icon     = "\xef\x87\x85";
 
 shaders
 {
