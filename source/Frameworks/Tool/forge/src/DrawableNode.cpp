@@ -222,8 +222,8 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
 
   // Output/Header
 
-  auto pos = ImGui::GetCursorPos();
-  output.xy.y = pos.y;
+  // auto pos = ImGui::GetCursorPos();
+  output.xy.y = ImGui::GetCursorPosY();
   ImGui::TextUnformatted((const char*)node.getName().data());
 
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))

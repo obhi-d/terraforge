@@ -2451,8 +2451,6 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
             }
         }
 
-        if (activeObject)
-          break;
         // Check for interactions with node.
         if (node->m_Type == NodeType::Group)
         {
