@@ -20,6 +20,22 @@ using int4   = std::array<int, 4>;
 using ivec2   = std::array<int, 2>;
 using uint2  = std::array<uint32, 2>;
 
+union ScalarValue
+{
+  ivec2 ivalue2 = {0, 0};
+  vec2  value2;
+  float value;
+  int   ivalue;
+  bool  bvalue;
+
+  inline ScalarValue(ivec2 v) : ivalue2(v) {}
+  inline ScalarValue() {}
+  inline ScalarValue(vec2 v) : value2(v) {}
+  inline ScalarValue(float v) : value(v) {}
+  inline ScalarValue(int v) : ivalue(v) {}
+  inline ScalarValue(bool v) : bvalue(v) {}
+};
+
 struct Content
 {
   std::unique_ptr<std::byte[]> data;
@@ -63,6 +79,12 @@ struct handle
   constexpr uint32_t value() const
   {
     return 0x00ffffff & reserved;
+  }
+
+  // unmasked value
+  constexpr uint32_t um_value() const
+  {
+    return reserved;
   }
 
 public:

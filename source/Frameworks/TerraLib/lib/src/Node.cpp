@@ -221,7 +221,7 @@ void ParameterMeta::modifyOptions(Parameter const& p, Options& option) const
     break;
   }
   case DataType::eBool:
-    if (std::get<bool>(p))
+    if (std::get<ScalarValue>(p).bvalue)
       option |= 1ull << (Options)optionIndex[0];
     break;
   }
@@ -519,7 +519,7 @@ hnode Node::clone(uint32_t)
 
 Node::~Node()
 {
-  propagate(NodeEvent::eValueModified);
+  propagate(id, NodeEvent::eNodeDeleted);
   Terra& main = Terra::get();
   if (!meta)
     return;
@@ -556,9 +556,9 @@ void Node::toDataStream(std::vector<uint8_t>& dataStream) const
   for (auto const& p : parameters)
   {
     std::visit(overloaded{[](std::monostate arg) {},
-                          [&dataStream](auto arg)
+                          [&dataStream](ScalarValue const& arg)
                           {
-                            addToDataStream(dataStream, arg);
+                            addToDataStream(dataStream, arg.ivalue2);
                           },
                           [&dataStream](ImageSource const& arg)
                           {
@@ -681,12 +681,44 @@ bool Node::fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serial
   return true;
 }
 
-void Node::prepare()
+void Node::sourceDeleted(hnode src) 
 {
+  for (auto& p : parameters)
+  {
+    if (std::holds_alternative<ImageSource>(p))
+    {
+      auto& img = std::get<ImageSource>(p);
+      if (std::holds_alternative<hnode>(img.source))
+      {
+        if (std::get<hnode>(img.source) == src)
+          std::get<hnode>(img.source) = hnode{};
+      }
+    }
+    else if (std::holds_alternative<DataSource>(p))
+    {
+      if( std::get<DataSource>(p).node == src)
+        std::get<DataSource>(p).node = hnode{};
+    }
+  }
+  markOptionChanged();
+  markValueChanged();
+}
+
+void Node::prepare(uint32_t token)
+{
+  if (token == prepareToken)
+    return;
+  prepareToken = token;
+  forEachSource(
+    [token](auto node)
+    {
+      get().getNode(node).prepare(token);
+    });
+
   Terra& main = Terra::get();
   if (valueChanged)
   {
-    propagate(NodeEvent::eValueModified);
+    propagate(id, NodeEvent::eValueModified);
     for (auto& p : parameters)
     {
       if (std::holds_alternative<ImageSource>(p))
@@ -724,6 +756,16 @@ bool Node::isInputCompatible(uint32_t i, DataFormat const& f)
   if (!meta)
     return false;
   return (meta->parameterDef[i].format == f);
+}
+
+void Node::setValueModified(uint32_t i) 
+{
+  Terra& main = Terra::get();
+  if (!meta)
+    return;
+  markValueChanged();
+  if(meta->parameterDef[i].affectsOptions())
+    markOptionChanged();
 }
 
 void Node::setValue(uint32_t i, Parameter&& value)
@@ -873,25 +915,25 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
     {
     case DataType::eInt2:
     {
-      auto val = std::get<ivec2>(pval);
+      auto val = std::get<ScalarValue>(pval).ivalue2;
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(ivec2));
     }
     break;
     case DataType::eInt:
     {
-      auto val = std::get<int>(pval);
+      auto val = get<ScalarValue>(pval).ivalue;
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(int));
     }
     break;
     case DataType::eFloat2:
     {
-      auto val = std::get<vec2>(pval);
+      auto val = get<ScalarValue>(pval).value2;
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(vec2));
     }
     break;
     case DataType::eFloat:
     {
-      auto val = std::get<float>(pval);
+      auto val = get<ScalarValue>(pval).value;
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(float));
     }
     break;
@@ -919,9 +961,9 @@ void Node::run(uint32_t taskId, Pipeline& pipeline)
     break;
     case DataType::eDataSource:
     {
-      auto& val                                   = std::get<DataSource>(pval);
-      *(float*)(uboData + (size_t)pdef.uboOffset) = val.constValue;
-      handles[pdef.descriptorIndex].first         = pipeline.getOutputBuffer(val.node);
+      auto& val = std::get<DataSource>(pval);
+      std::memcpy(uboData + (size_t)pdef.uboOffset, &val.constVal, subtypeSize(pdef.format.scalarSubType));
+      handles[pdef.descriptorIndex].first = pipeline.getOutputBuffer(val.node);
     }
     break;
     }

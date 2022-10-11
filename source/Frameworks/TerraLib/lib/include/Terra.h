@@ -90,10 +90,12 @@ public:
     return nodes.at(node.reserved);
   }
 
-  void propagate(hnode n, NodeEvent e)
+  void propagate(hnode src, hnode dst, NodeEvent e)
   {
-    auto& node = getNode(n);
-    if (e == NodeEvent::eValueModified)
+    auto& node = getNode(dst);
+    if (e == NodeEvent::eNodeDeleted)
+      node.sourceDeleted(src);
+    else if (e == NodeEvent::eValueModified)
       node.markValueChanged();
     else
       node.markOptionChanged();

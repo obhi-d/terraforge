@@ -5,6 +5,7 @@
 #include "DrawHelpers.h"
 #include "DrawableNode.h"
 #include "TerraMainApp.h"
+#include "NodeEditor.h"
 
 namespace terra
 {
@@ -17,18 +18,17 @@ DrawableNode::DrawableNode(TerraMainApp& app, hnode id, ImVec2 pos)
   auto const& meta = node.getMeta();
   style            = app.getTheme().getNodeStyle(meta.style);
 
-  imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, false);
-  output.id    = id.value() * 64 + 1;
+  //imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+  output.id    = pack(id.um_value(), 0);
   output.flags = PinStateFlags::fOutput;
   imne::SetPinFlags(output.id, imne::PinKind::Output, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
 
   parameters.resize(node.getNumParams());
-  uint32_t paramId = id.value() * 64 + 2;
   for (uint32 i = 0; i < node.getNumParams(); ++i)
   {
     auto& p = parameters[i];
     auto& d = node.paramMeta(i);
-    p.id    = paramId++;
+    p.id    = pack(id.um_value(), i+1);
     if (d.format.type == DataType::eDataSource || d.format.type == DataType::eImage)
     {
       p.flags = PinStateFlags::fInputPin;
@@ -38,7 +38,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, hnode id, ImVec2 pos)
   imne::SetNodePosition(id.reserved, pos);
 }
 
-void DrawableNode::drawPinIcon(NodeStyle const& style, PinData const& pin, DataFormat format, bool filled)
+void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData const& pin, DataFormat format, bool filled)
 {
   ImGui::SetCursorPos(pin.xy);
 
@@ -70,7 +70,10 @@ void DrawableNode::drawPinIcon(NodeStyle const& style, PinData const& pin, DataF
     imne::PinPivotSize(ImVec2(0, 0));
 
     ImGui::SetCursorPos(pin.xy - ImVec2(style.pinSize * 0.05f, style.pinSize * 0.05f));
-    ImGui::InvisibleButton("pin", ImVec2(style.pinSize * 1.1f, style.pinSize * 1.1f));
+    char idString[34] = {0}; // itoa can output 33 bytes maximum
+    snprintf(idString, 33, "p%p", pin.id.AsPointer());
+
+    ImGui::InvisibleButton(idString, ImVec2(style.pinSize * 1.1f, style.pinSize * 1.1f));
     auto color = style.pinColor;
     auto size  = style.pinSize;
 
@@ -81,8 +84,15 @@ void DrawableNode::drawPinIcon(NodeStyle const& style, PinData const& pin, DataF
     {
       if (ImGui::IsMouseDoubleClicked(1))
         flags |= imne::ImneObjFlags::ImneObjFlags_IsDoubleClicked;
-      if (ImGui::IsItemClicked())
+      else if (ImGui::IsItemClicked())
         flags |= imne::ImneObjFlags::ImneObjFlags_IsClicked;
+      else if (ne.acceptsAction())
+      {
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+          ne.showHelp(pin.id);
+        else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+          ne.showTooltip(pin.id);
+      }
       flags |= imne::ImneObjFlags::ImneObjFlags_IsHovered;
     }
 
@@ -100,68 +110,77 @@ void DrawableNode::drawPinIcon(NodeStyle const& style, PinData const& pin, DataF
   }
 }
 
-void DrawableNode::drawParameter(NodeStyle const& style, Node& node, uint32_t i)
+bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type, ScalarValue& v)
+{
+  switch (type)
+  {
+  case DataType::eInt2:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt2((const char*)def.name.data(), v.ivalue2.data(), 1.0f, def.values[ParameterMeta::eMin].ival,
+                        def.values[ParameterMeta::eMax].ival))
+      return true;
+  }
+  break;
+  case DataType::eInt:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth);
+    if (ImGui::DragInt((const char*)def.name.data(), &v.ivalue, 1.0f, def.values[ParameterMeta::eMin].ival,
+                       def.values[ParameterMeta::eMax].ival))
+      return true;
+  }
+  break;
+  case DataType::eFloat2:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat2((const char*)def.name.data(), v.value2.data(), def.values[ParameterMeta::eStep].fval,
+                          def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
+      return true;
+  }
+  break;
+  case DataType::eFloat:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth);
+    if (ImGui::DragFloat((const char*)def.name.data(), &v.value, def.values[ParameterMeta::eStep].fval,
+                         def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
+      return true;
+  }
+  break;
+  case DataType::eBool:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth);
+    if (ImGui::Checkbox((const char*)def.name.data(), &v.bvalue))
+      return true;
+  }
+  }
+  return false;
+}
+
+void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& node, uint32_t i)
 {
   ParameterMeta const& def   = node.paramMeta(i);
   Parameter&           param = node.param(i);
   auto&                pin   = parameters[i];
   switch (def.format.type)
   {
-  case DataType::eInt2:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    ivec2 v = std::get<ivec2>(param);
-    if (ImGui::DragInt2((const char*)def.name.data(), v.data(), 1.0f, def.values[ParameterMeta::eMin].ival,
-                        def.values[ParameterMeta::eMax].ival))
-      node.setValue(i, Parameter(v));
-  }
-  break;
-  case DataType::eInt:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    int v = std::get<int>(param);
-    if (ImGui::DragInt((const char*)def.name.data(), &v, 1.0f, def.values[ParameterMeta::eMin].ival,
-                       def.values[ParameterMeta::eMax].ival))
-      node.setValue(i, Parameter(v));
-  }
-  break;
-  case DataType::eFloat2:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    vec2 v = std::get<vec2>(param);
-    if (ImGui::DragFloat2((const char*)def.name.data(), v.data(), def.values[ParameterMeta::eStep].fval,
-                          def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
-      node.setValue(i, Parameter(v));
-  }
-  break;
   case DataType::eFloat:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    float v = std::get<float>(param);
-    if (ImGui::DragFloat((const char*)def.name.data(), &v, def.values[ParameterMeta::eStep].fval,
-                         def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
-      node.setValue(i, Parameter(v));
-  }
-  break;
+  case DataType::eFloat2:
+  case DataType::eInt:
+  case DataType::eInt2:
   case DataType::eBool:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    bool v = std::get<bool>(param);
-    if (ImGui::Checkbox((const char*)def.name.data(), &v))
-      node.setValue(i, Parameter(v));
-  }
+    if (drawScalar(style, def, def.format.type, std::get<ScalarValue>(param)))
+      node.setValueModified(i);  
   break;
   case DataType::eDataSource:
   {
-    DataSource v = std::get<DataSource>(param);
+    DataSource& v = std::get<DataSource>(param);
     if (v.node)
       ImGui::TextUnformatted((const char*)def.name.data());
     else
     {
       ImGui::SetNextItemWidth(style.fixedWidth);
-      if (ImGui::DragFloat((const char*)def.name.data(), &v.constValue, def.values[ParameterMeta::eStep].fval,
-                           def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
-        node.setValue(i, Parameter(v));
+      if (drawScalar(style, def, def.format.scalarSubType, v.constVal))
+        node.setValueModified(i);
     }
   }
   break;
@@ -171,13 +190,16 @@ void DrawableNode::drawParameter(NodeStyle const& style, Node& node, uint32_t i)
   }
   break;
   }
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-    pin.flags = pin.flags | PinStateFlags::fShowTooltip;
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-    pin.flags = pin.flags | PinStateFlags::fShowHelp;
+  if (ne.acceptsAction())
+  {
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+      ne.showHelp(pin.id);
+    else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+      ne.showTooltip(pin.id);
+  }
 }
 
-bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, bool& previewNode)
+bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, bool& previewNode)
 {
   bool        changed = false;
   auto&        node    = get().getNode(id);
@@ -200,17 +222,35 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, bool& preview
 
   // Output/Header
 
-  output.xy.y = ImGui::GetCursorPosY();
+  auto pos = ImGui::GetCursorPos();
+  output.xy.y = pos.y;
   ImGui::TextUnformatted((const char*)node.getName().data());
+
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+    ne.showHelp(imne::NodeId(id.reserved));
+  else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+    ne.showTooltip(imne::NodeId(id.reserved));
+
   ImGui::SameLine();
   ImGui::Dummy(ImVec2(style.pinSize * 1.5f, 0));
+  //auto endPos = ImGui::GetCursorPos();
+  //ImGui::SetCursorPos(pos);
+  //ImGui::InvisibleButton("#hc", endPos - pos);
+  //auto flags = imne::ImneObjFlags::ImneObjFlags_None;
+  //if (ImGui::IsItemActive())
+  //  flags |= imne::ImneObjFlags::ImneObjFlags_IsActive;
+  //if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+  //{
+  //  if (ImGui::IsMouseDoubleClicked(1))
+  //    flags |= imne::ImneObjFlags::ImneObjFlags_IsDoubleClicked;
+  //  else if (ImGui::IsItemClicked())
+  //    flags |= imne::ImneObjFlags::ImneObjFlags_IsClicked;    
+  //  flags |= imne::ImneObjFlags::ImneObjFlags_IsHovered;
+  //}
+  //
+  //imne::SetNodeInteraction(flags);
 
   headerMaxY = ImGui::GetCursorPosY();
-
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-    output.flags = output.flags | PinStateFlags::fShowTooltip;
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-    output.flags = output.flags | PinStateFlags::fShowHelp;
 
   // Parameters
   for (uint32_t i = 0; i < node.getNumParams(); ++i)
@@ -218,13 +258,13 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, bool& preview
     parameters[i].xy.y = ImGui::GetCursorPosY();
     ImGui::Dummy(ImVec2(style.pinSize * 1.5f, 0));
     ImGui::SameLine();
-    drawParameter(style, node, i);
+    drawParameter(ne, style, node, i);
   }
 
   return changed;
 }
 
-void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend)
+void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
 {
 
   ImGui::EndGroup();
@@ -237,7 +277,7 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend)
 
   // Output
   output.xy.x = max.x;
-  drawPinIcon(style, output, node.getMeta().format, !node.isDetached());
+  drawPinIcon(ne, style, output, node.getMeta().format, !node.isDetached());
 
   // Parameters
   for (uint32_t i = 0; i < node.getNumParams(); ++i)
@@ -245,7 +285,8 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend)
     if (parameters[i].flags & PinStateFlags::fInputPin)
     {
       parameters[i].xy.x = min.x;
-      drawPinIcon(style, parameters[i], meta.parameterDef[i].format, parameters[i].flags & PinStateFlags::fIsFilled);
+      drawPinIcon(ne, style, parameters[i], meta.parameterDef[i].format,
+                  parameters[i].flags & PinStateFlags::fIsFilled);
     }
   }
 
@@ -256,13 +297,13 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend)
   min.y -= padding;
   max.y = headerMaxY - padding;
   // Header
-  drawHeader(style, min, max);
+  drawHeader(ne, style, min, max);
 
   ImGui::PopID();
   firstDraw = false;
 }
 
-void DrawableNode::drawHeader(NodeStyle const& style, ImVec2 headerMin, ImVec2 headerMax)
+void DrawableNode::drawHeader(NodeEditor& ne, NodeStyle const& style, ImVec2 headerMin, ImVec2 headerMax)
 {
   if (ImGui::IsItemVisible())
   {

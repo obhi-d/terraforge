@@ -11,17 +11,80 @@ class NodeEditor
 public:
   void init(TerraMainApp& app);
   void drawNodeEditor(TerraMainApp&, ImguiBackend&);
+
+  bool acceptsAction()
+  {
+    return pendingAction.action == Action::eNone;
+  }
+
+  void showTooltip(imne::PinId pin)
+  {
+    pendingAction.action = Action::eShowTooltip;
+    pendingAction.pin    = pin;
+  }
+
+  void showHelp(imne::PinId pin) 
+  {
+    pendingAction.action = Action::eShowHelp;
+    pendingAction.pin    = pin;
+  }
+
+  void showTooltip(imne::NodeId pin)
+  {
+    pendingAction.action = Action::eShowTooltip;
+    pendingAction.node  = pin;
+  }
+
+  void showHelp(imne::NodeId pin)
+  {
+    pendingAction.action = Action::eShowHelp;
+    pendingAction.node   = pin;
+  }
+
+private:
+  void createLink(ImThemeColors const&, uintpair start, uintpair end);
+  void deleteLink(imne::LinkId);
+  void deleteNode(imne::NodeId);
   void doContextMenu(TerraMainApp&, ImVec2 pos);
   void doNodes(TerraMainApp&, ImguiBackend&);
   void createNode(TerraMainApp&, NodeMeta const& meta, ImVec2);
+  void executePendingAction(TerraMainApp&);
 
-private:
- 
+
+  enum class Action
+  {
+    eCreateNode,
+    eImportNode,
+    ePasteNode,
+    eShowTooltip,
+    eShowHelp,
+    eNone
+  };
+
+  struct ActionData
+  {
+    Action action = Action::eNone;
+    ImVec2          position;
+    NodeMeta const*    meta = nullptr;
+    imne::PinId     linkTo; 
+    imne::PinId pin;
+    imne::NodeId node;
+  };
+
+  ActionData pendingAction;
+
   uint32_t previewNode = 0;
 
   using CategoryMap = std::vector<std::pair<std::u8string_view, std::vector<std::reference_wrapper<NodeMeta const>>>>;
   CategoryMap               cachedMetas;
   std::vector<DrawableNode> drawableNodes;
+  table<Link>         links;
+
+  std::u8string_view tipIncompatFormat;
+  std::u8string_view tipIncompatType;
+  std::u8string_view tipLink;
+  std::u8string_view tipCreateNode;
+
   std::u8string_view        importNode;
   std::u8string_view        nodeEditor;
   std::u8string_view        pasteNode;

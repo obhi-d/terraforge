@@ -35,6 +35,14 @@ class Color
 {
 public:
   inline Color() = default;
+  inline Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+  {
+    color.r = r; // Extract the RR byte
+    color.g = g; // Extract the GG byte
+    color.b = b;  // Extract the GG byte
+    color.a = a;         // Extract the BB byte
+  }
+
   inline Color(uint32_t hexValue)
   {
     color.r = uint8_t((hexValue >> 24) & 0xFF); // Extract the RR byte
@@ -93,6 +101,9 @@ struct ImThemeColors
   Color icon        = 0xff212121;
   Color iconHover   = 0xff2f2f2f;
   Color iconPressed = 0xff2222ff;
+  Color link        = 0xffffffff;
+  Color texLink     = 0xaaaa11ff;
+  Color dsLink      = 0x616666ff;
 };
 
 struct NodeStyle
@@ -117,6 +128,7 @@ struct ImguiTheme : neo::command_handler
   Packs                  images;
   ImThemeColors          themeColors;
   std::vector<NodeStyle> nodeStyles = std::vector<NodeStyle>(1);
+  float                  linkThickness = 2.0f;
 
   NodeStyle const& getNodeStyle(uint32_t s) const
   {

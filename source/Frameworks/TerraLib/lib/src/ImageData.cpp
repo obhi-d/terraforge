@@ -23,7 +23,7 @@ bool ImageData::reload()
   ensure();
   if (!handle)
     return false;
-  propagate(NodeEvent::eValueModified);
+  propagate({}, NodeEvent::eValueModified);
   return true;
 }
 

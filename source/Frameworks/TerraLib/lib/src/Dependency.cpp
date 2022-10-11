@@ -5,11 +5,11 @@
 namespace terra
 {
 
-void Dependency::propagate(NodeEvent nev)
+void Dependency::propagate(hnode src, NodeEvent nev)
 {
   for (auto i : dependents)
   {
-    Terra::get().propagate(i, nev);
+    Terra::get().propagate(src, i, nev);
   }
 }
 } // namespace terra

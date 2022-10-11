@@ -1,6 +1,6 @@
 name     = "@ToRGBA";
 category = "@Modifiers";
-brief    = "@ToRGBABrief";
+tooltip    = "@ToRGBABrief";
 help     = "@ToRGBAHelp";
 function = "to_RGBA";
 output   = image (format = unorm8);

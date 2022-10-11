@@ -1240,6 +1240,8 @@ struct NodeBuilder
     void SetCurrentNodeFlags(ImneObjFlags, bool state);
     void SetCurrentPinFlags(ImneObjFlags, bool state);
     void SetPinInteraction(ImneObjFlags);
+    void SetNodeInteraction(ImneObjFlags);
+
 
     void SetObjectFlags(Object*, ImneObjFlags, bool);
     void SetInteractionFlags(Object*, ImneObjFlags);

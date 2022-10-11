@@ -168,6 +168,11 @@ void ax::NodeEditor::SetPinInteraction(ImneObjFlags flags)
   s_Editor->GetNodeBuilder().SetPinInteraction(flags);
 }
 
+void ax::NodeEditor::SetNodeInteraction(ImneObjFlags flags)
+{
+  s_Editor->GetNodeBuilder().SetNodeInteraction(flags);
+}
+
 void ax::NodeEditor::BeginNode(NodeId id)
 {
     s_Editor->GetNodeBuilder().Begin(id);

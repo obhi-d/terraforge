@@ -1,6 +1,6 @@
 name        = "@GetMinMax";
 category    = "@Utility";
-brief       = "@GetMinMaxBrief";
+tooltip       = "@GetMinMaxBrief";
 help        = "@GetMinMaxHelp";
 function    = "get_min_max";
 output      = vec2 (downscale = 16);

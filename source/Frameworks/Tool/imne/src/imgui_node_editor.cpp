@@ -2440,7 +2440,10 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
               if (pin->IsHovered())
                 hotObject = pin;
               if (pin->IsActive())
+              {
+                activeId     = ImGui::GetActiveID();
                 activeObject = pin;
+              }
             }
             else
             {
@@ -2448,6 +2451,8 @@ ed::Control ed::EditorContext::BuildControl(bool allowOffscreen)
             }
         }
 
+        if (activeObject)
+          break;
         // Check for interactions with node.
         if (node->m_Type == NodeType::Group)
         {
@@ -5228,14 +5233,14 @@ void ed::NodeBuilder::SetInteractionFlags(Object* object, ImneObjFlags flags)
 void ed::NodeBuilder::SetNodeFlags(NodeId nodeId, ImneObjFlags flags, bool state)
 {
   auto node = Editor->GetNode(nodeId);
-  if (node && node->IsLive())
+  if (node)
     SetObjectFlags(node, flags, state);
 }
 
 void ed::NodeBuilder::SetCurrentNodeFlags(ImneObjFlags flags, bool state)
 {
   auto node                     = m_CurrentNode;
-  if (node && node->IsLive())
+  if (node)
     SetObjectFlags(node, flags, state);
 }
 
@@ -5258,6 +5263,13 @@ void ed::NodeBuilder::SetPinInteraction(ImneObjFlags flags)
   auto pin = m_CurrentPin;
   if (pin)
     SetInteractionFlags(pin, flags);
+}
+
+void ed::NodeBuilder::SetNodeInteraction(ImneObjFlags flags)
+{
+  auto node = m_CurrentNode;
+  if (node)
+    SetInteractionFlags(node, flags);
 }
 
 void ed::NodeBuilder::Begin(NodeId nodeId)

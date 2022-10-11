@@ -1,4 +1,8 @@
-@MinMaxSource = """Set minimum and maximum value in data source. Alternatively plugin the MinMax Utility node""";
+
+@MinMaxSource = 
+"""Set minimum and maximum value in data source.
+Alternatively plugin the MinMax Utility node""";
+
 @InputSource = """Plugin the input data source""";
 @Modifiers = """Modifiers""";
 @ToRGBABrief = """Convert height values to RGBA8""";

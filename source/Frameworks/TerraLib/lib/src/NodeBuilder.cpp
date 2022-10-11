@@ -37,9 +37,9 @@ NodeCmdHandler(category, builder, state, cmd)
   return neo::retcode::e_success;
 }
 
-NodeCmdHandler(brief, builder, state, cmd)
+NodeCmdHandler(tooltip, builder, state, cmd)
 {
-  builder.meta.brief = builder.localizedString(terra::getIdxParam(cmd, 0));
+  builder.meta.tooltip = builder.localizedString(terra::getIdxParam(cmd, 0));
   return neo::retcode::e_success;
 }
 
@@ -209,7 +209,7 @@ NodeRegistry(NoiseBuilder)
   NodeCmd(name);
   NodeCmd(help);
   NodeCmd(category);
-  NodeCmd(brief);
+  NodeCmd(tooltip);
   NodeCmd(function);
   NodeCmd(output);
   NodeCmd(iteration);

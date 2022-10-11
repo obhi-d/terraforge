@@ -52,6 +52,10 @@ struct ImageSource
   // Derived
   std::variant<std::monostate, ImageDataIdx, hnode> source;
 
+  ImageSource() = default;
+  ImageSource(ImageDataIdx idx) : source(idx) {}
+  ImageSource(hnode idx) : source(idx) {}
+
   bool isValidSource() const;
   bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx);
   void toDataStream(std::vector<uint8_t>& dataStream) const;

@@ -30,6 +30,14 @@ enum class DataType
   eInvalid
 };
 
+struct DataFormat
+{
+  DataType    type                                          = DataType::eInvalid;
+  DataType    scalarSubType                                 = DataType::eFloat;
+  uint32_t    semantic                                      = 0; // Strict rule for matching input
+  inline auto operator<=>(const DataFormat&) const noexcept = default;
+};
+
 DataType    stringToType(std::string_view);
 std::string_view typeToString(DataType);
 
@@ -65,15 +73,7 @@ struct EnvParams
   uint32_t bufferArraySize;
 };
 
-using Parameter = std::variant<std::monostate, int, float, ivec2, vec2, bool, DataSource, ImageSource, CurveDataPtr>;
-
-struct DataFormat
-{
-  DataType type          = DataType::eInvalid;
-  DataType scalarSubType = DataType::eFloat;
-  uint32_t      semantic = 0; // Strict rule for matching input
-  inline auto operator<=>(const DataFormat&) const noexcept = default;
-};
+using Parameter = std::variant<std::monostate, ScalarValue, DataSource, ImageSource, CurveDataPtr>;
 
 struct ParameterMeta
 {
@@ -128,7 +128,7 @@ public:
   std::u8string                  icon;
   std::u8string_view             name;
   std::u8string_view             category;
-  std::u8string_view             brief;
+  std::u8string_view             tooltip;
   std::u8string_view             help;
   std::string                    style;
   std::vector<ParameterMeta>     parameterDef;
@@ -192,6 +192,10 @@ public:
   {
     return (uint32_t)parameters.size();
   }
+  DataFormat const& getFormat() const
+  {
+    return meta->format;
+  }
   auto& getMeta() const
   {
     return *meta;
@@ -227,6 +231,20 @@ public:
           lambda(node);
         }
       }
+      else if (meta->parameterDef[i].format.type == DataType::eImage)
+      {
+        auto& img = std::get<ImageSource>(parameters[i]);
+        if (std::holds_alternative<hnode>(img.source))
+        {
+          auto node = std::get<hnode>(img.source);
+          if (node && isValid(node))
+          {
+            hasEdges++;
+            lambda(node);
+          }
+        }
+ 
+      }
     }
     return hasEdges;
   }
@@ -240,9 +258,12 @@ public:
     return tasks[task].outputId;
   }
 
+  void sourceDeleted(hnode src);
+
   bool        isInputCompatible(uint32_t i, DataFormat const&);
   void        setValue(uint32_t i, Parameter&& value);
-  void        prepare();
+  void        setValueModified(uint32_t i);
+  void        prepare(uint32_t token);
   bool        isReadyToExecute(uint32_t taskId);
   void        deleteTaskData(uint32_t taskId);
   void        enqueue(uint32_t taskId, uint32_t iteration, Pipeline&);
@@ -290,6 +311,7 @@ private:
   NodeMeta const*        meta = nullptr;
   std::vector<Parameter> parameters;
   GfxProgram::handle     shader;
+  uint32_t               prepareToken  = std::numeric_limits<uint32_t>::max();
   bool                   valueChanged  = true;
   bool                   optionChanged = true;
 

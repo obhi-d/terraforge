@@ -11,8 +11,7 @@ class DataSource
 {
 public:
   hnode node;
-  float       constValue = 0.0f;
-
+  ScalarValue constVal;
   DataSource() = default;
   DataSource(hnode n) : node(n) {}
 
@@ -20,7 +19,7 @@ public:
   {
     if (!getFromDataStream(dataStream, serialIdx, node))
       return false;
-    if (!getFromDataStream(dataStream, serialIdx, constValue))
+    if (!getFromDataStream(dataStream, serialIdx, constVal.ivalue2))
       return false;
     return true;
   }
@@ -28,7 +27,7 @@ public:
   inline void toDataStream(std::vector<uint8_t>& dataStream) const
   {
     addToDataStream(dataStream, node.reserved);
-    addToDataStream(dataStream, constValue);
+    addToDataStream(dataStream, constVal.ivalue2);
   }
 };
 } // namespace terra

@@ -10,7 +10,8 @@ class Node;
 enum class NodeEvent
 {
   eValueModified,
-  eOptionChanged
+  eOptionChanged,
+  eNodeDeleted
 };
 class Terra;
 class Dependency
@@ -37,7 +38,7 @@ public:
     std::for_each(dependents.begin(), dependents.end(), lambda);
   }
 
-  void propagate(NodeEvent);
+  void propagate(hnode, NodeEvent);
 
 private:
   std::unordered_set<int32_t> dependents;

@@ -100,7 +100,7 @@ uint32_t Terra::getSemantic(std::string_view from)
       return i + 1;
   }
   semantics.emplace_back(from);
-  return semantics.size() - 1;
+  return (uint32_t)semantics.size() - 1;
 }
 
 } // namespace terra

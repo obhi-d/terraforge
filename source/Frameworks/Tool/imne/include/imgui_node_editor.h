@@ -326,6 +326,8 @@ void SetPinFlags(PinId id, PinKind kind, ImneObjFlags, bool state);
 void SetCurrentNodeFlags(ImneObjFlags, bool state);
 void SetCurrentPinFlags(ImneObjFlags, bool state);
 void SetPinInteraction(ImneObjFlags);
+void SetNodeInteraction(ImneObjFlags);
+
 
 void BeginNode(NodeId id);
 void BeginPin(PinId id, PinKind kind);
