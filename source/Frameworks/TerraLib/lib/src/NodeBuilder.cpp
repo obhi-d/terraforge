@@ -164,14 +164,11 @@ NodeCmdHandler(shaders, builder, state, cmd)
 
 NodeCmdHandler(output, builder, state, cmd)
 {
-  auto type = terra::getIdxParam(cmd, 0, "float");
-  
-  builder.meta.format.scalarSubType = terra::stringToType(type);
-  builder.meta.hasTextureOutput               = builder.meta.format.scalarSubType == terra::DataType::eImage;
-  builder.meta.format.type          = builder.meta.format.scalarSubType == terra::DataType::eImage
-                                        ? terra::DataType::eImage
-                                        : terra::DataType::eDataSource;
-  auto const& params = cmd.params().value();
+  auto type                     = terra::getIdxParam(cmd, 0, "source");
+  builder.meta.format.type      = terra::stringToType(type);
+  builder.meta.hasTextureOutput = builder.meta.format.type == terra::DataType::eImage;
+  auto const& params            = cmd.params().value();
+
   for (auto& p : params)
   {
     if (p.index() != 1)
@@ -181,6 +178,10 @@ NodeCmdHandler(output, builder, state, cmd)
     {
       auto value = entry.value();
       std::from_chars(value.data(), value.data() + value.size(), builder.meta.outputDownscale);
+    }
+    else if (entry.name() == "type")
+    {
+      builder.meta.format.scalarSubType = terra::stringToType(entry.value());
     }
     else if (entry.name() == "upscale")
     {

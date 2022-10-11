@@ -1,3 +1,7 @@
+#define uint2 uvec2
+#define int4 ivec4
+#define float4 vec4
+#define uint4 uvec4
 
 
 struct CurveData
@@ -10,6 +14,12 @@ struct Coord
 {
   uvec4 x;
   uvec4 y;
+};
+
+struct Coordf
+{
+  vec4 x;
+  vec4 y;
 };
 
 struct EnvParams

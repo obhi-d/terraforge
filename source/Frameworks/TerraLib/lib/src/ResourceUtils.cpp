@@ -54,15 +54,18 @@ std::vector<std::filesystem::path> getThemes()
   return themes;
 }
 
-std::string fileContentToString(std::string name) 
+std::string fileContentToString(std::string name, bool appendNewLine)
 {
   auto path = getMediaPath() / name;
   std::ifstream iff(path);
+  std::string   value;
   if (iff.is_open())
   {
-    return std::string((std::istreambuf_iterator<char>(iff)), std::istreambuf_iterator<char>());
+    value = std::string((std::istreambuf_iterator<char>(iff)), std::istreambuf_iterator<char>());
   }
-  return "";
+  if (appendNewLine)
+    value.push_back('\n');
+  return std::move(value);
 }
 
 std::vector<char> fileContentToBytes(std::string name)

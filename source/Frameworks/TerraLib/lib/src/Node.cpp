@@ -265,7 +265,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   shaderBuilder->append(nodeContent.extensions);
   shaderBuilder->append(std::format(
     "#define Binding_Node {}\n"
-    "#define WorkGroupSize {}\n", 
+    "#define WorkGroupSize {}\n"
     "#define output_t {}\n", 
     nodeContent.function, get().getWorkGroupSize(),
                                     bufferWriteType(format.scalarSubType)));
@@ -410,10 +410,10 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   if (hasTextureOutput)
   {
     shaderBuilder->append("#define HasTextureOutput 1\n");
-    auto bi = shaderBuilder->declImage("output", ImageFormat::eFloat, Access::eWriteonly);
+    auto bi = shaderBuilder->declImage("output_data", ImageFormat::eFloat, Access::eWriteonly);
     generated += bi.content;
     generated += ";\n";
-    generated += writeImageStoreGLSL("output");
+    generated += writeImageStoreGLSL("output_data");
     outputDescriptorIdx = (int)descriptorSetBindings.size();
     descriptorSetBindings.emplace_back(bi.descriptor);
   }
@@ -421,8 +421,8 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   {
     auto bi = shaderBuilder->declBuffer("U", "Output", Access::eWriteonly);
     generated += bi.content;
-    generated += "{ output_t data[]; }";    
-    generated += writeBufferStoreGLSL("output");
+    generated += "{ output_t data[]; }output_data;";    
+    generated += writeBufferStoreGLSL("output_data");
     outputDescriptorIdx = (int)descriptorSetBindings.size();
     descriptorSetBindings.emplace_back(bi.descriptor);
   }
@@ -448,7 +448,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   {
     auto bi = shaderBuilder->declConstants("U", "Constants");
     shaderBuilder->append(bi.content);
-    shaderBuilder->append("{ NodeParams params; };\n");
+    shaderBuilder->append("{ NodeParams params; }constants;\n");
     constantsDescriptorIdx = (int)descriptorSetBindings.size();
     descriptorSetBindings.emplace_back(bi.descriptor);
   }
@@ -512,8 +512,16 @@ hnode Node::clone(uint32_t)
 {
   hnode ret  = get().createNode(*meta);
   auto& node = get().getNode(ret);
-  node       = *this;
-  node.tasks.clear();
+  //node.       = *this;
+  assert(node.id == ret);
+  assert(node.meta == meta);
+ 
+  node.name = this->name;
+  for(uint32_t i = 0; i < parameters.size(); ++i)
+    node.setValue(i, Parameter(parameters[i]));
+  node.shader = shader;  
+  node.valueChanged  = true;
+  node.optionChanged = true;
   return ret;
 }
 
@@ -540,6 +548,7 @@ Node::~Node()
         main.getNode(std::get<hnode>(oldNode)).remove(id);
     }
   }
+  id = {};
 }
 
 void Node::toDataStream(std::vector<uint8_t>& dataStream) const
@@ -706,7 +715,7 @@ void Node::sourceDeleted(hnode src)
 
 void Node::prepare(uint32_t token)
 {
-  if (token == prepareToken)
+  if (token == prepareToken || !meta)
     return;
   prepareToken = token;
   forEachSource(
@@ -768,17 +777,21 @@ void Node::setValueModified(uint32_t i)
     markOptionChanged();
 }
 
-void Node::setValue(uint32_t i, Parameter&& value)
+hnode Node::setValue(uint32_t i, Parameter&& value)
 {
+  hnode  oldsrc;
   Terra& main = Terra::get();
   if (!meta)
-    return;
+    return oldsrc;
   assert(parameters[i].index() == value.index());
   if (meta->parameterDef[i].format.type == DataType::eDataSource)
   {
     auto oldNode = std::get<DataSource>(parameters[i]).node;
     if (oldNode && isValid(oldNode))
+    {
       main.getNode(oldNode).remove(id);
+      oldsrc = oldNode;
+    }
     auto newNode = std::get<DataSource>(value).node;
     if (newNode)
       main.getNode(newNode).add(id);
@@ -789,7 +802,10 @@ void Node::setValue(uint32_t i, Parameter&& value)
     if (std::holds_alternative<ImageDataIdx>(oldNode) && std::get<ImageDataIdx>(oldNode))
       main.getImage(std::get<ImageDataIdx>(oldNode)).remove(id);
     else if (std::holds_alternative<hnode>(oldNode) && isValid(std::get<hnode>(oldNode)))
-      main.getNode(std::get<hnode>(oldNode)).remove(id);
+    {
+      oldsrc = std::get<hnode>(oldNode);
+      main.getNode(oldsrc).remove(id);
+    }
 
     auto& newNode = std::get<ImageSource>(value).source;
 
@@ -802,6 +818,7 @@ void Node::setValue(uint32_t i, Parameter&& value)
   markValueChanged();
   if (meta->parameterDef[i].affectsOptions())
     markOptionChanged();
+  return oldsrc;
 }
 
 bool Node::isValid(hnode idx)

@@ -14,7 +14,7 @@ struct ShaderBuilder;
 class Terra
 {
 public:
-  struct ShaderContent
+  struct CommonShaderContent
   {
     std::string fixedResources;
     std::string main;
@@ -39,7 +39,7 @@ public:
 
   void scanShader(std::filesystem::path path);
 
-  ShaderContent const& getShaderContent(ShaderLang) const
+  CommonShaderContent const& getShaderContent(ShaderLang) const
   {
     return shaderContent;
   }
@@ -116,6 +116,8 @@ public:
     nodes.erase(n.reserved);
   }
 
+  void destroy();
+
   static Terra& get()
   {
     return instance;
@@ -136,6 +138,12 @@ public:
       l(m.first, m.second, nodeMetaTable[m.second]);
   }
 
+  template <typename L>
+  void forEachNode(L&& l)
+  {
+    nodes.for_each(std::forward<L>(l));
+  }
+
   uint32_t getSemantic(std::string_view from);
 
 private:
@@ -144,9 +152,9 @@ private:
   using ImageCodecMap = std::unordered_map<std::u8string, std::shared_ptr<ImageCodec>>;
   using SamplerList   = std::vector<std::pair<ImageSampling, GfxSampler::handle>>;
 
-  uint32_t                                       frame = 0;
-  ShaderContent                                  shaderContent;
-  std::vector<std::string>                       semantics;
+  uint32_t                 frame = 0;
+  CommonShaderContent      shaderContent;
+  std::vector<std::string> semantics;
 
   using NodeMetaMap = std::map<std::string, uint32_t>;
   std::vector<NodeMeta>         nodeMetaTable;

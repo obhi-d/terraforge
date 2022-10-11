@@ -1,10 +1,11 @@
 name        = "@GetMinMax";
 category    = "@Utility";
-tooltip       = "@GetMinMaxBrief";
+tooltip     = "@GetMinMaxBrief";
 help        = "@GetMinMaxHelp";
 function    = "get_min_max";
-output      = vec2 (downscale = 16);
+output      = source (type = vec2, downscale = 16);
 iteration   = inf;
+icon        = "\xef\x80\xbe";
 
 shaders
 {

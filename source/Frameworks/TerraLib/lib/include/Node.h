@@ -177,6 +177,10 @@ class Node : public Dependency
 {
 public:
   Node() = default;
+  Node(Node&&) = default;
+  Node(Node const&) = delete;
+  Node& operator=(Node&&) noexcept      = default;
+  Node& operator=(Node const&) noexcept = delete;
   Node(NodeMeta const&);
   ~Node();
 
@@ -261,7 +265,7 @@ public:
   void sourceDeleted(hnode src);
 
   bool        isInputCompatible(uint32_t i, DataFormat const&);
-  void        setValue(uint32_t i, Parameter&& value);
+  hnode       setValue(uint32_t i, Parameter&& value); // retunrs old source of data
   void        setValueModified(uint32_t i);
   void        prepare(uint32_t token);
   bool        isReadyToExecute(uint32_t taskId);

@@ -31,6 +31,7 @@ struct ImagePack
   glm::uvec2  size = glm::uvec2(0, 0);
 };
 
+// Color is ABGR, because of imgui
 class Color
 {
 public:
@@ -45,10 +46,10 @@ public:
 
   inline Color(uint32_t hexValue)
   {
-    color.r = uint8_t((hexValue >> 24) & 0xFF); // Extract the RR byte
-    color.g = uint8_t((hexValue >> 16) & 0xFF); // Extract the GG byte
-    color.b = uint8_t((hexValue >> 8) & 0xFF);  // Extract the GG byte
-    color.a = uint8_t((hexValue)&0xFF);         // Extract the BB byte
+    color.a = uint8_t((hexValue >> 24) & 0xFF); // Extract the RR byte
+    color.b = uint8_t((hexValue >> 16) & 0xFF); // Extract the GG byte
+    color.g = uint8_t((hexValue >> 8) & 0xFF);  // Extract the GG byte
+    color.r = uint8_t((hexValue)&0xFF);         // Extract the BB byte
   }
 
   inline Color(ImVec4 f4)
@@ -69,7 +70,7 @@ public:
 
   inline operator uint32_t() const
   {
-    return uint32_t{color.r} << 24 | uint32_t{color.g} << 16 | uint32_t{color.b} << 8 | uint32_t{color.a};
+    return uint32_t{color.a} << 24 | uint32_t{color.b} << 16 | uint32_t{color.g} << 8 | uint32_t{color.r};
   }
 
   inline operator glm::vec4() const
@@ -104,6 +105,8 @@ struct ImThemeColors
   Color link        = 0xffffffff;
   Color texLink     = 0xaaaa11ff;
   Color dsLink      = 0x616666ff;
+  Color header      = Color(155, 155, 155, 255);
+  Color highlight   = Color(255, 155, 155, 255);
 };
 
 struct NodeStyle

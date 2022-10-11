@@ -73,5 +73,6 @@ public:
   AppSettings                                    settings;
   neo::registry                                  themeReader;
   ImguiTheme                                     theme;
+  uint32_t                                       frame = 0;
 };
 } // namespace terra

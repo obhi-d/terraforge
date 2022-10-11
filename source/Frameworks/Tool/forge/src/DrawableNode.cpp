@@ -4,8 +4,8 @@
 
 #include "DrawHelpers.h"
 #include "DrawableNode.h"
-#include "TerraMainApp.h"
 #include "NodeEditor.h"
+#include "TerraMainApp.h"
 
 namespace terra
 {
@@ -14,11 +14,11 @@ DrawableNode::DrawableNode(TerraMainApp& app, hnode id, ImVec2 pos)
 {
   this->id         = id;
   this->pos        = pos;
-  auto        node = get().getNode(id);
+  auto&       node = get().getNode(id);
   auto const& meta = node.getMeta();
   style            = app.getTheme().getNodeStyle(meta.style);
 
-  //imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+  // imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
   output.id    = pack(id.um_value(), 0);
   output.flags = PinStateFlags::fOutput;
   imne::SetPinFlags(output.id, imne::PinKind::Output, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -28,7 +28,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, hnode id, ImVec2 pos)
   {
     auto& p = parameters[i];
     auto& d = node.paramMeta(i);
-    p.id    = pack(id.um_value(), i+1);
+    p.id    = pack(id.um_value(), i + 1);
     if (d.format.type == DataType::eDataSource || d.format.type == DataType::eImage)
     {
       p.flags = PinStateFlags::fInputPin;
@@ -38,7 +38,8 @@ DrawableNode::DrawableNode(TerraMainApp& app, hnode id, ImVec2 pos)
   imne::SetNodePosition(id.reserved, pos);
 }
 
-void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData const& pin, DataFormat format, bool filled)
+void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData const& pin, DataFormat format,
+                               bool filled)
 {
   ImGui::SetCursorPos(pin.xy);
 
@@ -169,8 +170,8 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
   case DataType::eInt2:
   case DataType::eBool:
     if (drawScalar(style, def, def.format.type, std::get<ScalarValue>(param)))
-      node.setValueModified(i);  
-  break;
+      node.setValueModified(i);
+    break;
   case DataType::eDataSource:
   {
     DataSource& v = std::get<DataSource>(param);
@@ -202,7 +203,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
 bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, bool& previewNode)
 {
   bool        changed = false;
-  auto&        node    = get().getNode(id);
+  auto&       node    = get().getNode(id);
   auto const& meta    = node.getMeta();
   auto const& style   = app.getTheme().getNodeStyle(this->style);
 
@@ -233,22 +234,22 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
 
   ImGui::SameLine();
   ImGui::Dummy(ImVec2(style.pinSize * 1.5f, 0));
-  //auto endPos = ImGui::GetCursorPos();
-  //ImGui::SetCursorPos(pos);
-  //ImGui::InvisibleButton("#hc", endPos - pos);
-  //auto flags = imne::ImneObjFlags::ImneObjFlags_None;
-  //if (ImGui::IsItemActive())
-  //  flags |= imne::ImneObjFlags::ImneObjFlags_IsActive;
-  //if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
+  // auto endPos = ImGui::GetCursorPos();
+  // ImGui::SetCursorPos(pos);
+  // ImGui::InvisibleButton("#hc", endPos - pos);
+  // auto flags = imne::ImneObjFlags::ImneObjFlags_None;
+  // if (ImGui::IsItemActive())
+  //   flags |= imne::ImneObjFlags::ImneObjFlags_IsActive;
+  // if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
   //{
-  //  if (ImGui::IsMouseDoubleClicked(1))
-  //    flags |= imne::ImneObjFlags::ImneObjFlags_IsDoubleClicked;
-  //  else if (ImGui::IsItemClicked())
-  //    flags |= imne::ImneObjFlags::ImneObjFlags_IsClicked;    
-  //  flags |= imne::ImneObjFlags::ImneObjFlags_IsHovered;
-  //}
+  //   if (ImGui::IsMouseDoubleClicked(1))
+  //     flags |= imne::ImneObjFlags::ImneObjFlags_IsDoubleClicked;
+  //   else if (ImGui::IsItemClicked())
+  //     flags |= imne::ImneObjFlags::ImneObjFlags_IsClicked;
+  //   flags |= imne::ImneObjFlags::ImneObjFlags_IsHovered;
+  // }
   //
-  //imne::SetNodeInteraction(flags);
+  // imne::SetNodeInteraction(flags);
 
   headerMaxY = ImGui::GetCursorPosY();
 
@@ -266,12 +267,11 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
 
 void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
 {
-
   ImGui::EndGroup();
   auto min = ImGui::GetItemRectMin();
   auto max = ImGui::GetItemRectMax();
 
-  auto        node  = get().getNode(id);
+  auto&       node  = get().getNode(id);
   auto const& meta  = node.getMeta();
   auto const& style = app.getTheme().getNodeStyle(this->style);
 

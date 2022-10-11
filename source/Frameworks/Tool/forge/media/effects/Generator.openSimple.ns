@@ -1,0 +1,15 @@
+name     = "@OpenSimplex";
+category = "@Generators";
+tooltip  = "@ToOpenSimplexBrief";
+help     = "@ToOpenSimplexHelp";
+function = "open_simplex_2";
+output   = source (type = float);
+icon     = "\xef\x80\xbe";
+
+shaders
+{
+  config default_config
+  {
+    files = ["open_simplex_2.comp"];
+  };
+};

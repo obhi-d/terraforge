@@ -17,6 +17,11 @@ class Terra;
 class Dependency
 {
 public:
+  Dependency() = default;
+  Dependency(Dependency&&) noexcept = default;
+  Dependency(Dependency const&) = delete;
+  Dependency&  operator=(Dependency&&) noexcept = default;
+  Dependency&  operator=(Dependency const&) = delete;
   virtual void add(hnode node)
   {
     dependents.emplace(node);

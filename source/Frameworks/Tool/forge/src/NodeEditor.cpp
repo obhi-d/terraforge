@@ -51,6 +51,7 @@ void NodeEditor::init(TerraMainApp& app)
   tipIncompatType    = app.getLocalizedString("@Editor.TipIncompatType");
   tipLink            = app.getLocalizedString("@Editor.TipLink");
   tipCreateNode      = app.getLocalizedString("@Editor.TipCreateNode");
+  actions            = app.getLocalizedString("@Editor.Actions");
   imne::Config config;
   config.SettingsFile = "terra-nodes.json";
   editorContext       = imne::CreateEditor(&config);
@@ -90,36 +91,78 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
 
 void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
 {
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+  auto const& theme = app.getTheme();
+
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
+  ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
   if (ImGui::BeginPopup("new_node"))
   {
+
+    ImGui::PushItemWidth(-1);
+    if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0) && !frameCache.filterHasFocus)
+    {
+      ImGui::SetKeyboardFocusHere(0);
+      frameCache.filterHasFocus = true;
+    }
+    if (ImGui::InputText("##filter", frameCache.filterData.data(), frameCache.filterData.size(),
+      ImGuiInputTextFlags_EnterReturnsTrue) && frameCache.createSelected)
+    {
+      pendingAction.meta     = frameCache.createSelected;
+      pendingAction.action   = Action::eCreateNode;
+      pendingAction.position = openPopupPosition;
+      pendingAction.linkTo   = frameCache.linkTo;
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::PopItemWidth();
+    std::u8string_view filter = (char8_t*)frameCache.filterData.data();
     for (auto& c : cachedMetas)
     {
       if (!c.second.empty())
       {
-        if (ImGui::BeginMenu((const char*)c.first.data()))
+        ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
+        ImGui::TextUnformatted((const char*)c.first.data());
+        ImGui::PopStyleColor();
+        ImGui::Separator();
         {
           for (auto const& cr : c.second)
           {
             auto const& entry = cr.get();
-            if (ImGui::MenuItemEx((const char*)entry.name.data(), (const char*)entry.icon.c_str()))
+            
+            if (filter.empty() || entry.name.npos != entry.name.find(filter))
             {
-              pendingAction.meta     = &entry;
-              pendingAction.action   = Action::eCreateNode;
-              pendingAction.position = openPopupPosition;
+              if (!filter.empty()  && !frameCache.createSelected)
+                frameCache.createSelected = &entry;
+              if (frameCache.createSelected == &entry)
+                ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.highlight);
+              if (ImGui::MenuItemEx((const char*)entry.name.data(), (const char*)entry.icon.c_str()))
+              {
+                pendingAction.meta     = &entry;
+                pendingAction.action   = Action::eCreateNode;
+                pendingAction.position = openPopupPosition;
+                pendingAction.linkTo   = frameCache.linkTo;
+              }
+              if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+              {
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted((const char*)entry.tooltip.data());
+                ImGui::EndTooltip();
+              }
+              if (frameCache.createSelected == &entry)
+                ImGui::PopStyleColor();
             }
-            if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-            {
-              ImGui::BeginTooltip();
-              ImGui::TextUnformatted((const char*)entry.tooltip.data());
-              ImGui::EndTooltip();
-            }
+            else if (frameCache.createSelected == &entry)
+              frameCache.createSelected = nullptr;
           }
-          ImGui::EndMenu();
         }
       }
     }
+  
+    ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
+    ImGui::TextUnformatted((const char*)actions.data());
+    ImGui::PopStyleColor();
 
+    ImGui::Separator();
     if (ImGui::MenuItemEx((const char*)importNode.data(), ICON_FA_FILE_IMPORT))
     {
       pendingAction.action = Action::eImportNode;
@@ -131,15 +174,29 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
     }
     ImGui::EndPopup();
   }
+  else
+  {
+    frameCache.linkTo         = {};
+    frameCache.filterHasFocus = false;
+    frameCache.createSelected = nullptr;
+    frameCache.filterData.fill(0);
+  }
+  ImGui::PopStyleVar();  
+  ImGui::PopStyleVar();
   ImGui::PopStyleVar();
 }
 
 void NodeEditor::executePendingAction(TerraMainApp& app)
 {
+  auto const& theme = app.getTheme();
   switch (pendingAction.action)
   {
   case Action::eCreateNode:
     createNode(app, *pendingAction.meta, pendingAction.position);
+    if (pendingAction.linkTo)
+    {
+      setNextDataSource(theme.themeColors, drawableNodes.back().getId(), pendingAction.linkTo);
+    }
     break;
   case Action::eShowTooltip:
   case Action::eShowHelp:
@@ -199,6 +256,7 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
   pendingAction.pin    = {};
   pendingAction.meta   = nullptr;
   pendingAction.node   = {};
+  pendingAction.linkTo = {};
 }
 
 void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
@@ -221,6 +279,7 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
     [&](auto& link)
     {
       imne::Link(link.id, link.start, link.end, link.color, theme.linkThickness);
+      return true;
     });
 
   // if (acceptsAction())
@@ -303,7 +362,7 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
 
         if (imne::AcceptNewItem())
         {
-          pendingAction.linkTo = pinId;
+          frameCache.linkTo = pinId;
           imne::Suspend();
           ImGui::OpenPopup("new_node");
           imne::Resume();
@@ -361,10 +420,26 @@ void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair e
   auto& src   = get().getNode(start.first);
   auto& dst   = get().getNode(end.first);
   Color color = src.hasTextureOutput() ? col.texLink : col.dsLink;
-  if (src.hasTextureOutput())
-    dst.setValue(end.second - 1, ImageSource(hnode(start.first)));
-  else
-    dst.setValue(end.second - 1, DataSource(hnode(start.first)));
+  hnode oldSrc = src.hasTextureOutput() ? dst.setValue(end.second - 1, ImageSource(hnode(start.first)))
+                                        : dst.setValue(end.second - 1, DataSource(hnode(start.first)));
+  if (oldSrc)
+  {
+    uint32_t del = 0;
+    imne::PinId pinStart = pack(oldSrc, 0);
+    imne::PinId pinEnd = pack(end.first, end.second);
+
+    links.for_each([&del, pinStart, pinEnd](auto const& l) -> bool 
+      {
+        if (l.start== pinStart && l.end == pinEnd)
+        {
+          del = (uint32_t)l.id.Get();
+          return false;
+        }
+        return true;
+      });
+    if (del)
+      links.erase(del);
+  }
   Link link;
   link.color      = color;
   link.start      = pack(start.first, start.second);
@@ -389,6 +464,48 @@ void NodeEditor::deleteLink(imne::LinkId l)
     dst.setValue(end.second - 1, DataSource(hnode()));
 
   links.erase(addr);
+}
+
+void NodeEditor::setNextDataSource(ImThemeColors const& col, hnode id, imne::PinId src)
+{
+  auto & node    = get().getNode(id);
+  auto const& meta    = node.getMeta();
+  auto        srcPin  = unpack(src.Get());
+  auto const& srcNode = get().getNode(srcPin.first);
+ 
+  if (!srcPin.second)
+  {
+    uint32_t paramChoice = (uint32_t)meta.parameterDef.size();
+    for (uint32_t i = 0; i < paramChoice; ++i)
+    {
+      if (meta.parameterDef[i].name == "Source" && meta.parameterDef[i].format == srcNode.getFormat())
+      {
+        paramChoice = i;
+        break;
+      }
+    }
+    if (paramChoice == (uint32_t)meta.parameterDef.size())
+    {
+      for (uint32_t i = 0; i < paramChoice; ++i)
+      {
+        if (meta.parameterDef[i].format == srcNode.getFormat())
+        {
+          paramChoice = i;
+          break;
+        }
+      }
+    }
+    if (paramChoice == (uint32_t)meta.parameterDef.size())
+      return;
+    createLink(col, srcPin, uintpair(id, paramChoice + 1));
+  }
+  else
+  {
+    if (node.getFormat() == srcNode.getMeta().parameterDef[srcPin.second].format)
+    {
+      createLink(col, uintpair(id, 0), srcPin);
+    }
+  }
 }
 
 } // namespace terra

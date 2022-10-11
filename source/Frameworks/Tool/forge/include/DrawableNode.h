@@ -36,6 +36,11 @@ public:
     return id == this->id;
   }
 
+  hnode getId() const
+  {
+    return id;
+  }
+
 private:
  
 

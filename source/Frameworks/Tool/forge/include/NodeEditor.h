@@ -49,7 +49,7 @@ private:
   void doNodes(TerraMainApp&, ImguiBackend&);
   void createNode(TerraMainApp&, NodeMeta const& meta, ImVec2);
   void executePendingAction(TerraMainApp&);
-
+  void setNextDataSource(ImThemeColors const& col, hnode node, imne::PinId src);
 
   enum class Action
   {
@@ -85,11 +85,21 @@ private:
   std::u8string_view tipLink;
   std::u8string_view tipCreateNode;
 
+  std::u8string_view        actions;
   std::u8string_view        importNode;
   std::u8string_view        nodeEditor;
   std::u8string_view        pasteNode;
   std::u8string_view        toggleSelectedNode;
 
+  struct FrameCache
+  {
+    std::array<char, 64> filterData = {};
+    bool                 filterHasFocus = false;
+    NodeMeta const*      createSelected = nullptr;
+    imne::PinId          linkTo;
+  };
+
+  FrameCache           frameCache;
   bool                 nodeSelectionChanged = false;
   imne::EditorContext* editorContext        = nullptr;
 };

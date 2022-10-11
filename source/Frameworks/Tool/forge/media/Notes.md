@@ -71,3 +71,4 @@ float sample_curve_x(float x)
   [ ] Dummy localization
   [ ] Make renderer a plugin
     [ ] Use Mesa for older computers
+  [ ] Progressive iteration for some shaders

@@ -22,19 +22,32 @@ class table
 
 public:
 
+  void clear() 
+  {
+    free_pool.clear();
+    pool.clear();
+  }
   template <typename L>
   void for_each(L&& lambda)
   {
     std::sort(free_pool.begin(), free_pool.end());
     free_pool.push_back((uint32_t)pool.size());
     uint32_t start = 0;
-    for (uint32_t end : free_pool)
+    for (uint32_t entry : free_pool)
     {
+      auto end = entry & mask;
       for (uint32_t n = start; n < end; ++n)
-        lambda(pool[n]);
+      {
+        if (!lambda(pool[n]))
+        {
+          free_pool.pop_back();
+          return;
+        }
+      }
       start = end + 1;
     }
     free_pool.pop_back();
+    
   }
 
   template <typename... Args>
@@ -61,7 +74,7 @@ public:
 
   void erase(std::uint32_t index)
   {
-    
+    assert(std::find(free_pool.begin(), free_pool.end(), index) == free_pool.end());
     pool[index & mask] = T();
     free_pool.emplace_back(index);
     

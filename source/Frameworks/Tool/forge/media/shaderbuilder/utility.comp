@@ -24,16 +24,11 @@ vec4 select( ivec4 mask, vec4 a, vec4 b )
     return vec4( mask.x != 0 ? a.x : b.x, mask.y != 0 ? a.y : b.y, mask.z != 0 ? a.z : b.z, mask.w != 0 ? a.w : b.w );
 }
 
-vec4 mask_add( vec4 a, vec4 b, ivec4 mask )
+// -- MASKED MUL --
+ivec4 mask_mul( ivec4 a, ivec4 b, ivec4 mask )
 {
-    return vec4( mask.x != 0 ? a.x + b.x : a.x, mask.y != 0 ? a.y + b.y : a.y, mask.z != 0 ? a.z + b.z : a.z,
-                   mask.w != 0 ? a.w + b.w : a.w );
-}
-
-vec4 mask_sub( vec4 a, vec4 b, ivec4 mask )
-{
-    return vec4( mask.x != 0 ? a.x - b.x : a.x, mask.y != 0 ? a.y - b.y : a.y, mask.z != 0 ? a.z - b.z : a.z,
-                   mask.w != 0 ? a.w - b.w : a.w );
+    return ivec4( mask.x != 0 ? a.x * b.x : a.x, mask.y != 0 ? a.y * b.y : a.y, mask.z != 0 ? a.z * b.z : a.z,
+                   mask.w != 0 ? a.w * b.w : a.w );
 }
 
 vec4 mask_mul( vec4 a, vec4 b, ivec4 mask )
@@ -42,9 +37,16 @@ vec4 mask_mul( vec4 a, vec4 b, ivec4 mask )
                    mask.w != 0 ? a.w * b.w : a.w );
 }
 
+// -- MASKED ADD --
 ivec4 mask_add( ivec4 a, ivec4 b, ivec4 mask )
 {
     return ivec4( mask.x != 0 ? a.x + b.x : a.x, mask.y != 0 ? a.y + b.y : a.y, mask.z != 0 ? a.z + b.z : a.z,
+                 mask.w != 0 ? a.w + b.w : a.w );
+}
+
+vec4 mask_add( vec4 a, vec4 b, ivec4 mask )
+{
+    return vec4( mask.x != 0 ? a.x + b.x : a.x, mask.y != 0 ? a.y + b.y : a.y, mask.z != 0 ? a.z + b.z : a.z,
                  mask.w != 0 ? a.w + b.w : a.w );
 }
 
@@ -54,9 +56,22 @@ ivec4 nmask_add( ivec4 a, ivec4 b, ivec4 mask )
                  mask.w != 0 ? a.w : a.w + b.w );
 }
 
+vec4 nmask_add( vec4 a, vec4 b, ivec4 mask )
+{
+    return vec4( mask.x != 0 ? a.x : a.x + b.x, mask.y != 0 ? a.y : a.y + b.y, mask.z != 0 ? a.z : a.z + b.z,
+                 mask.w != 0 ? a.w : a.w + b.w );
+}
+
+// -- MASKED SUB --
 ivec4 mask_sub( ivec4 a, ivec4 b, ivec4 mask )
 {
     return ivec4( mask.x != 0 ? a.x - b.x : a.x, mask.y != 0 ? a.y - b.y : a.y, mask.z != 0 ? a.z - b.z : a.z,
+                 mask.w != 0 ? a.w - b.w : a.w );
+}
+
+vec4 mask_sub( vec4 a, vec4 b, ivec4 mask )
+{
+    return vec4( mask.x != 0 ? a.x - b.x : a.x, mask.y != 0 ? a.y - b.y : a.y, mask.z != 0 ? a.z - b.z : a.z,
                  mask.w != 0 ? a.w - b.w : a.w );
 }
 
@@ -66,10 +81,10 @@ ivec4 nmask_sub( ivec4 a, ivec4 b, ivec4 mask )
                  mask.w != 0 ? a.w : a.w - b.w );
 }
 
-ivec4 mask_mul( ivec4 a, ivec4 b, ivec4 mask )
+vec4 nmask_sub( vec4 a, vec4 b, ivec4 mask )
 {
-    return ivec4( mask.x != 0 ? a.x * b.x : a.x, mask.y != 0 ? a.y * b.y : a.y, mask.z != 0 ? a.z * b.z : a.z,
-                 mask.w != 0 ? a.w * b.w : a.w );
+    return vec4( mask.x != 0 ? a.x : a.x - b.x, mask.y != 0 ? a.y : a.y - b.y, mask.z != 0 ? a.z : a.z - b.z,
+                 mask.w != 0 ? a.w : a.w - b.w );
 }
 
 ivec4 nequal( ivec4 a, ivec4 b )
@@ -125,7 +140,7 @@ bool is_within_tile(uint x, uint y, uint2 min_tile_vtx, uint2 max_tile_vtx)
   return (x >= min_tile_vtx.x && x < max_tile_vtx.x) && (y >= min_tile_vtx.y && y < max_tile_vtx.y); 
 }
 
-Coord get_offset(NoiseParams params)
+Coord get_offset(NodeParams params)
 {
   Coord c;
   uint width = uint(params.env.size.x + 2);
@@ -135,28 +150,37 @@ Coord get_offset(NoiseParams params)
   return c;
 }
 
-Coord apply_start_offset(Coord c, NoiseParams params)
+Coord apply_start_offset(Coord c, NodeParams params)
 {
   c.x += uvec4(params.env.start_coord.x);
   c.y += uvec4(params.env.start_coord.y);
   return c;
 }
 
-Coord get_coord(NoiseParams params)
+Coord get_coord(NodeParams params)
 {
-  return apply_start_offset( get_offset(params) );
+  return apply_start_offset( get_offset(params), params );
 }
 
-uvec4 get_pixel_id(ivec4 x, ivec4 y, NoiseParams params)
+Coordf get_coord_scaled(NodeParams params)
 {
-  x = (x - uvec4(params.env.start_coord.x));
-  y = (y - uvec4(params.env.start_coord.y)) * ivec4(params.env.size.x + 2);
-  return x + y;
+  Coord c = apply_start_offset( get_offset(params), params );
+  Coordf rc;
+  rc.x = vec4(c.x) * vec4(params.env.frequency);
+  rc.x = vec4(c.y) * vec4(params.env.frequency);
+  return rc;
 }
 
-uint get_pixel_id(int x, int y, NoiseParams params)
+uvec4 get_pixel_id(ivec4 x, ivec4 y, NodeParams params)
 {
-  x = (x - uint(params.env.start_coord.x));
-  y = (y - uint(params.env.start_coord.y)) * (params.env.size.x + 2);
-  return x + y;
+  uvec4 ux = uvec4(uvec4(x) - uvec4(params.env.start_coord.x));
+  uvec4 uy = uvec4(uvec4(y) - uvec4(params.env.start_coord.y)) * uvec4(params.env.size.x + 2);
+  return ux + uy;
+}
+
+uint get_pixel_id(int x, int y, NodeParams params)
+{
+  uint ux = (uint(x) - uint(params.env.start_coord.x));
+  uint uy = (uint(y) - uint(params.env.start_coord.y)) * (params.env.size.x + 2);
+  return ux + uy;
 }

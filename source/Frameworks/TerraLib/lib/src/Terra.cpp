@@ -1,6 +1,7 @@
 #include "Terra.h"
 #include "Logger.h"
 #include "NodeBuilder.h"
+#include "ResourceUtils.h"
 
 #include <format>
 #include <fstream>
@@ -16,7 +17,19 @@ void Terra::init(std::shared_ptr<RenderDevice> dev, Localization l)
   localizationProvider = l;
   device = dev;
   NodeRegister(NoiseBuilder, registry);
+
+  shaderContent.fixedResources    = fileContentToString("shaderbuilder/fixed_resources.comp", true);
+  shaderContent.main              = fileContentToString("shaderbuilder/main.comp", true);
+  shaderContent.typesAndConstants = fileContentToString("shaderbuilder/types_constants.comp", true);
+  shaderContent.utilityFunctions  = fileContentToString("shaderbuilder/utility.comp", true);
 }
+
+void Terra::destroy() 
+{
+  images.clear();
+  nodes.clear();
+  nodeMetaTable.clear();
+ }
 
 void Terra::scanShader(std::filesystem::path path)
 {

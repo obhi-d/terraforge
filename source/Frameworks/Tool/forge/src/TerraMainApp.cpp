@@ -169,6 +169,7 @@ int TerraMainApp::Main(int argc, const char* argv[])
   try
   {
     app.run();
+    get().destroy();
   }
   catch (std::exception& ex)
   {
@@ -181,7 +182,13 @@ int TerraMainApp::Main(int argc, const char* argv[])
 
 void TerraMainApp::draw()
 {
+  get().forEachNode(
+    [frame = this->frame](auto& node) {
+      node.prepare(frame);
+      return true;
+    });
   viewer.draw(*this);
+  frame++;
 }
 
 } // namespace terra

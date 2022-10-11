@@ -3,6 +3,7 @@
 #include "GfxShaderBuilder.h"
 #include "GlGfxUtils.h"
 #include "Logger.h"
+#include "ResourceUtils.h"
 #include <glbinding-aux/ContextInfo.h>
 #include <glbinding/gl43core/gl.h>
 #ifdef _WIN32
@@ -335,6 +336,11 @@ GfxProgram::handle GfxDevice43::createProgram(ShaderOptions const& options, Shad
       res.shaders[i] = createShader((ShaderType)i, sourceFiles, sourceLengths);
       if (!res.shaders[i])
       {
+        {
+          std::ofstream cc(getMediaPath() / "error_sh.glsl");
+          for (auto const& sf : sourceFiles)
+            cc << (char const*)sf;
+        }
         for (uint32_t i = 0; i < ShaderTypeCount; ++i)
         {
           if (res.shaders[i])
