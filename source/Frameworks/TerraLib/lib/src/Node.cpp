@@ -270,8 +270,6 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     nodeContent.function, get().getWorkGroupSize(),
                                     bufferWriteType(format.scalarSubType)));
   shaderBuilder->append(commonContent.typesAndConstants);
-  shaderBuilder->append(commonContent.fixedResources);
-  shaderBuilder->append(commonContent.utilityFunctions);
 
   std::string generated;
   std::string nodeParams;
@@ -326,11 +324,10 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     case DataType::eBool:
       t.optionIndex[0] = (int)options.size();
       options.push_back(t.name + "_Enabled");
-      generated += std::format("const bool {0} = {0}_Enabled;\n", t.name);
+      generated += std::format("const bool {0} = bool({0}_Enabled);\n", t.name);
       break;
     case DataType::eDataSource:
       nodeParams += std::format("  {0}_t {0};\n", t.name);
-      nodeParams += t.name;
       t.uboOffset = paramOffsets;
       paramOffsets += subtypeSize(t.format.scalarSubType);
       break;
@@ -365,7 +362,7 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
       options.push_back("Has_" + t.name);
       t.optionIndex[1] = (int)options.size();
       options.push_back("IsTileConstrainted_" + t.name);
-      generated += std::format("const bool has_{0} = Has_{0};\n", t.name);
+      generated += std::format("const bool has_{0} = bool(Has_{0});\n", t.name);
       generated += std::format("const bool is_tile_constrained_{0} = IsTileConstrained_{0};\n", t.name);
       bi = shaderBuilder->declTexture(t.name);
       generated += bi.content;
@@ -443,6 +440,9 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
   }
   else
     shaderBuilder->append("#define NodeUniforms_Enabled 0\n");
+
+  shaderBuilder->append(commonContent.fixedResources);
+  shaderBuilder->append(commonContent.utilityFunctions);
   shaderBuilder->append(generated);
   shaderBuilder->append("\n");
   {
