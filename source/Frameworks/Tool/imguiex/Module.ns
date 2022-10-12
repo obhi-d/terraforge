@@ -1,4 +1,5 @@
 type = exe;
+include_when = ready;
 
 public:
 {

@@ -17,7 +17,7 @@ constexpr std::string_view gs_bufferLoad = R"_(
   if (has_{0})
   {{
     
-    uint id = pixel_id(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, np);
+    uint id = get_pixel_id(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y, np);
     return {0}.data[id];
   }}
   else
@@ -52,7 +52,7 @@ constexpr std::string_view gs_bufferLoad = R"_(
 {{ 
   if (has_{0})
   {{
-    uint id = pixel_id(x, y, np);
+    uint id = get_pixel_id(x, y, np);
     return {0}.data[id];
   }}
   else
@@ -77,7 +77,7 @@ constexpr std::string_view gs_bufferLoad = R"_(
 {{ 
   if (has_{0})
   {{
-    int4 id = pixel_id(x, y, np);
+    int4 id = get_pixel_id(x, y, np);
     return {0}_t4(
       {0}.data[id.x],
       {0}.data[id.y],
