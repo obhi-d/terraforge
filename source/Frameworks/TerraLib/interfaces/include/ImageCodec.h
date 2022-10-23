@@ -3,13 +3,21 @@
 #include <filesystem>
 #include <memory>
 #include <span>
-#include "ImageData.h"
+#include "RenderResource.h"
 
 namespace terra
 {
 
+struct ImageData
+{
+  std::unique_ptr<std::byte[]> data;
+  uint32_t                     width  = 0;
+  uint32_t                     height = 0;
+  ImageFormat                  format = ImageFormat::eFloat;
+};
+
 struct ImageCodec
 {
-  virtual ImageData loadImage(std::filesystem::path) = 0;
+  virtual bool loadImage(ImageData& dst, std::filesystem::path) = 0;
 };
 } // namespace terra

@@ -12,42 +12,34 @@ namespace terra
 class Terra;
 struct DispatchTask
 {
-  EnvParams params;
-  uint32_t  taskID = 0;
+
+  uint32_t taskId = 0;
 };
 class Pipeline
 {
 public:
-
+  Pipeline(uint32_t taskId);
   ~Pipeline()
   {
     cleanup();
   }
 
-  void    prepare(DispatchTask&&);
-  int32_t compute(hnode);
-  int32_t computePreview(hnode); // wrap in Modifiers.toRGBA
+  void compute(dshandle, LaunchParams const&, uvec2 start, uvec2 size); // wrap in Modifiers.toR16
+  void run();
 
-  int32_t declBuffer(uint32_t size);
-  int32_t declImage(uint32_t width, uint32_t height, ImageFormat fmt);
-
-  // Read for the given node list index
-  GfxBuffer::handle            readOutputBuffer(int32_t nodeListIdx) const;
-  GfxImage2D::handle           readOutputImage(int32_t nodeListIdx) const;
-  void                         readOutputBufferContent(int32_t nodeIdx, std::span<std::byte>) const;
-  void                         readOutputImageContent(int32_t nodeIdx, std::span<std::byte>) const;
+  int32_t declBuffer(int32_t declIdx, uint32_t size, bool transient);
+  int32_t declImage(int32_t declIdx, uint32_t width, uint32_t height, ImageFormat fmt, bool transient);
 
   // Read for the given node
-  GfxBuffer::handle  getOutputBuffer(hnode nodeIdx) const;
-  GfxImage2D::handle getOutputImage(hnode nodeIdx) const;
+  GfxBuffer::handle  getOutputBuffer(dshandle nodeIdx) const;
+  GfxImage2D::handle getOutputImage(dshandle nodeIdx) const;
 
-  void execute();
-  void wait();
   void cleanup();
+  void enqueue(dshandle);
 
   EnvParams const& params() const
   {
-    return task.params;
+    return tiles[subTask].envParams;
   }
 
   GpuBuffer& getUbo()
@@ -55,13 +47,23 @@ public:
     return ubo;
   }
 
+  TaskKey taskId() const
+  {
+    return pack(id, subTask);
+  }
+
+  int32_t getIteration() const
+  {
+    return iteration;
+  }
+
 private:
   void determineBufferLifetimes();
-  void gatherLeafs(hnode nodeid, std::unordered_map<int32_t, int>& edgeMap, std::vector<hnode>& leafs);
+  void gatherLeafs(dshandle nodeid, std::unordered_map<int32_t, int>& edgeMap, std::vector<dshandle>& leafs);
   void allocateResources();
   void sortNodes();
 
-  void prepareNodes(hnode);
+  void prepareNodes(dshandle);
 
   // Images are not shared
   struct Image
@@ -70,6 +72,7 @@ private:
     ImageFormat        format = ImageFormat::eFloat;
     uint32_t           width  = 0;
     uint32_t           height = 0;
+    bool               transient;
 
     ~Image();
   };
@@ -77,25 +80,37 @@ private:
   // Buffers are reused
   struct Buffer
   {
-    uint32_t size  = 0;
-    int32_t  phyId = 0;
-    int32_t  write = -1;
-    int32_t  read  = -1;
+    uint32_t size       = 0;
+    int32_t  phyId      = 0;
+    int32_t  write      = -1;
+    int32_t  read       = -1;
+    int32_t  usageCount = 0;
+    bool     transient  = false;
   };
 
-  std::vector<Image>  images;
-  std::vector<Buffer> buffers;
+  struct TileTask
+  {
+    EnvParams              envParams;
+    std::vector<Image>     images;
+    std::vector<Buffer>    buffers;
+    std::vector<GpuBuffer> gpuBuffers;
+    std::vector<dshandle>  nodesToDelete;
+    // all nodes that are executed, and in order
+    std::vector<dshandle> tasks;
+  };
 
-  std::vector<GpuBuffer> gpuBuffers;
+  std::vector<TileTask> tiles;
 
-  std::vector<hnode> nodesToDelete;
-  std::vector<hnode> nodes;
-  // all nodes that are executed, and in order
-  std::vector<hnode> actors;
+  // main actor
+  dshandle actor;
 
   GpuBuffer        ubo;
-  DispatchTask     task;
+  LaunchParams     launchParams;
   GfxFence::handle sync;
+  int32_t          iteration = 0;
+  uint32_t         id        = 0;
+  uint32_t         subTask   = 0;
+  bool             dirty     = false;
 };
 
 } // namespace terra

@@ -10,11 +10,11 @@
 namespace terra
 {
 
-DrawableNode::DrawableNode(TerraMainApp& app, hnode id, ImVec2 pos)
+DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
 {
   this->id         = id;
   this->pos        = pos;
-  auto&       node = get().getNode(id);
+  auto&       node = get().get(id);
   auto const& meta = node.getMeta();
   style            = app.getTheme().getNodeStyle(meta.style);
 
@@ -29,7 +29,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, hnode id, ImVec2 pos)
     auto& p = parameters[i];
     auto& d = node.paramMeta(i);
     p.id    = pack(id.um_value(), i + 1);
-    if (d.format.type == DataType::eDataSource || d.format.type == DataType::eImage)
+    if (d.format.type == DataType::eBufferOutput || d.format.type == DataType::eImage)
     {
       p.flags = PinStateFlags::fInputPin;
       imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -52,7 +52,7 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
   case DataType::eImage:
     icon = IconType::Circle;
     break;
-  case DataType::eDataSource:
+  case DataType::eBufferOutput:
     icon = IconType::Diamond;
     switch (format.scalarSubType)
     {
@@ -172,7 +172,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     if (drawScalar(style, def, def.format.type, std::get<ScalarValue>(param)))
       node.setValueModified(i);
     break;
-  case DataType::eDataSource:
+  case DataType::eBufferOutput:
   {
     DataSource& v = std::get<DataSource>(param);
     if (v.node)
@@ -203,7 +203,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
 bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, bool& previewNode)
 {
   bool        changed = false;
-  auto&       node    = get().getNode(id);
+  auto&       node    = get().get(id);
   auto const& meta    = node.getMeta();
   auto const& style   = app.getTheme().getNodeStyle(this->style);
 
@@ -271,7 +271,7 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
   auto min = ImGui::GetItemRectMin();
   auto max = ImGui::GetItemRectMax();
 
-  auto&       node  = get().getNode(id);
+  auto&       node  = get().get(id);
   auto const& meta  = node.getMeta();
   auto const& style = app.getTheme().getNodeStyle(this->style);
 

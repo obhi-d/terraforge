@@ -1,24 +1,47 @@
 #pragma once
 #include <array>
 #include <cassert>
+#include <cctype>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <stdexcept>
-#include <cctype>
+
+#define ENUM_FLAGS(Enum)                                                                                               \
+  inline Enum operator|(Enum a, Enum b)                                                                                \
+  {                                                                                                                    \
+    return (Enum)((uint32_t)a | (uint32_t)b);                                                                          \
+  }                                                                                                                    \
+  inline bool operator&(Enum a, Enum b)                                                                                \
+  {                                                                                                                    \
+    return ((uint32_t)a & (uint32_t)b) != 0;                                                                           \
+  }                                                                                                                    \
+  inline Enum& operator&=(Enum& a, Enum b)                                                                             \
+  {                                                                                                                    \
+    return (Enum&)((uint32_t&)a &= (uint32_t)b);                                                                       \
+  }                                                                                                                    \
+  inline Enum& operator|=(Enum& a, Enum b)                                                                             \
+  {                                                                                                                    \
+    return (Enum&)((uint32_t&)a |= (uint32_t)b);                                                                       \
+  }                                                                                                                    \
+  inline bool operator!(Enum a)                                                                                        \
+  {                                                                                                                    \
+    return ((uint32_t)a != 0);                                                                                         \
+  }
 
 namespace terra
 {
 using uint32 = std::uint32_t;
 using uint   = uint32;
 using int32  = std::int32_t;
-using vec2 = std::array<float, 2>;
-using vec4 = std::array<float, 4>;
-using int4   = std::array<int, 4>;
-using ivec2   = std::array<int, 2>;
-using uint2  = std::array<uint32, 2>;
+using vec2   = std::array<float, 2>;
+using vec4   = std::array<float, 4>;
+using ivec4  = std::array<int, 4>;
+using ivec2  = std::array<int, 2>;
+using uvec2  = std::array<uint32, 2>;
 
 union ScalarValue
 {
@@ -61,8 +84,17 @@ overloaded(Ts...) -> overloaded<Ts...>;
 template <typename T>
 struct handle
 {
+  static inline constexpr uint32_t k_null_32 = 0;
+  static inline constexpr uint32_t mask      = 0x00ffffff;
+  static inline constexpr uint32_t lifecycle = 0x01000000;
+
   constexpr handle() noexcept = default;
   constexpr handle(uint32_t v) noexcept : reserved(v) {}
+
+  template <typename D>
+  requires(std::derived_from<D, T> || std::derived_from<T, D>) constexpr handle(terra::handle<D> other) noexcept
+      : reserved(other.reserved)
+  {}
 
   constexpr operator uint32_t() const noexcept
   {
@@ -71,46 +103,45 @@ struct handle
 
   constexpr operator bool() const noexcept
   {
-    return reserved != std::numeric_limits<uint32_t>::max();
+    return reserved != 0;
   }
 
   constexpr auto operator<=>(handle const&) const noexcept = default;
 
-  constexpr uint32_t value() const
+  constexpr uint32_t index() const
   {
-    return 0x00ffffff & reserved;
+    return mask & reserved;
   }
 
   // unmasked value
-  constexpr uint32_t um_value() const
+  constexpr uint32_t um_index() const
   {
     return reserved;
   }
 
+  constexpr handle cycle_up() const
+  {
+    return handle(reserved + lifecycle);
+  }
+  template <typename D>
+  requires(std::derived_from<D, T> || std::derived_from<T, D>) constexpr operator terra::handle<D>() noexcept
+  {
+    return terra::handle<D>(reserved);
+  }
+
 public:
-  uint32_t reserved = std::numeric_limits<uint32_t>::max();
+  uint32_t reserved = k_null_32;
 };
 
+using ghandle = handle<std::void_t<>>;
+
 template <typename T>
-struct index
-{
-  constexpr index() noexcept = default;
-  constexpr index(int32_t v) noexcept : reserved(v) {}
-
-  constexpr operator int32_t() const noexcept
+struct HandleHash
+{  
+  inline uint32_t operator()(handle<T> d) const noexcept
   {
-    return reserved;
+    return d.reserved;
   }
-
-  constexpr operator bool() const noexcept
-  {
-    return reserved < 0;
-  }
-
-  constexpr auto operator<=>(index const&) const noexcept = default;
-
-public:
-  int32_t reserved = std::numeric_limits<int32_t>::min();
 };
 
 template <typename T>
@@ -118,7 +149,6 @@ using optional_ref = std::optional<std::reference_wrapper<T>>;
 
 class Pipeline;
 class Node;
-using hnode = handle<Node>;
 
 // default values recommended by http://isthe.com/chongo/tech/comp/fnv/
 /// hash a single byte
@@ -137,10 +167,10 @@ inline uint32_t fnv1a(const void* data, size_t numBytes, uint32_t hash = Seed)
   return hash;
 }
 
-inline std::u8string parseU8(std::string_view from) 
+inline std::u8string parseU8(std::string_view from)
 {
   std::u8string out;
-  auto hexchar = [](char c) -> char8_t
+  auto          hexchar = [](char c) -> char8_t
   {
     c = std::toupper(c);
     return (c >= 'A') ? (c - 'A' + 10) : (c - '0');
@@ -168,5 +198,101 @@ inline std::u8string parseU8(std::string_view from)
     i++;
   }
   return out;
+}
+
+enum class DataType
+{
+  eInt2,
+  eFloat2,
+  eInt,
+  eFloat,
+  eImage,
+  eImageSource,
+  eBufferOutput,
+  eCurveData,
+  eBool,
+  eInvalid
+};
+
+enum class Semantic
+{
+  eNone
+};
+
+struct DataFormat
+{
+  DataType type          = DataType::eInvalid;
+  DataType scalarSubType = DataType::eFloat;
+
+  inline auto operator<=>(const DataFormat&) const noexcept = default;
+
+  static bool isCompatible(DataFormat const& from, DataFormat const& to);
+};
+
+DataType         stringToType(std::string_view);
+std::string_view typeToString(DataType);
+
+union DataValue
+{
+  float fval;
+  int   ival = 0;
+
+  DataValue() = default;
+  DataValue(float val) : fval(val) {}
+  DataValue(int val) : ival(val) {}
+};
+
+struct LaunchParams
+{
+  uvec2    tileSize;
+  float    frequency;
+  float    wavelength;
+  uint32_t seed;
+};
+
+// Rendering is done 1 tile at a time
+struct EnvParams
+{
+  uvec2 tile;
+  uvec2 textureOffset; // if we are writing to a texture
+
+  // Current tile offset
+  uvec2 tileOffset;
+  // Current tile size
+  uvec2 tileSize;
+  // Offset within the tile
+  uvec2 offset;
+  // Size within the tile
+  uvec2 size; // writable size
+
+  float    frequency;
+  float    wavelength;
+  uint32_t seed;
+  uint32_t bufferArraySize;
+
+  inline constexpr auto operator<=>(EnvParams const&) const noexcept = default;
+};
+
+enum class DrawHint
+{
+  eDefault,  // newline
+  eSameline, // same line as the previous param
+  eHidden
+};
+
+class DataSource;
+using DataSourcePtr = std::shared_ptr<DataSource>;
+using dshandle      = handle<DataSourcePtr>;
+using DSHandleHash  = HandleHash<DataSourcePtr>;
+
+inline uintptr_t pack(uint32_t first, uint32_t sec)
+{
+  return (uintptr_t)first << 32ull | (uintptr_t)sec;
+}
+
+using uintpair = std::pair<uint32_t, uint32_t>;
+inline uintpair unpack(uintptr_t v)
+{
+  return std::make_pair<uint32_t, uint32_t>(static_cast<uint32_t>(v >> 32ull), static_cast<uint32_t>(v & 0xffffffff));
 }
 } // namespace terra

@@ -1,5 +1,4 @@
 #define uint2 uvec2
-#define int4 ivec4
 #define float4 vec4
 #define uint4 uvec4
 
@@ -30,8 +29,8 @@ struct EnvParams
     vec2 grid_size;
     vec2 recip_grid_size;
 
-    uint2 size;
-    uint2 start_coord;
+    uvec2 size;
+    uvec2 start_coord;
 
     uint   seed;
     uint   buffer_array_size; // number of vec4

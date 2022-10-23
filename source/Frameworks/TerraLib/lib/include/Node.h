@@ -10,83 +10,36 @@
 #include "DataSource.h"
 #include "Dependency.h"
 #include "GpuBuffer.h"
-#include "ImageData.h"
+#include "Image.h"
 #include "RenderDevice.h"
 #include "Serializer.h"
 
 namespace terra
 {
 class Terra;
-enum class DataType
+
+using Parameter = std::variant<ScalarValue, dshandle>;
+using TaskKey = uint64_t;
+enum class Result
 {
-  eInt2,
-  eFloat2,
-  eInt,
-  eFloat,
-  eImage,
-  eDataSource,
-  eCurveData,
-  eBool,
-  eInvalid
+  eFinished,
+  eContinue,
+  eAbort
 };
-
-struct DataFormat
-{
-  DataType    type                                          = DataType::eInvalid;
-  DataType    scalarSubType                                 = DataType::eFloat;
-  uint32_t    semantic                                      = 0; // Strict rule for matching input
-  inline auto operator<=>(const DataFormat&) const noexcept = default;
-};
-
-DataType    stringToType(std::string_view);
-std::string_view typeToString(DataType);
-
-enum class DrawHint
-{
-  eDefault,  // newline
-  eSameline, // same line as the previous param
-  eHidden
-};
-
-union DataValue
-{
-  float fval;
-  int   ival = 0;
-
-  DataValue() = default;
-  DataValue(float val) : fval(val) {}
-  DataValue(int val) : ival(val) {}
-};
-
-struct EnvParams
-{
-  float frequency;
-  float wavelength;
-
-  vec2 gridSize;
-  vec2 recipGridSize;
-
-  uint2 size;
-  uint2 startCoord;
-
-  uint32_t seed;
-  uint32_t bufferArraySize;
-};
-
-using Parameter = std::variant<std::monostate, ScalarValue, DataSource, ImageSource, CurveDataPtr>;
 
 struct ParameterMeta
 {
-  std::string   name;
-  int32         uboOffset       = -1;
-  int32         descriptorIndex = -1;
+  std::string        name;
+  int32              uboOffset       = -1;
+  int32              descriptorIndex = -1;
   DataFormat         format;
   DrawHint           drawHint = DrawHint::eDefault;
+  Semantic           semantic = Semantic::eNone; // Semantic being used for update
   std::string        sampler;
   std::u8string_view help;
   std::u8string_view tooltip;
 
-  std::array<int, 2> optionIndex = {};
+  uint32_t optionIndex = {};
 
   enum ValueType
   {
@@ -98,12 +51,14 @@ struct ParameterMeta
   };
 
   DataValue values[ValueType::eCount] = {};
-  
 
   inline bool isValid() const
   {
     return format.type != DataType::eInvalid;
   }
+
+  bool canBeSource() const;
+  bool canBeScalar() const;
 
   Parameter getDefault() const;
 
@@ -113,6 +68,7 @@ struct ParameterMeta
   void setValueFromString(ValueType, std::string_view);
 };
 
+class Node;
 class NodeMeta
 {
 
@@ -144,8 +100,18 @@ public:
   DataFormat                     format;
   GfxDescriptorSetLayout::handle descriptorSetLayout;
   std::vector<std::string>       options;
+    
   bool                           hasTextureOutput = false;
   bool                           hasUniforms      = false;
+
+  // override run
+  std::function<Result(Node&, Pipeline&)> ensure;
+  std::function<Result(Node&, Pipeline&)> run;
+
+  // attributes
+  bool attribTileConstanted = false;
+  bool attribIteration      = false;
+  //
 
   uint32_t findParam(std::string_view name) const
   {
@@ -162,41 +128,34 @@ public:
 
   void buildShaderGLSL(ShaderContent const&);
 
+
 private:
   std::shared_ptr<ShaderBuilder>                          shaderBuilder;
   mutable std::unordered_map<Options, GfxProgram::handle> shaders;
-
-  static std::string writeTextureSamplerGLSL(std::string_view);
-  static std::string writeDataSamplerGLSL(RenderDevice::Caps const& caps, std::string_view);
-  static std::string writeCurveSamplerGLSL(RenderDevice::Caps const&, std::string_view);
-  static std::string writeImageStoreGLSL(std::string_view);
-  static std::string writeBufferStoreGLSL(std::string_view);
 };
 
-class Node : public Dependency
+class Node : public DataSource
 {
 public:
-  Node() = default;
-  Node(Node&&) = default;
-  Node(Node const&) = delete;
+  Node()                                = default;
+  Node(Node&&)                          = default;
+  Node(Node const&)                     = delete;
   Node& operator=(Node&&) noexcept      = default;
   Node& operator=(Node const&) noexcept = delete;
   Node(NodeMeta const&);
   ~Node();
 
-  void markValueChanged()
-  {
-    valueChanged = true;
-  }
-  void markOptionChanged()
-  {
-    optionChanged = true;
-  }
+  void markValueChanged();
+    
   uint32_t getNumParams() const
   {
     return (uint32_t)parameters.size();
   }
-  DataFormat const& getFormat() const
+  Type getType() const final
+  {
+    return Type::eNode;
+  }
+  DataFormat getFormat() const final
   {
     return meta->format;
   }
@@ -212,70 +171,41 @@ public:
   {
     return meta->hasTextureOutput;
   }
-  void setId(uint32_t id)
-  {
-    this->id = id;
-  }
-  auto getId() const
-  {
-    return id;
-  }
+
   template <typename L>
   int32_t forEachSource(L&& lambda)
   {
     int32_t hasEdges = 0;
     for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
     {
-      if (meta->parameterDef[i].format.type == DataType::eDataSource)
+      if (std::holds_alternative<dshandle>(parameters[i]))
       {
-        auto node = std::get<DataSource>(parameters[i]).node;
+        auto node = std::get<dshandle>(parameters[i]);
         if (node && isValid(node))
         {
           hasEdges++;
-          lambda(node);
+          if(!lambda(i, node))
+            return -1;
         }
-      }
-      else if (meta->parameterDef[i].format.type == DataType::eImage)
-      {
-        auto& img = std::get<ImageSource>(parameters[i]);
-        if (std::holds_alternative<hnode>(img.source))
-        {
-          auto node = std::get<hnode>(img.source);
-          if (node && isValid(node))
-          {
-            hasEdges++;
-            lambda(node);
-          }
-        }
- 
       }
     }
     return hasEdges;
   }
-  void setOrder(uint32_t taskId, int32_t order)
+
+  int32_t getOutputId(TaskKey task) const
   {
-    tasks[taskId].execOrder = order;
+    auto it = tasks.find(task);
+    if (it != tasks.end())
+      return it->second.outputId;
+    return -1;
   }
-
-  int32_t getOutputId(uint32_t task) const
-  {
-    return tasks[task].outputId;
-  }
-
-  void sourceDeleted(hnode src);
-
-  bool        isInputCompatible(uint32_t i, DataFormat const&);
-  hnode       setValue(uint32_t i, Parameter&& value); // retunrs old source of data
-  void        setValueModified(uint32_t i);
-  void        prepare(uint32_t token);
-  bool        isReadyToExecute(uint32_t taskId);
-  void        deleteTaskData(uint32_t taskId);
-  void        enqueue(uint32_t taskId, uint32_t iteration, Pipeline&);
-  void        run(uint32_t taskId, Pipeline&);
-  void        finish(uint32_t taskId, Pipeline&);
-  int32_t     incomingEdges() const;
-  hnode       clone(uint32_t iteration);
-  static bool isValid(hnode);
+    
+  bool     setValue(uint32_t i, ScalarValue value); // retunrs old source of data
+  bool     setValue(uint32_t i, dshandle value);    // retunrs old source of data
+  void     setValueModified(uint32_t i);
+  void     deleteTaskData(uint32_t taskId);
+  // int32_t incomingEdges() const;
+  dshandle clone(uint32_t iteration);
 
   std::u8string_view getName() const
   {
@@ -286,40 +216,55 @@ public:
   {
     return parameters[i];
   }
-  
-  auto& param(uint32 i) 
+
+  auto& param(uint32 i)
   {
     return parameters[i];
   }
 
-  auto const& paramMeta(uint32 i) const 
+  auto const& paramMeta(uint32 i) const
   {
     return meta->parameterDef[i];
   }
 
+  Result run(Pipeline&);
+
+  bool ensure(Pipeline&) final;
+  void accept(dshandle source, Event) final;
+
+  bool isEnabled(Pipeline const&) final;
+  void fillDescriptor(Pipeline const&, GfxDescriptorSet::rhandle&, std::byte*) final;
+
 private:
   struct TaskData
   {
-    bool                     ready     = false;
-    int32_t                  execOrder = 0;
     int32_t                  outputId  = -1;
     GfxDescriptorSet::handle descriptorSet;
     uint32_t                 outputX = 0;
     uint32_t                 outputY = 0;
     EnvParams                params;
+    GfxProgram::handle       shader;
+    int32_t                  iteration = -1;
+    bool                     valueChanged  = true;
   };
 
   std::u8string          name;
-  std::vector<TaskData>  tasks;
-  hnode                  id;
+  std::unordered_map<TaskKey, TaskData> tasks;
   NodeMeta const*        meta = nullptr;
   std::vector<Parameter> parameters;
-  GfxProgram::handle     shader;
-  uint32_t               prepareToken  = std::numeric_limits<uint32_t>::max();
-  bool                   valueChanged  = true;
-  bool                   optionChanged = true;
 
-  bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx);
-  void toDataStream(std::vector<uint8_t>& dataStream) const;
+  // attribute values
+  ivec2 tileConstraintMin = {-1, -1};
+  ivec2 tileConstraintMax = {-1, -1};
+  float defaultValue      = 1.0f;
+  int32_t maxIteration      = 1;
+  //
+
+  bool alreadyComputed(Pipeline const&);
+
+  void     sourceDeleted(dshandle src);
+  bool     fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
+  void     toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
+  exchange setParamSourceImpl(uint32_t paramIdx, dshandle) final;
 };
 } // namespace terra

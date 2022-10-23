@@ -38,10 +38,10 @@ void GfxDevice43::init()
     throw std::runtime_error("Failed to initalize device");
   }
   features.version = (int)version.majorVersion() * 100 + (int)version.minorVersion() * 10;
-  #ifndef NDEBUG
+#ifndef NDEBUG
   gl43::glEnable(gl43::GL_DEBUG_OUTPUT);
   gl43::glDebugMessageCallback(MessageCallback, nullptr);
-  #endif
+#endif
   logInfo("OpenGL {}.{} - {}", version.majorVersion(), version.minorVersion(), glbinding::aux::ContextInfo::vendor());
 }
 
@@ -51,7 +51,7 @@ void GfxDevice43::clearBackbuffer(glm::vec4 color)
   gl43::glClear(gl43::GL_COLOR_BUFFER_BIT);
 }
 
-void GfxDevice43::flushStates() 
+void GfxDevice43::flushStates()
 {
   state.flush = true;
 }
@@ -104,7 +104,7 @@ void GfxDevice43::setState(GlGfxState const& newState)
                      newState.viewport.size.y);
     state.viewport = newState.viewport;
   }
-  if (state.scissorsEnabled && (newState.scissor != state.scissor|| state.flush))
+  if (state.scissorsEnabled && (newState.scissor != state.scissor || state.flush))
   {
     gl43::glScissor(newState.scissor.offset.x, newState.scissor.offset.y, newState.scissor.size.x,
                     newState.scissor.size.y);
@@ -376,6 +376,7 @@ GfxProgram::handle GfxDevice43::createProgram(ShaderOptions const& options, Shad
     }
     destroy(GfxProgram::handle(h));
     h = {};
+    return h;
   }
   gl43::glValidateProgram(res.glhandle);
   gl43::glGetProgramiv(res.glhandle, gl43::GL_VALIDATE_STATUS, &status);
@@ -410,10 +411,10 @@ GfxMesh::handle GfxDevice43::createMeshLayout(GfxMesh::Layout const& mesh)
     res.usageCounter++;
     return exists->second;
   }
-  auto  h   = resources.meshes.emplace();
-  auto& res = resources.meshes.at(h);
-  auto  it  = resources.meshMap.emplace(mesh, h);
-  res.desc  = &it.first->first;
+  auto  h          = resources.meshes.emplace();
+  auto& res        = resources.meshes.at(h);
+  auto  it         = resources.meshMap.emplace(mesh, h);
+  res.desc         = &it.first->first;
   res.usageCounter = 1;
   gl43::glGenVertexArrays(1, &res.glhandle);
   gl43::glBindVertexArray(res.glhandle);
@@ -544,7 +545,7 @@ void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
   for (uint32_t i = 0; i < mesh.desc->vertexBufferCount; ++i)
   {
     auto bufferOffset = drawDesc.vertexBuffers[i].offset;
-   // if (mesh.vertexBuffers[i] != drawDesc.vertexBuffers[i].handle || bufferOffset != mesh.vertexBufferOffsets[i])
+    // if (mesh.vertexBuffers[i] != drawDesc.vertexBuffers[i].handle || bufferOffset != mesh.vertexBufferOffsets[i])
     {
       auto oglBuffer = resources.buffers[drawDesc.vertexBuffers[i].handle].glhandle;
       gl43::glBindVertexBuffer(i, oglBuffer, bufferOffset, mesh.desc->vertexBuffers[i].stride);
@@ -556,7 +557,7 @@ void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
   auto mode = toGLDrawMode(drawDesc.type);
   if (drawDesc.indexCount > 0)
   {
-   // if (mesh.elementBuffer != drawDesc.indexBuffer.handle)
+    // if (mesh.elementBuffer != drawDesc.indexBuffer.handle)
     {
       auto indexBuffer = resources.buffers[drawDesc.indexBuffer.handle].glhandle;
       gl43::glBindBuffer(gl43::GLenum::GL_ELEMENT_ARRAY_BUFFER, indexBuffer);

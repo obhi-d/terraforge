@@ -3,5 +3,5 @@ vec4 to_RGBA(NodeParams np)
 {
   vec2 minmax = sample_MinMax(0, np);
   float data = sample_Source(np);
-  store_output((data - minmax.x) / (minmax.y - minmax.x), np);
+  return vec4((data - minmax.x) / (minmax.y - minmax.x));
 }

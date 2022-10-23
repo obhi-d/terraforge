@@ -7,12 +7,6 @@ namespace terra
 {
 class Terra;
 class Node;
-enum class NodeEvent
-{
-  eValueModified,
-  eOptionChanged,
-  eNodeDeleted
-};
 class Terra;
 class Dependency
 {
@@ -22,12 +16,12 @@ public:
   Dependency(Dependency const&) = delete;
   Dependency&  operator=(Dependency&&) noexcept = default;
   Dependency&  operator=(Dependency const&) = delete;
-  virtual void add(hnode node)
+  virtual void add(dshandle node)
   {
     dependents.emplace(node);
   }
 
-  virtual void remove(hnode node)
+  virtual void remove(dshandle node)
   {
     dependents.erase(node);
   }
@@ -43,10 +37,11 @@ public:
     std::for_each(dependents.begin(), dependents.end(), lambda);
   }
 
-  void propagate(hnode, NodeEvent);
+  static void replace(ghandle o);
 
 private:
-  std::unordered_set<int32_t> dependents;
+  std::unordered_set<dshandle, DSHandleHash> dependents;
 };
+
 
 }

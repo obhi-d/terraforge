@@ -8,13 +8,13 @@ vec4 open_simplex_2(NodeParams np)
   vec4 x0 = floor( x + f );
   vec4 y0 = floor( y + f );
   
-  int4 i = int4( x0 ) * FnPrimes_X;
-  int4 j = int4( y0 ) * FnPrimes_Y;
+  ivec4 i = ivec4( x0 ) * FnPrimes_X;
+  ivec4 j = ivec4( y0 ) * FnPrimes_Y;
   
   vec4 g = vec4( G2 ) * ( x0 + y0 );
   x0       = x - ( x0 - g );
   y0       = y - ( y0 - g );
-  int4 i1  = greater_than( x0, y0 );
+  ivec4 i1  = greater_than( x0, y0 );
   
   vec4 x1 = mask_sub( x0, vec4( 1.0 ), i1 ) + vec4( G2 );
   vec4 y1 = nmask_sub( y0, vec4( 1.0 ), i1 ) + vec4( G2 );
@@ -36,11 +36,11 @@ vec4 open_simplex_2(NodeParams np)
   t2 *= t2;
   t2 *= t2;
   
-  int4   seed = int4( np.env.seed );
+  ivec4   seed = ivec4( np.env.seed );
   vec4 n0   = gradient_dot_fancy( hash_primes( seed, i, j ), x0, y0 );
   vec4 n1   = gradient_dot_fancy(
-        hash_primes( seed, mask_add( i, int4( FnPrimes_X ), i1 ), nmask_add( j, int4( FnPrimes_Y ), i1 ) ), x1, y1 );
-  vec4 n2 = gradient_dot_fancy( hash_primes( seed, i + int4( FnPrimes_X ), j + int4( FnPrimes_Y ) ), x2, y2 );
+        hash_primes( seed, mask_add( i, ivec4( FnPrimes_X ), i1 ), nmask_add( j, ivec4( FnPrimes_Y ), i1 ) ), x1, y1 );
+  vec4 n2 = gradient_dot_fancy( hash_primes( seed, i + ivec4( FnPrimes_X ), j + ivec4( FnPrimes_Y ) ), x2, y2 );
   
   return vec4( 49.918426513671875f ) * ( n0 * t0 + ( n1 * t1 + n2 * t2 ) );
 }

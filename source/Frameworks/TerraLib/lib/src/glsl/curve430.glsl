@@ -1,18 +1,21 @@
 constexpr std::string_view gs_curve430 = R"_(
 
+#if Has_{0}
 uint closest_{0}(float x, NodeParams np)
-{{
-  for(uint i = 1; i < {0}.npoints; ++i)
+{{    
+  for(uint i = 1; i < np.uniforms.np_{0}; ++i)
   {{
     if(x < {0}.data[i])
       return i-1;
   }}
-  return {0}.npoints-1;
+  return np.uniforms.np_{0}-1;
 }}
+#endif
 
 float sample_{0}(float x, NodeParams np)
 {{
-  uint n   = {0}.npoints;
+#if Has_{0}
+  uint n   = np.uniforms.np_{0};
   uint idx = closest_{0}( x );
   const uint sx = 0;
   const uint sy = n;
@@ -25,7 +28,7 @@ float sample_{0}(float x, NodeParams np)
   if( x < {0}.data[0] )
   {{
       // extrapolation to the left
-      interpol = ( {0}.c0 * h + {0}.data[sb] ) * h + {0}.data[sy];
+      interpol = ( np.uniforms.c0_{0} * h + {0}.data[sb] ) * h + {0}.data[sy];
   }}
   else if( x > {0}.data[n - 1] )
   {{
@@ -38,6 +41,9 @@ float sample_{0}(float x, NodeParams np)
       interpol = ( ( {0}.data[sd + idx] * h + {0}.data[sc + idx] ) * h + {0}.data[sb + idx] ) * h + {0}.data[sy + idx];
   }}
   return interpol;
+#else
+  return np.uniforms.x_{0} + x * np.uniforms.s_{0};
+#endif
 }}
 
 float sample_{0}(float x, float y, NodeParams np)

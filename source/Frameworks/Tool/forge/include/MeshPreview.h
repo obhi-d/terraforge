@@ -1,18 +1,23 @@
 
 #pragma once
 
-#include "Setup.h"
+#include "GlGfx.h"
 #include "Pipeline.h"
+#include "Setup.h"
 
 namespace terra
 {
-  class MeshPreview
-  {
-  public:
-    void regenerate(AppSettings const&, hnode);
+class TerraMainApp;
+class MeshPreview
+{
+public:
+  void init(TerraMainApp&);
+  void regenerate(TerraMainApp const&, dshandle);
 
-  private:
-    Pipeline          pipeline;
-    GfxBuffer::handle buffer;
-  };
-}
+private:
+  Pipeline          pipeline;
+  GfxBuffer::handle buffer;
+  GfxMesh::handle   layout;
+  GfxMaterial       material;
+};
+} // namespace terra

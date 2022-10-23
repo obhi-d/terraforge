@@ -4,7 +4,7 @@
 
 namespace terra
 {
-struct GfxBufferGl
+struct GfxBufferGl : GfxBuffer
 {
   gl::GLuint       glhandle;
   gl::GLenum       target;
@@ -13,7 +13,7 @@ struct GfxBufferGl
   uint32_t         size;
 };
 
-struct GfxImageGl
+struct GfxImageGl : GfxImage2D
 {
   gl::GLuint      glhandle;
   GfxStorageClass storage;
@@ -22,35 +22,35 @@ struct GfxImageGl
   ImageFormat     format;
 };
 
-struct GfxSamplerGl
+struct GfxSamplerGl : GfxSampler
 {
   gl::GLuint glhandle;
 };
 
-struct GfxDescriptorSetLayoutGl
+struct GfxDescriptorSetLayoutGl : GfxDescriptorSetLayout
 {
   std::unique_ptr<GfxDescriptorSetLayout::Descriptor[]> descriptors;
   uint32_t                                              descriptorCount = 0;
 };
 
-struct GfxDescriptorSetGl
+struct GfxDescriptorSetGl : GfxDescriptorSet
 {
   GfxDescriptorSetLayout::handle               layout;
   std::unique_ptr<GfxDescriptorSet::rhandle[]> values;
 };
 
-struct GfxFenceGl
+struct GfxFenceGl : GfxFence
 {
   gl::GLsync sync;
 };
 
-struct GfxProgramGl
+struct GfxProgramGl : GfxProgram
 {
   gl::GLuint glhandle;
   gl::GLuint shaders[ShaderTypeCount] = {};
 };
 
-struct GfxMeshLayoutGl
+struct GfxMeshLayoutGl : GfxMesh
 {
   GfxMesh::Layout const* desc = nullptr;
   GfxBuffer::handle      vertexBuffers[4];

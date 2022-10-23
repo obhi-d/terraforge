@@ -28,15 +28,15 @@ class DrawableNode
 {
 public:
 
-  DrawableNode(TerraMainApp&, hnode id, ImVec2 pos);
+  DrawableNode(TerraMainApp&, dshandle id, ImVec2 pos);
   bool begin(TerraMainApp&, ImguiBackend&, NodeEditor&, bool& previewNode);
   void end(TerraMainApp&, ImguiBackend&, NodeEditor&);
-  bool is(hnode id) const
+  bool is(dshandle id) const
   {
     return id == this->id;
   }
 
-  hnode getId() const
+  dshandle getId() const
   {
     return id;
   }
@@ -60,7 +60,7 @@ private:
 
   float    headerMaxY = 0.0f;
 
-  hnode    id;
+  dshandle    id;
   uint32_t style;
 
   ImVec2   pos;

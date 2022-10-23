@@ -20,6 +20,9 @@ public:
   GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
                                  std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
                                  uint32 mipLevels = 1) override;
+  GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
+                                      std::span<std::byte const*> data = {}, GfxImage2D::Swizzle swizzle = {},
+                                 uint32 mipLevels = 1) override;
   void               destroy(GfxImage2D::handle) override;
   GfxSampler::handle createSampler(ImageSampling) override;
   void               destroy(GfxSampler::handle) override;

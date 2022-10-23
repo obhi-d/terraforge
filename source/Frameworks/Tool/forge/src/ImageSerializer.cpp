@@ -79,9 +79,8 @@ void ImageSerializer::saveImage(ImageData const& image, std::filesystem::path pa
   png_destroy_write_struct(&png_ptr, &info_ptr);
 }
 
-ImageData ImageSerializer::loadImage(std::filesystem::path path) 
+bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
 {
-  ImageData data;
   int           bitDepth        = 0;
   int           colorType       = 0;
   int           interlaceType   = 0;
@@ -90,16 +89,17 @@ ImageData ImageSerializer::loadImage(std::filesystem::path path)
   size_t          rowbytes        = 0; 
   char            channels        = 0;
   auto            row_pointers    = std::vector<png_bytep>();
+  bool            ok              = true;
   std::ifstream file(path, std::ios::binary);
   if (!file)
   {
     logError("Failed to open file : {}", path.string());
-    return std::move(data);
+    return false;
   }
   data.source         = path;
   png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
   if (!png_ptr)
-    return std::move(data);
+    return false;
   png_infop info_ptr = png_create_info_struct(png_ptr);
   if (!info_ptr)
   {
@@ -174,9 +174,12 @@ ImageData ImageSerializer::loadImage(std::filesystem::path path)
     row_pointers[i] = (png_bytep)(data.data.get() + i * rowbytes);
   png_read_image(png_ptr, row_pointers.data());
   png_read_end(png_ptr, NULL);
+  goto done;
 error:
+  ok = false;
+done:
   png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-  return std::move(data);
+  return ok;
 }
 
 void ImageSerializer::loadImageRgba(std::span<std::byte*> rows, uint32_t xwidth, uint32_t xheight,

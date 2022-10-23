@@ -26,8 +26,7 @@ void Terra::init(std::shared_ptr<RenderDevice> dev, Localization l)
 
 void Terra::destroy() 
 {
-  images.clear();
-  nodes.clear();
+  dataSources.clear();
   nodeMetaTable.clear();
  }
 
@@ -89,20 +88,22 @@ GfxSampler::handle Terra::getSampler(ImageSampling sampling)
   return sampler;
 }
 
-index<ImageData> Terra::getImage(std::filesystem::path path)
+dshandle Terra::getImage(std::filesystem::path path)
 {
-  for (uint32_t i = 0; i < images.size(); ++i)
-    if (images[i].source == path)
-      return index<ImageData>((uint32_t)i);
+  for (uint32_t i = 0; i < dataSources.size(); ++i)
+    if (dataSources[i]->getType() == DataSource::Type::eImage)
+      return dataSources[i]->getSelf();
 
-  return images.emplace(path);
+  auto ptr = std::make_shared<Image>(path);
+  ptr->setSelf(dataSources.emplace(ptr));
+  return ptr->getSelf();
 }
 
-hnode Terra::createNode(NodeMeta const& meta)
+dshandle Terra::createNode(NodeMeta const& meta)
 {
-  auto lnk = nodes.emplace(meta);
-  nodes.at(lnk).setId(lnk);
-  return lnk;
+  auto ptr = std::make_shared<Node>(meta);
+  ptr->setSelf(dataSources.emplace(ptr));
+  return ptr->getSelf();
 }
 
 uint32_t Terra::getSemantic(std::string_view from)

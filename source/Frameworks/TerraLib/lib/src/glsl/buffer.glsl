@@ -10,7 +10,7 @@ void store_{0}(output_t value, NodeParams np)
 
 constexpr std::string_view gs_bufferLoad = R"_(
 
-#ifdef HasTextureOutput
+#if Has_TextureOutput
 
 {0}_t sample_{0}(NodeParams np)
 {{ 
@@ -77,7 +77,7 @@ constexpr std::string_view gs_bufferLoad = R"_(
 {{ 
   if (has_{0})
   {{
-    int4 id = get_pixel_id(x, y, np);
+    uint4 id = get_pixel_id(x, y, np);
     return {0}_t4(
       {0}.data[id.x],
       {0}.data[id.y],
@@ -86,7 +86,7 @@ constexpr std::string_view gs_bufferLoad = R"_(
   }}
   else
   {{
-    return {0}_t4(np.uniforms.{0});
+    return {0}_t4(np.uniforms.{0}, np.uniforms.{0}, np.uniforms.{0}, np.uniforms.{0});
   }}
 }}
 

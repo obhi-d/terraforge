@@ -9,55 +9,139 @@ Pipeline::Image::~Image()
   terra::get().getDevice().destroy(image);
 }
 
-void Pipeline::prepare(DispatchTask&& task)
+Pipeline::Pipeline(uint32_t taskId) : id(taskId) 
 {
-  this->task = task;
   ubo.setDesc(GfxBuffer::Usage::fUniform, GfxStorageClass::eDynamicDeviceReadonly);
 }
 
-int32_t Pipeline::compute(hnode index)
+void Pipeline::compute(dshandle h, LaunchParams const& params, uvec2 start, uvec2 size)
 {
-  prepareNodes(index);
-  nodes.push_back(index);
-  return (int32_t)nodes.size() - 1;
+  assert(start[0] >= 1);
+  assert(start[1] >= 1);
+
+  cleanup();
+
+  actor      = h;
+  launchParams = params;
+  iteration  = 0;
+  subTask      = 0;
+
+  // how many tiles
+  // top corner is (1, 1)
+  uvec2 tileCount;
+  tileCount[0] = (size[0] + ((start[0] - 1) % params.tileSize[0])) / params.tileSize[0]; 
+  tileCount[1] = (size[1] + ((start[1] - 1) % params.tileSize[1])) / params.tileSize[1]; 
+
+  uvec2 tileStart;
+  tileStart[0] = ((start[0] - 1) / params.tileSize[0]);
+  tileStart[1] = ((start[1] - 1) / params.tileSize[1]);
+
+  tiles.reserve(tileCount[0] * tileCount[1]);
+
+  for (uint32_t i = 0; i < tileCount[0]; ++i)
+  {
+    for (uint32_t j = 0; j < tileCount[1]; ++j)
+    {
+      TileTask task;
+      task.envParams.tile[0] = i + tileStart[0];
+      task.envParams.tile[1] = i + tileStart[1];
+      
+      task.envParams.tileOffset[0] = tileStart[0] + i * params.tileSize[0];
+      task.envParams.tileOffset[1] = tileStart[1] + i * params.tileSize[1];
+      task.envParams.tileSize      = params.tileSize;
+      task.envParams.offset[0]     = std::max(task.envParams.tileOffset[0], start[0]) - task.envParams.tileOffset[0];
+      task.envParams.offset[1]     = std::max(task.envParams.tileOffset[1], start[1]) - task.envParams.tileOffset[1];
+      task.envParams.size[0]       = params.tileSize[0] - task.envParams.offset[0];
+      task.envParams.size[1]       = params.tileSize[1] - task.envParams.offset[1];
+      if (task.envParams.size[0] > 0 && task.envParams.size[1] > 0)
+      {
+        task.envParams.textureOffset[0] = task.envParams.tileOffset[0] - start[0];
+        task.envParams.textureOffset[1] = task.envParams.tileOffset[1] - start[1];
+        task.envParams.frequency        = params.frequency;
+        task.envParams.wavelength       = params.wavelength;
+        task.envParams.seed             = params.seed;
+        task.envParams.bufferArraySize  = (task.envParams.size[0] + 2) * (task.envParams.size[1] + 2);
+        tiles.emplace_back(task);
+      }
+    }
+  }
+  dirty = true;
+  
 }
 
-int32_t Pipeline::computePreview(hnode index)
+void Pipeline::run() 
 {
-  auto& main = Terra::get();
-  auto  meta = main.getNodeMeta("Utility.getMinMax");
+  if (dirty)
+    return;
 
-  auto minMaxId = main.createNode(*meta);
-  if (!meta)
-    return ~0u;
-  nodesToDelete.push_back(minMaxId);
-  auto& minmax = main.getNode(minMaxId);
+  dirty = false;
+  subTask = 0;
+  for (auto& t : tiles)
+  {
+    
+    if (DataSource::isValid(actor))
+    {
+      get().get<Node>(actor).ensure(*this);
+    }
 
-  minmax.enqueue(task.taskID, 0, *this);
-  minmax.setValue(0, DataSource(index));
+    allocateResources();
 
-  meta         = main.getNodeMeta("Modifiers.toRGBA");
-  if (!meta)
-    return ~0u;
-  auto rgbaId = main.createNode(*meta);
-  nodesToDelete.push_back(rgbaId);
-  auto& rgba = main.getNode(rgbaId);
+    for (auto h : tiles[subTask].tasks)
+    {
+      auto result = get().get<Node>(h).run(*this);
+      if (Result::eAbort == result)
+        return;
+      if (Result::eContinue == result)
+        dirty = true;
+    }
 
-  rgba.enqueue(task.taskID, 0, *this);
-  rgba.setValue(meta->findParam("MinMax"), DataSource(minMaxId));
- 
-  prepareNodes(rgbaId);
-  nodes.push_back(rgbaId);
+    subTask++;
+  }
+}
 
-  return (int32_t)nodes.size() - 1;
+int32_t Pipeline::declBuffer(int32_t declIdx, uint32_t size, bool transient)
+{
+  auto& buffers = tiles[subTask].buffers;
+  if (declIdx < 0 || declIdx >= (int)buffers.size())
+  {
+    declIdx = (int)buffers.size();
+    buffers.emplace_back();
+  }
+  if (buffers[declIdx].size < size)
+  {
+    buffers[declIdx].size = size;
+    buffers[declIdx].phyId = 0;
+    buffers[declIdx].transient = transient;
+  }
+  return declIdx;
+}
+
+int32_t Pipeline::declImage(int32_t declIdx, uint32_t width, uint32_t height, ImageFormat fmt, bool transient) 
+{
+  auto& images = tiles[subTask].images;
+  if (declIdx < 0 || declIdx >= (int)images.size())
+  {
+    declIdx = (int)images.size();
+    images.emplace_back();
+  }
+  if (images[declIdx].width < width || images[declIdx].height < height || images[declIdx].format != fmt)
+  {
+    images[declIdx].width     = width;
+    images[declIdx].height    = height;
+    images[declIdx].format    = fmt;
+    if (images[declIdx].image)
+      get().getDevice().destroy(images[declIdx].image);
+    images[declIdx].image     = {};
+    images[declIdx].transient = transient;
+  }
+  return declIdx;
 }
 
 void Pipeline::allocateResources()
 {
+  auto&    buffers = tiles[subTask].buffers;
   uint32_t phyId  = 0;
   uint32_t nbBuff = (uint32_t)buffers.size();
-  for (uint32_t i = 0; i < nbBuff; ++i)
-    buffers[i].phyId = 0;
   for (uint32_t i = 0; i < nbBuff; ++i)
   {
     if (buffers[i].phyId)
@@ -66,11 +150,10 @@ void Pipeline::allocateResources()
     for (uint32_t j = i + 1; j < nbBuff; ++j)
     {
       // x1 <= y2 && y1 <= x2
-      if (buffers[j].phyId || (buffers[i].read <= buffers[j].write && buffers[i].write <= buffers[j].read))
-        continue;
       buffers[j].phyId = phyId;
     }
   }
+  auto& gpuBuffers = tiles[subTask].gpuBuffers;
   gpuBuffers.resize(phyId);
   for (uint32_t i = 0; i < nbBuff; ++i)
     gpuBuffers[buffers[i].phyId].setSize(buffers[i].size);
@@ -82,228 +165,37 @@ void Pipeline::allocateResources()
   }
 
   auto& rd = Terra::get().getDevice();
+  auto& images = tiles[subTask].images;
   for (auto& img : images)
-    img.image = rd.createImage(GfxStorageClass::eDeviceAccess, img.width, img.height, img.format);
-}
-
-void Pipeline::prepareNodes(hnode index)
-{
-  nodes.emplace_back(index);
-  auto& main = Terra::get();
-  auto& node = main.getNode(index);
-  if (node.isReadyToExecute(task.taskID))
-    return;
-  auto& meta = node.getMeta();
-  if (meta.iteration == 1)
-    node.enqueue(task.taskID, 0, *this);
-  else
   {
-    auto     totalBufferSize = (task.params.size[0] + 2) * (task.params.size[1] + 2);
-    auto     source          = index;
-    uint32_t sourceIdx       = meta.findParam("Source");
-    uint32_t iterEnd         = meta.iteration;
-    if (meta.iteration == std::numeric_limits<uint32_t>::max())
-    {
-      uint32_t downscale = meta.outputDownscale;
-      if (downscale <= 1)
-        downscale = 2; // downscale so that we do not loop forever
-      uint32_t size = totalBufferSize;
-      iterEnd       = 0;
-      while (size > 0)
-      {
-        iterEnd++;
-        size /= downscale;
-      }
-    }
-    // O -> N (O currently links to N)
-    // What we are doing is inserting a number of intermediate nodes
-    // O->Nn...->N2->N1->N 
-    if (iterEnd <= 1)
-      node.enqueue(task.taskID, 0, *this);
-    else
-    {
-      auto source = std::get<DataSource>(node.getValue(sourceIdx));      
-      for (uint32_t i = 0; i < iterEnd - 1; ++i)
-      {
-        auto newNode = node.clone(i);
-        nodesToDelete.push_back(newNode);
-        auto& iternode = main.getNode(newNode);
-        iternode.enqueue(task.taskID, i, *this);
-        iternode.setValue(sourceIdx, source);
-        source.node = newNode;        
-      }
-      node.setValue(sourceIdx, source);
-    }
-  }
-  node.forEachSource(
-    [this](auto innode)
-    {
-      prepareNodes(innode);
-    });
-}
-
-void Pipeline::gatherLeafs(hnode nodeid, std::unordered_map<int32_t, int>& edgeMap, std::vector<hnode>& leafs) 
-{
-  if (edgeMap.find(nodeid) != edgeMap.end())
-    return;
-  auto& node               = Terra::get().getNode(nodeid);
-  int   edges = node.forEachSource(
-    [&](hnode n)
-    {
-      gatherLeafs(n, edgeMap, leafs);
-    });
-  edgeMap[(int32_t)nodeid] = edges;
-  if (!edges)
-    leafs.push_back(nodeid);
-}
-
-void Pipeline::sortNodes() 
-{
-  auto&                            main = Terra::get();
-  std::vector<hnode>             leafs;
-  std::unordered_map<int32_t, int> incoming;
-  for (auto& n : nodes)
-    gatherLeafs(n, incoming, leafs);
-
-  actors.clear();
-  while (!leafs.empty())
-  {
-    auto nodeId = leafs.back();
-    leafs.pop_back();
-    actors.push_back(nodeId);
-    auto& node = main.getNode(nodeId);
-    node.forEachDependent([&](hnode nodeId) 
-      {
-        int  edges = 0;
-        auto it    = incoming.find(nodeId);
-        if (it == incoming.end())
-        {
-          auto& node                = main.getNode(nodeId);
-          edges                     = node.incomingEdges() - 1;
-          incoming[(int32_t)nodeId] = edges;
-        }
-        else
-          edges = --it->second;
-        if (!edges)
-        {
-          leafs.push_back(nodeId);
-        }
-      });
-  }
-
-  for (int32_t order = 0; order < (int32_t)actors.size(); ++order)
-  {
-    main.getNode(actors[order]).setOrder(task.taskID, order);
-  }
-}
-
-void Pipeline::determineBufferLifetimes()
-{
-  auto& main = Terra::get();
-  for (int32_t i = 0; i < (int32_t)actors.size(); ++i)
-  {
-    auto& nodeId = actors[i];
-    auto& node = main.getNode(nodeId);
-    if (!node.hasTextureOutput())
-    {
-      auto id = main.getNode(nodeId).getOutputId(task.taskID);
-      if (id >= 0)
-        buffers[id].write = i;
-    }
-    node.forEachSource(
-      [&](hnode innode)
-      {
-        auto& src = main.getNode(innode);
-        auto  srcid  = src.getOutputId(task.taskID);
-        if (srcid >= 0)
-          buffers[srcid].read = std::max(buffers[srcid].read, i);
-      });
-  }
-}
-
-int32_t Pipeline::declBuffer(uint32_t size) 
-{
-  buffers.emplace_back();
-  buffers.back().size = size;
-  return (int32_t)buffers.size() - 1;
-}
-
-int32_t Pipeline::declImage(uint32_t width, uint32_t height, ImageFormat fmt)
-{
-  images.emplace_back();
-  images.back().width = width;
-  images.back().height = height;
-  images.back().format = fmt;
-  return (int32_t)images.size() - 1;
-}
-
-void Pipeline::execute() 
-{
-  auto& main = Terra::get();
-  sortNodes();
-  determineBufferLifetimes();
-  allocateResources();
-  ubo.ensure();
-  auto buff = ubo.map(0, sizeof(EnvParams));
-  std::memcpy(buff, &task.params, sizeof(EnvParams));
-  ubo.unmap();
-  for (auto actor : actors)
-  {
-    main.getNode(actor).run(task.taskID, *this);
-  }
-  sync = main.getDevice().createFence();
-}
-
-void Pipeline::wait() 
-{
-  auto& main = Terra::get();
-  main.getDevice().syncFence(sync);
-  sync = {}; 
-  for (auto actor : actors)
-  {
-    main.getNode(actor).deleteTaskData(task.taskID);
-  }
+    if (!img.image)
+      img.image = rd.createImage(GfxStorageClass::eDeviceAccess, img.width, img.height, img.format);
+  }   
 }
 
 void Pipeline::cleanup() 
 {
-  for (auto n : nodesToDelete)
-    terra::get().destroy(n);
-  buffers.clear();
-  images.clear();
-  gpuBuffers.clear();
+  auto& rd = Terra::get().getDevice();
+  for (auto& t : tiles)
+  {
+    for (auto& img : t.images)
+      rd.destroy(img.image);
+  }
+  tiles.clear();
 }
 
-GfxBuffer::handle Pipeline::readOutputBuffer(int32_t nodeIdx) const
+GfxBuffer::handle  Pipeline::getOutputBuffer(dshandle nodeIdx) const 
 {
-  return getOutputBuffer(nodes[nodeIdx]);
+  auto const& node = terra::get().get<Node>(nodeIdx);
+  auto& buffers = tiles[subTask].buffers;
+  return tiles[subTask].gpuBuffers[(uint32_t)buffers[(uint32_t)node.getOutputId(taskId())].phyId].get();
 }
 
-GfxImage2D::handle Pipeline::readOutputImage(int32_t nodeIdx) const
+GfxImage2D::handle Pipeline::getOutputImage(dshandle nodeIdx) const 
 {
-  return getOutputImage(nodes[nodeIdx]);
-}
-
-void Pipeline::readOutputBufferContent(int32_t nodeIdx, std::span<std::byte> out) const
-{
-  get().getDevice().readBuffer(readOutputBuffer(nodeIdx), 0, out);
-}
-
-void Pipeline::readOutputImageContent(int32_t nodeIdx, std::span<std::byte> out) const
-{
-  get().getDevice().readImage(readOutputImage(nodeIdx), out);
-}
-
-GfxBuffer::handle  Pipeline::getOutputBuffer(hnode nodeIdx) const 
-{
-  auto& node = terra::get().getNode(nodeIdx);
-  return gpuBuffers[(uint32_t)buffers[(uint32_t)node.getOutputId(task.taskID)].phyId].get();
-}
-
-GfxImage2D::handle Pipeline::getOutputImage(hnode nodeIdx) const 
-{
-  auto& node = terra::get().getNode(nodeIdx);
-  return images[(uint32_t)node.getOutputId(task.taskID)].image;
+  auto const& node = terra::get().get<Node>(nodeIdx);
+  auto&       images = tiles[subTask].images;
+  return images[(uint32_t)node.getOutputId(taskId())].image;
 }
 
 } // namespace terra

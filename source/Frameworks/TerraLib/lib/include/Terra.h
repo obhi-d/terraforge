@@ -14,6 +14,7 @@ struct ShaderBuilder;
 class Terra
 {
 public:
+
   struct CommonShaderContent
   {
     std::string fixedResources;
@@ -25,12 +26,12 @@ public:
   using Localization = std::function<std::u8string_view(std::string_view)>;
   void init(std::shared_ptr<RenderDevice> compute, Localization loc);
 
-  void addImageCodec(std::u8string ext, std::shared_ptr<ImageCodec> codec)
+  inline void addImageCodec(std::u8string ext, std::shared_ptr<ImageCodec> codec)
   {
     imageCodecs[ext] = codec;
   }
 
-  bool isShaderConfigSupported(std::string_view name)
+  inline bool isShaderConfigSupported(std::string_view name)
   {
     if (unsupportedShaderConfigs.find(name) != unsupportedShaderConfigs.npos)
       return false;
@@ -39,33 +40,57 @@ public:
 
   void scanShader(std::filesystem::path path);
 
-  CommonShaderContent const& getShaderContent(ShaderLang) const
+  inline CommonShaderContent const& getShaderContent(ShaderLang) const
   {
     return shaderContent;
   }
-  std::shared_ptr<ImageCodec> getImageCodeFor(std::u8string ext)
+  
+  inline std::shared_ptr<ImageCodec> getImageCodeFor(std::u8string ext)
   {
     auto it = imageCodecs.find(ext);
     if (it != imageCodecs.end())
       return it->second;
     return {};
   }
-  ImageData const& getImage(index<ImageData> at) const
+  
+  template <typename As>
+  inline As& get(dshandle at)
   {
-    return images[at.reserved];
+    return static_cast<As&>(*dataSources[at].get());
   }
 
-  ImageData& getImage(index<ImageData> at)
+  template <typename As>
+  inline As const& get(dshandle at) const
   {
-    return images[at.reserved];
+    return static_cast<As const&>(*dataSources[at].get());
   }
 
-  hnode createNode(NodeMeta const&);
+  inline bool isValid(dshandle at) const
+  {
+    return at && dataSources.contains(at) && dataSources.at(at) &&
+      get<DataSource>(at).getSelf() == DataSource::handle(at.reserved);
+  }
 
-  index<ImageData>   getImage(std::filesystem::path path);
+  inline void destroy(dshandle n)
+  {
+    dataSources.erase(n);
+  }
+
+
+  template <typename T>
+  inline void replace(T& oldT, T& newT, dshandle node)
+  {
+    if (oldT)
+      get(oldT);
+  }
+
+  dshandle createNode(NodeMeta const&);
+  dshandle getImage(std::filesystem::path path);
+
+
   GfxSampler::handle getSampler(ImageSampling sampling);
 
-  NodeMeta* getNodeMeta(std::string name)
+  inline NodeMeta* getNodeMeta(std::string name)
   {
     auto it = metaMap.find(name);
     if (it != metaMap.end())
@@ -75,55 +100,24 @@ public:
     return {};
   }
 
-  RenderDevice& getDevice()
+  inline RenderDevice& getDevice()
   {
     return *device;
   }
 
-  Node& getNode(hnode node)
-  {
-    return nodes.at(node.reserved);
-  }
-
-  Node const& getNode(hnode node) const
-  {
-    return nodes.at(node.reserved);
-  }
-
-  void propagate(hnode src, hnode dst, NodeEvent e)
-  {
-    auto& node = getNode(dst);
-    if (e == NodeEvent::eNodeDeleted)
-      node.sourceDeleted(src);
-    else if (e == NodeEvent::eValueModified)
-      node.markValueChanged();
-    else
-      node.markOptionChanged();
-  }
-
-  uint32_t frameNumber() const
+  inline uint32_t frameNumber() const
   {
     return frame;
   }
 
-  bool isValid(hnode node)
-  {
-    return nodes.contains(node.reserved) && getNode(node).getId() == node;
-  }
-
-  void destroy(hnode n)
-  {
-    nodes.erase(n.reserved);
-  }
-
   void destroy();
 
-  static Terra& get()
+  inline static Terra& get()
   {
     return instance;
   }
 
-  constexpr uint32_t getWorkGroupSize() const
+  inline constexpr uint32_t getWorkGroupSize() const
   {
     return 32;
   }
@@ -131,7 +125,7 @@ public:
   Localization localizationProvider;
 
   template <typename L>
-  void forEachMeta(L&& l)
+  inline void forEachMeta(L&& l)
   {
     // ordered traversal using map
     for (auto& m : metaMap)
@@ -139,9 +133,14 @@ public:
   }
 
   template <typename L>
-  void forEachNode(L&& l)
+  inline void forEachNode(L&& l)
   {
-    nodes.for_each(std::forward<L>(l));
+    dataSources.for_each(
+      [](DataSourcePtr& ds) -> bool
+      {
+        if (ds->getType() == DataSource::Type::eNode)
+          l(*(Node*)ds.get());
+      });
   }
 
   uint32_t getSemantic(std::string_view from);
@@ -163,8 +162,7 @@ private:
   neo::registry                 registry;
   std::shared_ptr<RenderDevice> device;
   ImageCodecMap                 imageCodecs;
-  table<Node>                   nodes;
-  table<ImageData>              images;
+  table<DataSourcePtr>          dataSources;
   SamplerList                   samplers;
 };
 

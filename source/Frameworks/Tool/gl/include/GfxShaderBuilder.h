@@ -22,6 +22,7 @@ public:
   BindingInfo declBuffer(std::string_view prefix, std::string_view name, Access access) final;
   BindingInfo declConstants(std::string_view prefix, std::string_view name) final;
   BindingInfo declTexture(std::string_view name) final;
+  BindingInfo declTextureArray(std::string_view name) final;
   BindingInfo declImage(std::string_view name, ImageFormat format, Access access) final;
 
   void begin(ShaderType) final;
@@ -41,16 +42,16 @@ public:
 
 private:
   friend class GfxDevice43;
-  
-  uint32_t                 imageBindingCounter    = 0;
-  uint32_t                 textureBindingCounter  = 0;
-  uint32_t                 constantBindingCounter = 0;
-  uint32_t                 bufferBindingCounter   = 0;
-  Section                  currentSection;
-  std::string              section;
-  std::string              declarations;
-  std::string              output[ShaderTypeCount];
-  GfxFeature const&        opt;
-  ShaderType          type;
+
+  uint32_t          imageBindingCounter    = 0;
+  uint32_t          textureBindingCounter  = 0;
+  uint32_t          constantBindingCounter = 0;
+  uint32_t          bufferBindingCounter   = 0;
+  Section           currentSection;
+  std::string       section;
+  std::string       declarations;
+  std::string       output[ShaderTypeCount];
+  GfxFeature const& opt;
+  ShaderType        type;
 };
 } // namespace terra

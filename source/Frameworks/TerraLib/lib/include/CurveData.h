@@ -1,14 +1,15 @@
 #pragma once
 
+#include "DataSource.h"
+#include "RenderDevice.h"
 #include "RenderResource.h"
 #include "Serializer.h"
 #include "spline.h"
-#include "RenderDevice.h"
 
 namespace terra
 {
 class Terra;
-struct CurveData
+struct CurveData : public DataSource
 {
   struct Edit
   {
@@ -28,7 +29,6 @@ struct CurveData
     tk::spline<>              spline;
   };
 
-  std::shared_ptr<RenderDevice> rd;
   tk::spline<> spline;
   Edit         edits;
 
@@ -78,7 +78,7 @@ struct CurveData
     }
     if ((edits.liveUpdate || apply) && edits.edited && edits.dirty)
     {
-      spline = edits.spline;
+      spline      = edits.spline;
       bufferDirty = true;
       if (apply)
       {
@@ -96,10 +96,32 @@ struct CurveData
     return spline == other.spline;
   }
 
-  void ensure();
-  bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx);
-  void toDataStream(std::vector<uint8_t>& dataStream) const;
-  
+  bool ensure(Pipeline&) final;
+
+  inline Type getType() const final
+  {
+    return Type::eCurve;
+  }
+
+  inline DataFormat getFormat() const final
+  {
+    return DataFormat{.type = DataType::eCurveData, .scalarSubType = DataType::eInvalid};
+  }
+
+  inline std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, dshandle) final
+  {
+    return std::make_pair<dshandle, bool>({}, false);
+  }
+
+  bool isEnabled(Pipeline const&) final;
+
+  inline void accept(dshandle source, Event) final {}
+
+  void fillDescriptor(Pipeline const&, GfxDescriptorSet::rhandle&, std::byte*) final;
+  bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
+  void toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
 };
+
 using CurveDataPtr = std::shared_ptr<CurveData>;
+
 } // namespace terra

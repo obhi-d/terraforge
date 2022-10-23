@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include <span>
 #include "RenderResource.h"
 #include "ShaderBuilder.h"
+#include <span>
 
 namespace terra
 {
@@ -20,7 +20,7 @@ struct RenderDevice
   /// @param size sizze of buffer
   /// @return Buffer handle, that can be reused
   virtual GfxBuffer::handle createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) = 0;
-  virtual void              destroy(GfxBuffer::handle) = 0;
+  virtual void              destroy(GfxBuffer::handle)                                                   = 0;
   /// @brief Create a 2D image of width x height dimension, with a single mip level
   /// @param format Image format
   /// @param width image width
@@ -28,8 +28,11 @@ struct RenderDevice
   /// @return Returns the image handle
   virtual GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
                                          std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
-                                         uint32 mipLevels = 1) = 0;
-  virtual void               destroy(GfxImage2D::handle)                  = 0;
+                                         uint32 mipLevels = 1)                                        = 0;
+  virtual GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height,
+                                              ImageFormat format, std::span<std::byte const*> data = {},
+                                              GfxImage2D::Swizzle swizzle = {}, uint32 mipLevels = 1) = 0;
+  virtual void               destroy(GfxImage2D::handle)                                              = 0;
   /// @brief Create a sampler
   virtual GfxSampler::handle createSampler(ImageSampling) = 0;
   virtual void               destroy(GfxSampler::handle)  = 0;
@@ -37,13 +40,13 @@ struct RenderDevice
   /// @param sources compute shader sources
   /// @return compute shader handle
   virtual GfxProgram::handle createProgram(ShaderOptions const& options, ShaderBuilder const& code) = 0;
-  virtual void               destroy(GfxProgram::handle)                                                    = 0;
+  virtual void               destroy(GfxProgram::handle)                                            = 0;
   /// @brief Create a descriptor set layout
   /// @param types handle types
   /// @return DescriptorSet handle
   virtual GfxDescriptorSetLayout::handle createDescriptorSetLayout(
-    std::span<GfxDescriptorSetLayout::Descriptor> descriptors) = 0;
-  virtual void destroy(GfxDescriptorSetLayout::handle)         = 0;
+    std::span<GfxDescriptorSetLayout::Descriptor> descriptors)                                  = 0;
+  virtual void destroy(GfxDescriptorSetLayout::handle)                                          = 0;
   virtual void applyLayoutToProgram(GfxProgram::handle program, GfxDescriptorSetLayout::handle) = 0;
   /// @brief Create descriptor set from layout
   virtual GfxDescriptorSet::handle createDescriptorSet(GfxDescriptorSetLayout::handle descriptorLayout) = 0;
@@ -53,7 +56,7 @@ struct RenderDevice
   /// @param buffer buffer handle
   /// @return CPU data to be used for memcpy
   virtual std::byte* mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size) = 0;
-  virtual void unmapBuffer(GfxBuffer::handle buffer) = 0;
+  virtual void       unmapBuffer(GfxBuffer::handle buffer)                               = 0;
 
   /// @brief Update texture
   virtual void updateImage(GfxImage2D::handle image, std::span<std::byte const> data) = 0;
@@ -75,11 +78,10 @@ struct RenderDevice
   virtual void barrier(GfxBarrierFlags flags) = 0;
 
   /// @brief push a fence
-  virtual GfxFence::handle createFence() = 0;
+  virtual GfxFence::handle createFence()               = 0;
   virtual void             syncFence(GfxFence::handle) = 0;
 
   /// @brief Create a ShaderBuilder for a specific shader
   virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) = 0;
-
 };
 } // namespace terra

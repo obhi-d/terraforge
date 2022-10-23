@@ -2171,9 +2171,9 @@ static void ShowDemoWindowWidgets()
         ImGui::InputFloat4("input float4", vec4f);
         ImGui::DragFloat4("drag float4", vec4f, 0.01f, 0.0f, 1.0f);
         ImGui::SliderFloat4("slider float4", vec4f, 0.0f, 1.0f);
-        ImGui::InputInt4("input int4", vec4i);
-        ImGui::DragInt4("drag int4", vec4i, 1, 0, 255);
-        ImGui::SliderInt4("slider int4", vec4i, 0, 255);
+        ImGui::InputInt4("input ivec4", vec4i);
+        ImGui::DragInt4("drag ivec4", vec4i, 1, 0, 255);
+        ImGui::SliderInt4("slider ivec4", vec4i, 0, 255);
 
         ImGui::TreePop();
     }

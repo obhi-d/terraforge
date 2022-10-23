@@ -77,11 +77,11 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   io.Fonts->Clear();
   {
     ImFontConfig config;
-    config.FontDataOwnedByAtlas     = false;
-    config.OversampleH              = 4;
-    config.OversampleV              = 4;
-    config.PixelSnapH               = false;
-    auto font                       = fileContentToBytes(theme.images[ImageName::eFont].path);
+    config.FontDataOwnedByAtlas = false;
+    config.OversampleH          = 4;
+    config.OversampleV          = 4;
+    config.PixelSnapH           = false;
+    auto font                   = fileContentToBytes(theme.images[ImageName::eFont].path);
     io.Fonts->AddFontFromMemoryTTF(reinterpret_cast<char*>(font.data()), (int)font.size(),
                                    (float)theme.images[ImageName::eFont].size.y, &config);
   }
@@ -91,9 +91,9 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     config.FontDataOwnedByAtlas = false;
     config.MergeMode            = true;
     config.GlyphMinAdvanceX     = 13.0f;
-    config.OversampleH            = 4;
-    config.OversampleV            = 4;
-    config.PixelSnapH             = false;
+    config.OversampleH          = 4;
+    config.OversampleV          = 4;
+    config.PixelSnapH           = false;
 
     static const ImWchar ranges[] = {ICON_MIN_FA, ICON_MAX_FA, 0};
 
@@ -102,7 +102,6 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
                                    (float)theme.images[ImageName::eIconFont].size.y, &config, ranges);
   }
 
-  
   ImageSerializer                 serializer;
   std::vector<std::byte>          imageData;
   std::array<int, ImagePackCount> packIDs;
@@ -139,11 +138,11 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     serializer.loadImageGray(rows, img.size.x, img.size.y, getMediaPath() / theme.images[i].path);
   }
 
-  font = renderer->createImage(GfxStorageClass::eStaticDeviceReadonly, (uint32)width, (uint32)height,
-                               ImageFormat::eUnorm8, (std::byte const*)pixels,
-                               GfxImage2D::Swizzle{.r = GfxImage2D::ComponentValue::eOne,
-                                                   .g = GfxImage2D::ComponentValue::eOne,
-                                                   .b = GfxImage2D::ComponentValue::eOne,
+  font      = renderer->createImage(GfxStorageClass::eStaticDeviceReadonly, (uint32)width, (uint32)height,
+                                    ImageFormat::eUnorm8, (std::byte const*)pixels,
+                                    GfxImage2D::Swizzle{.r = GfxImage2D::ComponentValue::eOne,
+                                                        .g = GfxImage2D::ComponentValue::eOne,
+                                                        .b = GfxImage2D::ComponentValue::eOne,
                                                         .a = GfxImage2D::ComponentValue::eRed},
                                     1);
   whiteUV.x = io.Fonts->TexUvWhitePixel.x;
@@ -344,7 +343,7 @@ void ImguiBackend::drawIcon(char16_t iconChar, glm::ivec2 location, glm::ivec2 s
   if (!icon)
     return;
   auto loc = currentRegExtends.min + location;
-  size.y   = (int)(icon->Y1 - icon->Y0); 
+  size.y   = (int)(icon->Y1 - icon->Y0);
   loc.y -= size.y / 2;
   pushQuad(loc, size, glm::vec2(icon->U0, icon->V0), glm::vec2(icon->U1, icon->V1), color);
 }
@@ -371,8 +370,8 @@ void ImguiBackend::pushQuad(glm::ivec2 loc, glm::ivec2 size, glm::vec2 uv0, glm:
 
 void ImguiBackend::setRegion(glm::ivec2 start, glm::ivec2 size)
 {
-  currentRegExtends.min     = start;
-  currentRegExtends.max     = start + size;
+  currentRegExtends.min = start;
+  currentRegExtends.max = start + size;
 }
 bool ImguiBackend::isIntersecting()
 {
@@ -386,14 +385,14 @@ ImAlign ImguiBackend::setLayout(glm::ivec2 start, glm::ivec2 size, ImAlign align
   auto l                    = alignment;
   alignment                 = align;
   currentRegExtends.min     = start;
-  currentRegExtends.max    = start + size;
+  currentRegExtends.max     = start + size;
   currentRegExtends.padding = padding;
   return l;
 }
-ImAlign ImguiBackend::align(ImAlign al) 
+ImAlign ImguiBackend::align(ImAlign al)
 {
-  auto l                    = alignment;
-  alignment                 = al;
+  auto l    = alignment;
+  alignment = al;
   return l;
 }
 
@@ -446,7 +445,7 @@ std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 siz
     if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
     {
       if (inlay)
-      pushQuad(pos, size, whiteUV, whiteUV, pressed);
+        pushQuad(pos, size, whiteUV, whiteUV, pressed);
       sel     = pressed;
       clicked = true;
     }
@@ -462,7 +461,6 @@ std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 siz
     if (inlay)
       pushQuad(pos, size, whiteUV, whiteUV, normal);
     sel = theme->themeColors.icon;
-
   }
   if (alignment == ImAlign::eRight)
     currentRegExtends.max.x = pos.x;
@@ -471,8 +469,8 @@ std::tuple<bool, glm::ivec2, Color> ImguiBackend::iconButtonSetup(glm::ivec2 siz
   return {clicked, pos, sel};
 }
 
-bool ImguiBackend::iconButton(char16_t cc, glm::ivec2 size, int iconSize, Color normal, Color hover,
-                              Color pressed, bool inlay)
+bool ImguiBackend::iconButton(char16_t cc, glm::ivec2 size, int iconSize, Color normal, Color hover, Color pressed,
+                              bool inlay)
 {
   auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay, normal, hover, pressed);
   glm::ivec2 ics(iconSize, 0);
@@ -481,8 +479,8 @@ bool ImguiBackend::iconButton(char16_t cc, glm::ivec2 size, int iconSize, Color 
   return clicked;
 }
 
-bool ImguiBackend::iconButton(ImageName cc, glm::ivec2 size, int iconSize, Color normal, Color hover,
-                              Color pressed, bool inlay)
+bool ImguiBackend::iconButton(ImageName cc, glm::ivec2 size, int iconSize, Color normal, Color hover, Color pressed,
+                              bool inlay)
 {
   auto [clicked, pos, color] = iconButtonSetup(size, iconSize, inlay, normal, hover, pressed);
   glm::ivec2 ics(iconSize, iconSize);
@@ -497,29 +495,29 @@ void ImguiBackend::textCentered(std::string_view text, ImVec2 pos, ImVec2 window
 }
 WindowAction ImguiBackend::windowDecoration(ImWith flags)
 {
-  auto const& io = ImGui::GetIO();
-  int          saveY = currentRegExtends.max.y;
+  auto const& io          = ImGui::GetIO();
+  int         saveY       = currentRegExtends.max.y;
   int         saveX       = currentRegExtends.min.x;
-  int          dx         = currentRegExtends.dx();
+  int         dx          = currentRegExtends.dx();
   currentRegExtends.max.y = currentRegExtends.min.y + 32;
-  WindowAction name = WindowAction::eNone;
+  WindowAction name       = WindowAction::eNone;
   if (flags & ImWith::fLogo)
   {
     drawIcon(ImageName::eLogo, glm::ivec2(0, 0), glm::ivec2(60, 60), theme->themeColors.logo);
   }
   auto const& color  = theme->themeColors;
-  auto iconSz = theme->images[ImageName::eFont].size.y - 4;
+  auto        iconSz = theme->images[ImageName::eFont].size.y - 4;
   align(ImAlign::eRight);
   if (flags & ImWith::fClose)
   {
-    if (iconButton(0xf00d, glm::ivec2(30, 30), iconSz, color.icon, color.iconPressed,  color.iconHover))
+    if (iconButton(0xf00d, glm::ivec2(30, 30), iconSz, color.icon, color.iconPressed, color.iconHover))
       name = WindowAction::eClose;
   }
   if (flags & ImWith::fMaximize)
   {
     if (iconButton(0xf2d0, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
       name = WindowAction::eMaximize;
-  }    
+  }
   if (flags & ImWith::fRestore)
   {
     if (iconButton(0xf2d2, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
@@ -545,14 +543,13 @@ WindowAction ImguiBackend::windowDecoration(ImWith flags)
     else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
       name = WindowAction::eToggleSize;
   }
-  setLayout(glm::ivec2(saveX, saveY - 26), glm::ivec2(dx, 30),
-            ImAlign::eRight, 1);
+  setLayout(glm::ivec2(saveX, saveY - 26), glm::ivec2(dx, 30), ImAlign::eRight, 1);
   if (flags & ImWith::fResizeCtrl)
   {
     if (iconButton(ImageName::eResize, glm::ivec2(20, 20), 18, color.icon, color.iconHover, color.iconPressed, false))
       name = WindowAction::eResize;
   }
-  
+
   return name;
 }
 void ImguiBackend::endTitlebar()

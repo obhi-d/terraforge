@@ -49,7 +49,7 @@ private:
   void doNodes(TerraMainApp&, ImguiBackend&);
   void createNode(TerraMainApp&, NodeMeta const& meta, ImVec2);
   void executePendingAction(TerraMainApp&);
-  void setNextDataSource(ImThemeColors const& col, hnode node, imne::PinId src);
+  void setNextDataSource(ImThemeColors const& col, dshandle node, imne::PinId src);
 
   enum class Action
   {

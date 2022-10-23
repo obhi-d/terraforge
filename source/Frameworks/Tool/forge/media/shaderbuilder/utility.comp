@@ -171,14 +171,14 @@ Coordf get_coord_scaled(NodeParams params)
   return rc;
 }
 
-uvec4 get_pixel_id(ivec4 x, ivec4 y, NodeParams params)
+uvec4 get_pixel_id(uvec4 x, uvec4 y, NodeParams params)
 {
   uvec4 ux = uvec4(uvec4(x) - uvec4(params.env.start_coord.x));
   uvec4 uy = uvec4(uvec4(y) - uvec4(params.env.start_coord.y)) * uvec4(params.env.size.x + 2);
   return ux + uy;
 }
 
-uint get_pixel_id(int x, int y, NodeParams params)
+uint get_pixel_id(uint x, uint y, NodeParams params)
 {
   uint ux = (uint(x) - uint(params.env.start_coord.x));
   uint uy = (uint(y) - uint(params.env.start_coord.y)) * (params.env.size.x + 2);

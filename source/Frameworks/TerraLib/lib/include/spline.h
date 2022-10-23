@@ -184,6 +184,11 @@ namespace tk
             return m_y;
         }
 
+        int get_nb_points() const
+        {
+          return (int)m_x.size();
+        }
+
         // modify boundary conditions: if called it must be before set_points()
         void set_boundary( bd_type left, prec_type left_value, bd_type right, prec_type right_value );
 

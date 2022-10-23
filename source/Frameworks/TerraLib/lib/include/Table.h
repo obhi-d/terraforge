@@ -1,24 +1,17 @@
 #pragma once
 #include <cstdint>
 #include <type_traits>
+#include "Common.h"
 
 namespace terra
 {
 template <typename T>
 class table
 {
-  static inline constexpr uint32_t k_null_32 = 0;
-  static inline constexpr uint32_t mask      = 0x00ffffff;
-  static inline constexpr uint32_t lifecycle = 0x01000000;
-
-  struct free_idx
-  {
-    std::uint32_t unused = k_null_32;
-    std::uint32_t valids = 0;
-  };
-
+  
+  using handle   = terra::handle<T>;
   using vector   = std::vector<T>;
-  using freepool = std::vector<std::uint32_t>;
+  using freepool = std::vector<handle>;
 
 public:
 
@@ -27,15 +20,22 @@ public:
     free_pool.clear();
     pool.clear();
   }
+
   template <typename L>
   void for_each(L&& lambda)
   {
-    std::sort(free_pool.begin(), free_pool.end());
+    std::sort(free_pool.begin(), free_pool.end(),
+              [](handle first, handle second)
+              {
+                return first.index() < second.index();
+              });
+
     free_pool.push_back((uint32_t)pool.size());
+
     uint32_t start = 0;
-    for (uint32_t entry : free_pool)
+    for (auto const& entry : free_pool)
     {
-      auto end = entry & mask;
+      auto end = entry.index();
       for (uint32_t n = start; n < end; ++n)
       {
         if (!lambda(pool[n]))
@@ -46,63 +46,61 @@ public:
       }
       start = end + 1;
     }
-    free_pool.pop_back();
-    
+    free_pool.pop_back();    
   }
 
   template <typename... Args>
-  std::uint32_t emplace(Args&&... args)
+  handle emplace(Args&&... args)
   {
-    std::uint32_t index = 0;
+    handle index;
     
     if (!free_pool.empty())
     {
-      index = free_pool.back() + lifecycle;
+      index = free_pool.back().cycle_up();
       free_pool.pop_back();
-      pool[index & mask] = std::move(T(std::forward<Args>(args)...));
+      pool[index.index()] = std::move(T(std::forward<Args>(args)...));
     }
     else
     {
       if (pool.empty())
         pool.emplace_back();
-      index = static_cast<std::uint32_t>(pool.size());
+      index = handle((uint32_t)pool.size());
       pool.emplace_back(std::forward<Args>(args)...);
     }
     
     return index;
   }
 
-  void erase(std::uint32_t index)
+  void erase(handle index)
   {
     assert(std::find(free_pool.begin(), free_pool.end(), index) == free_pool.end());
-    pool[index & mask] = T();
+    pool[index.index()] = T();
     free_pool.emplace_back(index);
-    
   }
 
-  T& operator[](std::uint32_t i)
+  T& operator[](handle i)
   {
-    return reinterpret_cast<T&>(pool[i & mask]);
+    return reinterpret_cast<T&>(pool[i.index()]);
   }
 
-  T const& operator[](std::uint32_t i) const
+  T const& operator[](handle i) const
   {
-    return reinterpret_cast<T const&>(pool[i & mask]);
+    return reinterpret_cast<T const&>(pool[i.index()]);
   }
 
-  T& at(std::uint32_t i)
+  T& at(handle i)
   {
-    return reinterpret_cast<T&>(pool[i & mask]);
+    return reinterpret_cast<T&>(pool[i.index()]);
   }
 
-  T const& at(std::uint32_t i) const
+  T const& at(handle i) const
   {
-    return reinterpret_cast<T const&>(pool[i & mask]);
+    return reinterpret_cast<T const&>(pool[i.index()]);
   }
 
-  bool contains(std::uint32_t i) const 
+  bool contains(handle i) const 
   {
-    return ((i & mask) < pool.size());
+    return i.index() < pool.size();
   }
 
   std::uint32_t size() const
