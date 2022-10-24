@@ -137,19 +137,64 @@ int32_t Pipeline::declImage(int32_t declIdx, uint32_t width, uint32_t height, Im
   return declIdx;
 }
 
+void Pipeline::determineBufferLifetimes()
+{
+  auto& main = Terra::get();
+  auto& actors = tiles[subTask].tasks;
+  auto& buffers = tiles[subTask].buffers;
+  const auto taskid  = taskId();
+  for (int32_t i = 0; i < (int32_t)actors.size(); ++i)
+  {
+    auto& nodeId = actors[i];
+    auto& node   = main.get<Node>(nodeId);
+    if (!node.hasTextureOutput())
+    {
+      auto id = node.getOutputId(taskid);
+      if (id >= 0)
+      {
+        if (buffers[id].transient)
+          buffers[id].write = i;
+        else
+        {
+          // persistent buffer lives full range, to next frame
+          buffers[id].write = 0;
+          buffers[id].read  = (int32_t)actors.size();
+        }
+      }
+    }
+    node.forEachSource(
+      [&](uint32_t p, dshandle innode) -> bool
+      {
+        auto& src   = main.get<Node>(innode);
+        auto  srcid = src.getOutputId(taskid);
+        if (srcid >= 0)
+        {
+          buffers[srcid].read = std::max(buffers[srcid].read, i);
+        }
+        return true;
+      });
+  }
+}
+
 void Pipeline::allocateResources()
 {
+  determineBufferLifetimes();
+
   auto&    buffers = tiles[subTask].buffers;
   uint32_t phyId  = 0;
   uint32_t nbBuff = (uint32_t)buffers.size();
   for (uint32_t i = 0; i < nbBuff; ++i)
   {
+    assert(buffers[i].write < buffers[i].read);
     if (buffers[i].phyId)
       continue;
     buffers[i].phyId = ++phyId;
+    
     for (uint32_t j = i + 1; j < nbBuff; ++j)
     {
       // x1 <= y2 && y1 <= x2
+      if (buffers[j].phyId || !buffers[j].transient || !(buffers[i].read < buffers[j].write || buffers[j].read < buffers[i].write))
+        continue;
       buffers[j].phyId = phyId;
     }
   }
@@ -196,6 +241,11 @@ GfxImage2D::handle Pipeline::getOutputImage(dshandle nodeIdx) const
   auto const& node = terra::get().get<Node>(nodeIdx);
   auto&       images = tiles[subTask].images;
   return images[(uint32_t)node.getOutputId(taskId())].image;
+}
+
+void Pipeline::enqueue(dshandle task) 
+{
+  tiles[subTask].tasks.emplace_back(task);
 }
 
 } // namespace terra

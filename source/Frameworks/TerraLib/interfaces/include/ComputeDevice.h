@@ -9,7 +9,7 @@
 namespace terra
 {
 struct ShaderBuilder;
-struct RenderDevice
+struct ComputeDevice
 {
   using Caps = GfxFeature;
 

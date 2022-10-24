@@ -1,0 +1,19 @@
+name     = "@Divide";
+category = "@Modifiers";
+tooltip    = "@DivideBrief";
+help     = "@DivideHelp";
+function = "divide";
+output   = source (type = float);
+icon     = "\xef\x87\x85";
+
+shaders
+{
+  config default_config
+  {
+    files = ["divide.comp"];
+  };
+};
+
+param source(name = "@Source", type = source, min = -1.0f, max = 1.0f, default = 1.0, step = 0.1f, tooltip=@SourceBrief, subtype = float);
+param value(name = "@Operand", type = source, min = -1.0f, max = 1.0f, default = 1.0, step = 0.1f, tooltip=@OperandBrief, subtype = float);
+

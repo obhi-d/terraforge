@@ -1,5 +1,5 @@
 
-vec4 noise( vec4 x, vec4 y, int3 pixel, env_params params )
+vec4 simplex( vec4 x, vec4 y, int3 pixel, env_params params )
 {
     vec4 f  = vec4( F2 ) * ( x + y );
     vec4 x0 = floor( x + f );

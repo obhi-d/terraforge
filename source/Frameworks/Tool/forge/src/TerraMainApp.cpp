@@ -184,7 +184,7 @@ void TerraMainApp::draw()
 {
   get().forEachNode(
     [frame = this->frame](auto& node) {
-      node.prepare(frame);
+      //node.prepare(frame);
       return true;
     });
   viewer.draw(*this);

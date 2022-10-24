@@ -1,7 +1,7 @@
 
 #include "Image.h"
 #include "ImageCodec.h"
-#include "RenderDevice.h"
+#include "ComputeDevice.h"
 #include "Terra.h"
 
 namespace terra
@@ -61,7 +61,7 @@ void Image::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
   std::u8string path = this->source.u8string();
   addToDataStream(dataStream, path);
 }
-
+/*
 bool ImageSource::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
 {
   bool  result = true;
@@ -69,8 +69,8 @@ bool ImageSource::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, siz
   result &= getFromDataStream(dataStream, serialIdx, uvScale);
   result &= getFromDataStream(dataStream, serialIdx, uvOffset);
   result &= getFromDataStream(dataStream, serialIdx, defaultValue);
-  result &= getFromDataStream(dataStream, serialIdx, tileConstraintMin);
-  result &= getFromDataStream(dataStream, serialIdx, tileConstraintMax);
+  result &= getFromDataStream(dataStream, serialIdx, tileConstraintOffset);
+  result &= getFromDataStream(dataStream, serialIdx, tileConstraintSize);
   result &= getFromDataStream(dataStream, serialIdx, sampling.first);
   result &= getFromDataStream(dataStream, serialIdx, sampling.second);
   result &= getFromDataStream(dataStream, serialIdx, source.reserved);
@@ -83,8 +83,8 @@ void ImageSource::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
   addToDataStream(dataStream, uvScale);
   addToDataStream(dataStream, uvOffset);
   addToDataStream(dataStream, defaultValue);
-  addToDataStream(dataStream, tileConstraintMin);
-  addToDataStream(dataStream, tileConstraintMax);
+  addToDataStream(dataStream, tileConstraintOffset);
+  addToDataStream(dataStream, tileConstraintSize);
   addToDataStream(dataStream, sampling.first);
   addToDataStream(dataStream, sampling.second);
   addToDataStream(dataStream, source.reserved);
@@ -107,5 +107,5 @@ bool ImageSource::ensure(Pipeline& p)
   }
   return true;
 }
-
+*/
 } // namespace terra

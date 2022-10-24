@@ -185,6 +185,13 @@ GfxImage2D::handle GfxDevice43::createImage(GfxStorageClass storage, uint32_t wi
   }
   return h;
 }
+GfxImage2D::handle GfxDevice43::createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height,
+                                                 ImageFormat format, std::span<std::byte const*> data,
+                                                 GfxImage2D::Swizzle swizzle, uint32 mipLevels)
+{
+  assert(false);
+  return {};
+}
 void GfxDevice43::destroy(GfxImage2D::handle h)
 {
   if (!h)

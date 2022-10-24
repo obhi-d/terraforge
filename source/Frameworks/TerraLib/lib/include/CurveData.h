@@ -1,10 +1,11 @@
 #pragma once
 
 #include "DataSource.h"
-#include "RenderDevice.h"
+#include "ComputeDevice.h"
 #include "RenderResource.h"
 #include "Serializer.h"
 #include "spline.h"
+#include <future>
 
 namespace terra
 {
@@ -108,12 +109,12 @@ struct CurveData : public DataSource
     return DataFormat{.type = DataType::eCurveData, .scalarSubType = DataType::eInvalid};
   }
 
-  inline std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, dshandle) final
+  inline std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, Source) final
   {
     return std::make_pair<dshandle, bool>({}, false);
   }
 
-  bool isEnabled(Pipeline const&) final;
+  bool isEnabled(Pipeline const&) const final;
 
   inline void accept(dshandle source, Event) final {}
 

@@ -31,12 +31,12 @@ void DataSource::onParamChange(dshandle oldValue, dshandle newValue)
   propagate(Event::eValueModified);
 }
 
-bool DataSource::setParamSource(uint32_t paramIdx, dshandle value) 
+bool DataSource::setParamSource(uint32_t paramIdx, Source value)
 {
   auto [old, accept] = setParamSourceImpl(paramIdx, value);
   if (accept)
   {
-    onParamChange(old, value);
+    onParamChange(old, value.source);
     return true;
   }
   return false;

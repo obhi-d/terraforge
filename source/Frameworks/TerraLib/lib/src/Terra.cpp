@@ -12,7 +12,7 @@ namespace terra
 
 Terra Terra::instance;
 
-void Terra::init(std::shared_ptr<RenderDevice> dev, Localization l)
+void Terra::init(std::shared_ptr<ComputeDevice> dev, Localization l)
 {
   localizationProvider = l;
   device = dev;
@@ -25,9 +25,10 @@ void Terra::init(std::shared_ptr<RenderDevice> dev, Localization l)
 }
 
 void Terra::destroy() 
-{
+{  
   dataSources.clear();
   nodeMetaTable.clear();
+  // computeThread.shutdown();
  }
 
 void Terra::scanShader(std::filesystem::path path)
@@ -53,13 +54,13 @@ void Terra::scanShader(std::filesystem::path path)
       if (it != metaMap.end())
       {
         nodeMetaTable[it->second].destroy();
-        nodeMetaTable[it->second] = newMeta;
+        nodeMetaTable[it->second] = std::move(newMeta);
       }
       else
       {
         uint32_t id = (uint32_t)nodeMetaTable.size();
         metaMap.emplace(newMeta.id, id);
-        nodeMetaTable.emplace_back(newMeta);
+        nodeMetaTable.emplace_back(std::move(newMeta));
       }
     }
     else
@@ -76,16 +77,35 @@ void Terra::scanShader(std::filesystem::path path)
   }
 }
 
+void Terra::addMeta(std::string name, NodeMeta::ShaderContent const& content, NodeMeta&& meta)
+{
+  metaMap[name] = (uint32_t)nodeMetaTable.size();
+  nodeMetaTable.emplace_back(std::move(meta));
+  if (nodeMetaTable.back().buildGLSL)
+    nodeMetaTable.back().buildGLSL(nodeMetaTable.back(), content);
+  else
+    nodeMetaTable.back().buildShaderGLSL(content);
+}
+
 GfxSampler::handle Terra::getSampler(ImageSampling sampling)
 {
   for (size_t i = 0; i < samplers.size(); ++i)
     if (samplers[i].first == sampling)
       return samplers[i].second;
-  auto sampler = device->createSampler(sampling);
-  if (!sampler)
+  
+  /* auto sampler = computeThread.add(
+    [sampling, device = this->device]() -> GfxSampler::handle
+    {
+      return device->createSampler(sampling);
+    });
+  sampler.wait();
+  GfxSampler::handle result = sampler.get();
+  */
+  GfxSampler::handle result = device->createSampler(sampling);
+  if (!result)
     logError("Failed to create a sampler.");
-  samplers.emplace_back(sampling, sampler);
-  return sampler;
+  samplers.emplace_back(sampling, result);
+  return result;
 }
 
 dshandle Terra::getImage(std::filesystem::path path)

@@ -1,0 +1,29 @@
+name     = "@Add";
+category = "@Modifiers";
+tooltip  = "@AddBrief";
+help     = "@AddHelp";
+function = "add";
+output   = source (type = float);
+icon     = "\xef\x87\x85";
+
+shaders
+{
+  config default_config
+  {
+    input
+    {
+      output input_modified;
+      files = ["add.comp"];
+    }
+
+    output
+    {
+      param source(name = "@Source", input = input_modified, type = source, min = -1.0f, max = 1.0f, default = 1.0, step = 0.1f, tooltip=@SourceBrief, subtype = float);
+      param value(name = "@Operand", input = default, type = source, min = -1.0f, max = 1.0f, default = 1.0, step = 0.1f, tooltip=@OperandBrief, subtype = float);
+
+      files = ["add.comp"];
+    }
+  };
+};
+
+

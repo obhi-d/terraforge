@@ -1,7 +1,7 @@
 
-vec4 multiply(NodeParams np)
+vec4 power(NodeParams np)
 {
   vec4 src = sample_source(np);
   vec4 val = sample_value(np);
-  store_output(val * src, np);
+  store_output(pow(src, val), np);
 }

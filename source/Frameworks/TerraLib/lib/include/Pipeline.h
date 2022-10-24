@@ -59,10 +59,8 @@ public:
 
 private:
   void determineBufferLifetimes();
-  void gatherLeafs(dshandle nodeid, std::unordered_map<int32_t, int>& edgeMap, std::vector<dshandle>& leafs);
   void allocateResources();
-  void sortNodes();
-
+  
   void prepareNodes(dshandle);
 
   // Images are not shared

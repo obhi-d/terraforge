@@ -55,6 +55,12 @@ NodeCmdHandler(function, builder, state, cmd)
   return neo::retcode::e_success;
 }
 
+NodeCmdHandler(cache, builder, state, cmd)
+{
+  builder.meta.cacheResults = terra::getIdxParam(cmd, 0) == "true";
+  return neo::retcode::e_success;
+}
+/*
 NodeCmdHandler(iteration, builder, state, cmd)
 {
   auto value = terra::getIdxParam(cmd, 0);
@@ -64,65 +70,97 @@ NodeCmdHandler(iteration, builder, state, cmd)
     std::from_chars(value.data(), value.data() + value.length(), builder.meta.iteration);
   return neo::retcode::e_success;
 }
+*/
+NodeCmdHandler(attrib, builder, state, cmd) 
+{
+  auto enabledAttrib = terra::getIdxParam(cmd, 0);
+  if (enabledAttrib == "iteration")
+    builder.meta.attribIteration = true;
+  else if (enabledAttrib == "tile")
+    builder.meta.attribTileConstrained = true;
+  return neo::retcode::e_success;
+}
 
 NodeCmdHandler(param, builder, state, cmd)
 {
   terra::ParameterMeta meta;
-  meta.name          = std::string{terra::getIdxParam(cmd, 0)};
+  meta.id          = std::string{terra::getIdxParam(cmd, 0)};
   auto const& params = cmd.params().value();
   for (auto& p : params)
   {
     if (p.index() != 1)
       continue;
-    auto const& entry = std::get<neo::single>(p);
-    if (entry.name() == "type")
+    if (std::holds_alternative<neo::single>(p))
     {
-      meta.setTypeFromString(entry.value());
+      auto const& entry = std::get<neo::single>(p);
+      if (entry.name() == "type")
+      {
+        meta.setTypeFromString(entry.value());
+      }
+      else if (entry.name() == "name")
+      {
+        meta.name = builder.localizedString(terra::getIdxParam(cmd, 0));
+      }
+      else if (entry.name() == "min")
+      {
+        meta.setValueFromString(terra::ParameterMeta::ValueType::eMin, entry.value());
+      }
+      else if (entry.name() == "max")
+      {
+        meta.setValueFromString(terra::ParameterMeta::ValueType::eMax, entry.value());
+      }
+      else if (entry.name() == "default")
+      {
+        meta.setValueFromString(terra::ParameterMeta::ValueType::eDefault, entry.value());
+      }
+      else if (entry.name() == "step")
+      {
+        meta.setValueFromString(terra::ParameterMeta::ValueType::eStep, entry.value());
+      }
+      else if (entry.name() == "hint")
+      {
+        if (entry.value() == "sameline")
+          meta.drawHint = terra::DrawHint::eSameline;
+        else if (entry.value() == "hidden")
+          meta.drawHint = terra::DrawHint::eHidden;
+      }
+      else if (entry.name() == "help")
+      {
+        meta.help = builder.localizedString(entry.value());
+      }
+      else if (entry.name() == "tooltip")
+      {
+        meta.tooltip = builder.localizedString(entry.value());
+      }
+      else if (entry.name() == "subtype")
+      {
+        meta.format.scalarSubType = terra::stringToType(entry.value());
+      }
     }
-    else if (entry.name() == "min")
+    else if (std::holds_alternative<neo::list>(p))
     {
-      meta.setValueFromString(terra::ParameterMeta::ValueType::eMin, entry.value());
-    }
-    else if (entry.name() == "max")
-    {
-      meta.setValueFromString(terra::ParameterMeta::ValueType::eMax, entry.value());
-    }
-    else if (entry.name() == "default")
-    {
-      meta.setValueFromString(terra::ParameterMeta::ValueType::eDefault, entry.value());
-    }
-    else if (entry.name() == "step")
-    {
-      meta.setValueFromString(terra::ParameterMeta::ValueType::eStep, entry.value());
-    }
-    else if (entry.name() == "hint")
-    {
-      if (entry.value() == "sameline")
-        meta.drawHint = terra::DrawHint::eSameline;
-      else if (entry.value() == "hidden")
-        meta.drawHint = terra::DrawHint::eHidden;
-    } 
-    else if (entry.name() == "help")
-    {
-      meta.help = builder.localizedString(entry.value());
-    }
-    else if (entry.name() == "tooltip")
-    {
-      meta.tooltip = builder.localizedString(entry.value());
-    }
-    else if (entry.name() == "subtype")
-    {
-      meta.format.scalarSubType = terra::stringToType(entry.value());
+      auto const& entry = std::get<neo::list>(p);
+      if (entry.name() == "values")
+      {
+        auto const& values = entry.value();
+        meta.optionCount   = (int16_t)values.size();
+        if (meta.optionCount > 0)
+        {
+          meta.enumValues = std::make_unique<std::u8string_view[]>(values.size());
+          for (int i = 0; i < meta.optionCount; ++i)
+            meta.enumValues[i] = builder.localizedString(std::get<neo::single>(values[i]).value());
+        }
+      }
     }
   }
   if (meta.isValid())
   {
-    builder.meta.parameterDef.emplace_back(meta);
+    builder.meta.parameterDef.emplace_back(std::move(meta));
     return neo::retcode::e_success;
   }
   else
   {
-    builder.errorHandler(std::format("Parameter info is invalid: {}", meta.name));
+    builder.errorHandler(std::format("Parameter info is invalid: {}", meta.id));
     return neo::retcode::e_fail_and_stop;
   }
 }
@@ -213,9 +251,10 @@ NodeRegistry(NoiseBuilder)
   NodeCmd(tooltip);
   NodeCmd(function);
   NodeCmd(output);
-  NodeCmd(iteration);
+  //NodeCmd(iteration);
   NodeCmd(icon);
   NodeCmd(style);
+  NodeCmd(attrib);
 
   NodeScopeDef(shaders)
   {

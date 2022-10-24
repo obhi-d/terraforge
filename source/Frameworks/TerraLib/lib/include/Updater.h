@@ -25,7 +25,8 @@ void declImageSource(std::string& ubo, std::string& opaque, DescriptorList&, Opt
 void declCurveData(std::string& ubo, std::string& opaque, DescriptorList&, OptionList&, ParameterMeta&, int32_t& offset,
                    ShaderBuilder&);
 void declTextureOutput(std::string& opaque, DescriptorList&, OptionList&, int32_t& binding, ShaderBuilder&);
-void declBufferOutput(std::string& opaque, DescriptorList&, OptionList&, int32_t& binding, ShaderBuilder&);
+void declBufferOutput(std::string& opaque, DescriptorList& dl, OptionList& ol, int32_t& binding,
+                      ShaderBuilder& sb);
 void fillScalarDisabled(Pipeline const&, ParameterMeta const& pm, ScalarValue sv, std::byte* data);
 
 } // namespace glsl

@@ -1,0 +1,19 @@
+name     = "@ImageSampler";
+category = "@Generators";
+tooltip  = "@ImageSamplerBrief";
+help     = "@ImageSamplerHelp";
+function = "image_sampler";
+output   = source (type = float);
+icon     = "\xef\x80\xbe";
+
+shaders
+{
+  config default_config
+  {
+    files = ["image_sampler.comp"];
+  };
+};
+
+param source(name = "@Source", type = image, min = -1.0f, max = 1.0f, default = 1.0, step = 0.1f, tooltip=@InputSource, subtype = float);
+param uv_offset(name = "@UVOffset", type = vec2, min = -inf, max = inf, default = 0.0, step = 0.02f, tooltip=@UVOffset);
+param uv_scale(name = "@UVScale", type = vec2, min = -inf, max = inf, default = 1.0, step = 0.02f, tooltip=@UVScale);

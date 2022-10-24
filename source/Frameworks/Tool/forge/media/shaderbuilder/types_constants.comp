@@ -23,17 +23,26 @@ struct Coordf
 
 struct EnvParams
 {
-    float frequency;
-    float wavelength;
+    uvec2 tile;
+  uvec2 textureOffset; // if we are writing to a texture
 
-    vec2 grid_size;
-    vec2 recip_grid_size;
+  // Current tile offset
+  uvec2 tileOffset;
+  // Current tile size
+  uvec2 tileSize;
+  // Offset within the tile
+  uvec2 offset;
+  // Size within the tile
+  uvec2 size; // writable size
+  // Derived : Reciprocal size
+  vec2 recipSize;
+  // Derived : Reciprocal tileSize
+  vec2 recipTileSize;
 
-    uvec2 size;
-    uvec2 start_coord;
-
-    uint   seed;
-    uint   buffer_array_size; // number of vec4
+  float    frequency;
+  float    wavelength;
+  uint seed;
+  uint bufferArraySize;
 };
 
 

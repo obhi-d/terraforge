@@ -8,7 +8,6 @@ namespace terra
 void MeshPreview::init(TerraMainApp& app)
 {
   auto const& settings = app.getSettings();
-  settings.
 }
 
 } // namespace terra

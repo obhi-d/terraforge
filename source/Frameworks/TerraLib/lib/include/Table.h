@@ -32,7 +32,7 @@ public:
 
     free_pool.push_back((uint32_t)pool.size());
 
-    uint32_t start = 0;
+    uint32_t start = 1;
     for (auto const& entry : free_pool)
     {
       auto end = entry.index();

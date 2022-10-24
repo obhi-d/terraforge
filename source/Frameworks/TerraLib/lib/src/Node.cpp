@@ -21,11 +21,12 @@ bool DataFormat::isCompatible(DataFormat const& from, DataFormat const& to)
   case DataType::eFloat:
   case DataType::eCurveData:
   case DataType::eBool:
+  case DataType::eEnum:
     return from.type == to.type;
-  case DataType::eImageSource:
+  //case DataType::eImageSource:
   case DataType::eImage:
-    return (to.type == DataType::eImage || to.type == DataType::eImageSource) && from.scalarSubType == to.scalarSubType;
-  case DataType::eBufferOutput:
+    return (to.type == DataType::eImage) && from.scalarSubType == to.scalarSubType;
+  case DataType::eBuffer:
     return from.type == to.type && from.scalarSubType == to.scalarSubType;
   }
   return false;
@@ -35,6 +36,8 @@ std::string_view typeToString(DataType type)
 {
   switch (type)
   {
+  case DataType::eEnum:
+    return "enum";
   case DataType::eInt:
     return "int";
   case DataType::eInt2:
@@ -47,9 +50,7 @@ std::string_view typeToString(DataType type)
     return "bool";
   case DataType::eImage:
     return "image";
-  case DataType::eImageSource:
-    return "image_source";
-  case DataType::eBufferOutput:
+  case DataType::eBuffer:
     return "source";
   case DataType::eCurveData:
     return "curve";
@@ -60,7 +61,9 @@ std::string_view typeToString(DataType type)
 DataType stringToType(std::string_view stype)
 {
   DataType type = DataType::eInvalid;
-  if (stype == "int")
+  if (stype == "enum")
+    type = DataType::eEnum;
+  else if (stype == "int")
     type = DataType::eInt;
   else if (stype == "float")
     type = DataType::eFloat;
@@ -72,10 +75,8 @@ DataType stringToType(std::string_view stype)
     type = DataType::eBool;
   else if (stype == "image")
     type = DataType::eImage;
-  else if (stype == "image_source")
-    type = DataType::eImageSource;
-  else if (stype == "buffer")
-    type = DataType::eBufferOutput;
+  else if (stype == "buffer" || stype == "source")
+    type = DataType::eBuffer;
   else if (stype == "curve")
     type = DataType::eCurveData;
   return type;
@@ -86,9 +87,8 @@ bool ParameterMeta::canBeSource() const
   switch (format.type)
   {
   case DataType::eCurveData:
-  case DataType::eBufferOutput:
+  case DataType::eBuffer:
   case DataType::eImage:
-  case DataType::eImageSource:
     return true;
   }
   return false;
@@ -99,10 +99,12 @@ bool ParameterMeta::canBeScalar() const
   return true;
 }
 
-Parameter ParameterMeta::getDefault() const
+ScalarValue ParameterMeta::getDefault() const
 {
   if (DataType::eBool == format.type)
     return ScalarValue((bool)(values[ValueType::eDefault].ival != 0));
+  else if(DataType::eEnum == format.type) 
+    return ScalarValue(values[ValueType::eDefault].ival);
   switch (format.scalarSubType)
   {
   case DataType::eFloat:
@@ -114,7 +116,7 @@ Parameter ParameterMeta::getDefault() const
   case DataType::eInt2:
     return ivec2{values[ValueType::eDefault].ival, values[ValueType::eDefault].ival};
   default:
-    return Parameter();
+    return ScalarValue();
   }
 }
 
@@ -133,6 +135,7 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
   float fvalue = 0;
   switch (format.type)
   {
+  case DataType::eEnum:
   case DataType::eBool:
   case DataType::eInt2:
   case DataType::eInt:
@@ -150,8 +153,7 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
     break;
   case DataType::eCurveData:
   case DataType::eImage:
-  case DataType::eImageSource:
-  case DataType::eBufferOutput:
+  case DataType::eBuffer:
   case DataType::eFloat:
   case DataType::eFloat2:
     if (value == "inf")
@@ -171,30 +173,46 @@ bool ParameterMeta::affectsOptions() const
   {
   case DataType::eCurveData:
   case DataType::eImage:
-  case DataType::eImageSource:
-  case DataType::eBufferOutput:
+  case DataType::eBuffer:
   case DataType::eBool:
+  case DataType::eEnum:
     return true;
   }
   return false;
 }
 
-void ParameterMeta::modifyOptions(Parameter const& p, Options& option) const
+bool ParameterMeta::modifyOptions(Pipeline& pipe, Parameter const& p, Options& opt) const
 {
-  switch (format.type)
+  if (std::holds_alternative<Source>(p))
   {
-  case DataType::eCurveData:
-  case DataType::eImage:
-  case DataType::eImageSource:
-  case DataType::eBufferOutput:
-    if (std::holds_alternative<dshandle>(p) && DataSource::isValid(std::holds_alternative<dshandle>(p)))
-      option |= 1ull << (Options)optionIndex;
-    break;
-  case DataType::eBool:
-    if (std::get<ScalarValue>(p).bvalue)
-      option |= 1ull << (Options)optionIndex;
-    break;
+    auto node = std::get<Source>(p);
+    if (node.source && DataSource::isValid(node.source))
+    {
+      DataSource& ds = get().get<DataSource>(node.source);
+      if (!ds.ensure(pipe))
+        return false;
+      if (ds.isEnabled(pipe))
+        opt |= 1ull << (Options)optionIndex;
+    }
   }
+  else
+  {
+    switch (format.type)
+    {
+    case DataType::eBool:
+      if (std::get<ScalarValue>(p).bvalue)
+        opt |= 1ull << (Options)optionIndex;
+      break;
+    case DataType::eEnum:
+    {
+      auto opt = std::get<ScalarValue>(p).ivalue;
+      assert(opt >= 0 && opt < optionCount);
+      opt |= 1ull << ((Options)optionIndex + (Options)opt);
+    }
+    break;
+    }
+  }
+  return true;
 }
 
 void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
@@ -239,42 +257,46 @@ void NodeMeta::buildShaderGLSL(ShaderContent const& nodeContent)
     {
     case DataType::eInt:
       nodeParams += "  int ";
-      nodeParams += t.name;
+      nodeParams += t.id;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 4;
       break;
     case DataType::eFloat:
       nodeParams += "  float ";
-      nodeParams += t.name;
+      nodeParams += t.id;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 4;
       break;
     case DataType::eInt2:
       nodeParams += "  ivec2 ";
-      nodeParams += t.name;
+      nodeParams += t.id;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 8;
       break;
     case DataType::eFloat2:
       nodeParams += "  vec2 ";
-      nodeParams += t.name;
+      nodeParams += t.id;
       nodeParams += ";\n";
       t.uboOffset = paramOffsets;
       paramOffsets += 8;
       break;
-    case DataType::eBool:
-      t.optionIndex = (uint32_t)options.size();
-      options.push_back(t.name + "_Enabled");
-      generated += std::format("const bool {0} = bool({0}_Enabled);\n", t.name);
+    case DataType::eEnum:
+      t.optionIndex = (int16_t)options.size();
+      for(int i = 0; i < t.optionCount; ++i)
+        options.push_back(std::format("{}_OptionEnabled_{}", t.id, i));      
       break;
-    case DataType::eBufferOutput:
+    case DataType::eBool:
+      t.optionIndex = (int16_t)options.size();
+      options.push_back(t.id + "_Enabled");
+      generated += std::format("const bool {0} = bool({0}_Enabled);\n", t.id);
+      break;
+    case DataType::eBuffer:
       glsl::declBufferSource(nodeParams, generated, descriptorSetBindings, options, t, paramOffsets, *shaderBuilder);
       break;
     case DataType::eImage:
-    case DataType::eImageSource:
       glsl::declImageSource(nodeParams, generated, descriptorSetBindings, options, t, paramOffsets, *shaderBuilder);
       break;
     case DataType::eCurveData:
@@ -388,8 +410,8 @@ dshandle Node::clone(uint32_t)
   node.name = this->name;
   for (uint32_t i = 0; i < parameters.size(); ++i)
   {
-    if (std::holds_alternative<dshandle>(parameters[i]))
-      node.setValue(i, std::get<dshandle>(parameters[i]));
+    if (std::holds_alternative<Source>(parameters[i]))
+      node.setValue(i, std::get<Source>(parameters[i]));
     else
       node.setValue(i, std::get<ScalarValue>(parameters[i]));
   }
@@ -404,12 +426,12 @@ Node::~Node()
     return;
   for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
   {
-    if (std::holds_alternative<dshandle>(parameters[i]))
+    if (std::holds_alternative<Source>(parameters[i]))
     {
-      auto h = std::get<dshandle>(parameters[i]);
-      if (DataSource::isValid(h))
+      auto h = std::get<Source>(parameters[i]);
+      if (DataSource::isValid(h.source))
       {
-        auto& src = main.get<DataSource>(h);
+        auto& src = main.get<DataSource>(h.source);
         src.remove(self);
       }
     }
@@ -436,9 +458,10 @@ void Node::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
                           {
                             addToDataStream(dataStream, arg.ivalue2);
                           },
-                          [&dataStream](dshandle const& arg)
+                          [&dataStream](Source const& arg)
                           {
-                            addToDataStream(dataStream, arg.reserved);
+                            addToDataStream(dataStream, arg.source.reserved);
+                            addToDataStream(dataStream, arg.secondary);
                           }},
                p);
   }
@@ -478,8 +501,10 @@ bool Node::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& se
     }
     else
     {
-      dshandle sv = {};
-      result &= terra::getFromDataStream(dataStream, serialIdx, sv.reserved);
+      Source sv = {};
+      result &= terra::getFromDataStream(dataStream, serialIdx, sv.source.reserved);
+      result &= terra::getFromDataStream(dataStream, serialIdx, sv.secondary);
+      parameters.emplace_back(sv);
     }
   }
 
@@ -490,9 +515,9 @@ void Node::sourceDeleted(dshandle src)
 {
   for (auto& p : parameters)
   {
-    if (std::holds_alternative<dshandle>(p) && std::get<dshandle>(p) == src)
+    if (std::holds_alternative<Source>(p) && std::get<Source>(p).source == src)
     {
-      std::get<dshandle>(p) = {};
+      std::get<Source>(p).source = {};
     }
   }
   markValueChanged();
@@ -516,23 +541,28 @@ bool Node::setValue(uint32_t i, ScalarValue value)
   if (!meta->parameterDef[i].canBeScalar())
     return ex;
   ex = true;
-  if (std::holds_alternative<dshandle>(parameters[i]))
+  if (std::holds_alternative<Source>(parameters[i]))
   {
-    auto h = std::get<dshandle>(parameters[i]);
-    if (DataSource::isValid(h))
-      get().get<DataSource>(h).remove(self);
+    auto h = std::get<Source>(parameters[i]);
+    if (DataSource::isValid(h.source))
+      get().get<DataSource>(h.source).remove(self);
   }
   parameters[i] = value;
   markValueChanged();
   return ex;
 }
 
-bool Node::setValue(uint32_t i, dshandle value)
+bool Node::setValue(uint32_t i, Source value)
 {
   return setParamSource(i, value);
 }
 
-Node::exchange Node::setParamSourceImpl(uint32_t i, dshandle value)
+void Node::resetValue(uint32_t i) 
+{
+  setValue(i, paramMeta(i).getDefault());
+}
+
+Node::exchange Node::setParamSourceImpl(uint32_t i, Source value)
 {
   Terra&   main = Terra::get();
   exchange ex   = exchange(dshandle{}, false);
@@ -540,17 +570,17 @@ Node::exchange Node::setParamSourceImpl(uint32_t i, dshandle value)
     return ex;
   if (!meta->parameterDef[i].canBeSource())
     return ex;
-  if (DataSource::isValid(value))
+  if (DataSource::isValid(value.source))
   {
-    auto& dsh = get().get<DataSource>(value);
+    auto& dsh = get().get<DataSource>(value.source);
     if (!DataFormat::isCompatible(meta->parameterDef[i].format, dsh.getFormat()))
       return ex;
   }
 
   ex.second = true;
-  if (std::holds_alternative<dshandle>(parameters[i]))
+  if (std::holds_alternative<Source>(parameters[i]))
   {
-    ex.first = std::get<dshandle>(parameters[i]);
+    ex.first = std::get<Source>(parameters[i]).source;
   }
   parameters[i] = value;
   markValueChanged();
@@ -562,7 +592,7 @@ int32_t Node::incomingEdges() const
   int32_t nb = 0;
   for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
   {
-    if (meta->parameterDef[i].format.type == DataType::eBufferOutput)
+    if (meta->parameterDef[i].format.type == DataType::eBuffer)
     {
       auto node = std::get<DataSource>(parameters[i]).node;
       if (node && isValid(node))
@@ -596,17 +626,11 @@ bool Node::ensure(Pipeline& pipe)
 
   Options     opt = 0;
   auto const& pd  = getMeta().parameterDef;
-  if (forEachSource(
-        [&](uint32_t i, dshandle node) -> bool
-        {
-          DataSource& ds = get().get<DataSource>(node);
-          if (!ds.ensure(pipe))
-            return false;
-          if (ds.isEnabled(pipe))
-            opt |= 1ull << (Options)pd[i].optionIndex;
-          return true;
-        }) < 0)
-    return false;
+  for (uint32_t i = 0; i < (uint32_t)parameters.size(); ++i)
+  {
+    if (!pd[i].modifyOptions(pipe, parameters[i], opt))
+      return false;
+  }
   // - Options
   task.shader = getMeta().getShaderGLSL(opt);
   if (!task.shader)
@@ -627,7 +651,7 @@ bool Node::ensure(Pipeline& pipe)
   uint32_t workGroupSize = get().getWorkGroupSize();
   task.params            = params;
   task.iteration         = iteration;
-  bool transient         = !meta->attribIteration;
+  bool transient         = !meta->cacheResults;
   if (hasTextureOutput())
   {
     auto width  = params.tileSize[0];
@@ -730,26 +754,26 @@ Result Node::run( Pipeline& pipeline)
       std::memcpy(uboData + (size_t)pdef.uboOffset, &val, sizeof(float));
     }
     break;
-    case DataType::eBufferOutput:
-    case DataType::eCurveData:
     case DataType::eImage:
-    case DataType::eImageSource:
-      if (std::holds_alternative<dshandle>(pval))
+    case DataType::eBuffer:
+    case DataType::eCurveData:
+      if (std::holds_alternative<Source>(pval))
       {
 
-        auto& h = std::get<dshandle>(pval);
-        if (DataSource::isValid(h))
+        auto& h = std::get<Source>(pval);
+        if (DataSource::isValid(h.source))
         {
-          auto& val = get().get<DataSource>(h);
+          auto& val = get().get<DataSource>(h.source);
           val.fillDescriptor(pipeline, handles[pdef.descriptorIndex], uboData + (size_t)pdef.uboOffset);
+          handles[pdef.descriptorIndex].second = h.secondary;
         }
       }
       else
       {
         glsl::fillScalarDisabled(pipeline, pdef, std::get<ScalarValue>(pval), uboData + (size_t)pdef.uboOffset);
       }
-    }
-    break;
+      break;
+    }    
   }
   ubo.unmap();
   handles[meta->constantsDescriptorIdx].first = ubo.get();

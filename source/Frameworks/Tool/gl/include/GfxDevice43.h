@@ -1,11 +1,11 @@
 #pragma once
 #include "GfxDeviceObjects.h"
 #include "GlGfx.h"
-#include "RenderDevice.h"
+#include "ComputeDevice.h"
 
 namespace terra
 {
-class GfxDevice43 : public RenderDevice
+class GfxDevice43 : public ComputeDevice
 {
 public:
   GfxDevice43()

@@ -152,8 +152,8 @@ Coord get_offset(NodeParams params)
 
 Coord apply_start_offset(Coord c, NodeParams params)
 {
-  c.x += uvec4(params.env.start_coord.x);
-  c.y += uvec4(params.env.start_coord.y);
+  c.x += uvec4(params.env.start_coord.x - 1);
+  c.y += uvec4(params.env.start_coord.y - 1);
   return c;
 }
 
@@ -183,4 +183,13 @@ uint get_pixel_id(uint x, uint y, NodeParams params)
   uint ux = (uint(x) - uint(params.env.start_coord.x));
   uint uy = (uint(y) - uint(params.env.start_coord.y)) * (params.env.size.x + 2);
   return ux + uy;
+}
+
+Coordf get_uv(NodeParams params)
+{
+  Coord c = get_offset(params);
+  Coordf uv;
+  uv.x = ((vec4(c.x) + vec4(params.env.offset.x)) - vec4(1.0)) * params.env.recipTileSize.x;
+  uv.y = ((vec4(c.y) + vec4(params.env.offset.y)) - vec4(1.0)) * params.env.recipTileSize.y;
+  return uv;
 }

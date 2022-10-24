@@ -123,11 +123,6 @@ struct handle
   {
     return handle(reserved + lifecycle);
   }
-  template <typename D>
-  requires(std::derived_from<D, T> || std::derived_from<T, D>) constexpr operator terra::handle<D>() noexcept
-  {
-    return terra::handle<D>(reserved);
-  }
 
 public:
   uint32_t reserved = k_null_32;
@@ -202,16 +197,16 @@ inline std::u8string parseU8(std::string_view from)
 
 enum class DataType
 {
+  eInvalid,
   eInt2,
   eFloat2,
   eInt,
   eFloat,
   eImage,
-  eImageSource,
-  eBufferOutput,
+  eBuffer,
   eCurveData,
   eBool,
-  eInvalid
+  eEnum
 };
 
 enum class Semantic
@@ -222,8 +217,8 @@ enum class Semantic
 struct DataFormat
 {
   DataType type          = DataType::eInvalid;
-  DataType scalarSubType = DataType::eFloat;
-
+  DataType scalarSubType = DataType::eInvalid;
+  
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
   static bool isCompatible(DataFormat const& from, DataFormat const& to);
@@ -264,6 +259,10 @@ struct EnvParams
   uvec2 offset;
   // Size within the tile
   uvec2 size; // writable size
+  // Derived : Reciprocal size
+  vec2 recipSize;
+  // Derived : Reciprocal tileSize
+  vec2 recipTileSize;
 
   float    frequency;
   float    wavelength;
@@ -284,6 +283,12 @@ class DataSource;
 using DataSourcePtr = std::shared_ptr<DataSource>;
 using dshandle      = handle<DataSourcePtr>;
 using DSHandleHash  = HandleHash<DataSourcePtr>;
+
+struct Source
+{
+  dshandle source;
+  uint32_t secondary = 0;
+};
 
 inline uintptr_t pack(uint32_t first, uint32_t sec)
 {

@@ -1,7 +1,7 @@
 name     = "@OpenSimplex";
 category = "@Generators";
-tooltip  = "@ToOpenSimplexBrief";
-help     = "@ToOpenSimplexHelp";
+tooltip  = "@OpenSimplexBrief";
+help     = "@OpenSimplexHelp";
 function = "open_simplex_2";
 output   = source (type = float);
 icon     = "\xef\x80\xbe";

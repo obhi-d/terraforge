@@ -38,11 +38,14 @@ public:
   }
 
   // Option
-  virtual bool isEnabled(Pipeline const&) = 0;
+  virtual bool isEnabled(Pipeline const&) const = 0;
   // Ensure data exists in consumable form (ex. In the GPU)
+  // This is always called from GPU-thread
+  // So proper sync is expected between data accessed here and main thread
   virtual bool       ensure(Pipeline&) = 0;
-  virtual Type       getType() const         = 0;
-  virtual DataFormat getFormat() const       = 0;
+
+  virtual Type       getType() const   = 0;
+  virtual DataFormat getFormat() const = 0;
 
   // Accept the change event from a source, for a data source that is dependent
   virtual void accept(dshandle source, Event) = 0;
@@ -51,7 +54,7 @@ public:
   {
     if (!getFromDataStream(dataStream, serialIdx, self.reserved))
       return false;
-    return fromDataStream(dataStream, serialIdx);
+    return fromDataStreamImpl(dataStream, serialIdx);
   }
 
   virtual void toDataStream(std::vector<uint8_t>& dataStream) const
@@ -73,27 +76,30 @@ public:
 
   void propagate(Event);
   void onParamChange(dshandle oldValue, dshandle newValue);
-  bool setParamSource(uint32_t paramIdx, dshandle);
+  bool setParamSource(uint32_t paramIdx, Source);
 
   static bool isValid(dshandle);
 
   using exchange = std::pair<dshandle, bool>;
 
+  // GPU thread functions
   virtual void fillDescriptor(Pipeline const&, GfxDescriptorSet::rhandle&, std::byte*) = 0;
 
-  static inline bool isWithinTile(ivec2 tile, ivec2 tileConstraintMin, ivec2 tileConstraintMax) 
+  static inline bool isWithinTile(uvec2 tile, uvec2 tileConstraintOffset, uvec2 tileConstraintSize)
   {
-    return ((tileConstraintMin[0] < 0 || tileConstraintMax[0] < 0) ||
-            (tileConstraintMin[0] >= tile[0] && tile[0] < tileConstraintMax[0])) &&
-           ((tileConstraintMin[1] < 0 || tileConstraintMax[1] < 0) ||
-            (tileConstraintMin[1] >= tile[1] && tile[1] < tileConstraintMax[1]));
+    return ((tileConstraintSize[0] == 0) ||
+            (tileConstraintOffset[0] >= tile[0] && tile[0] < (tileConstraintOffset[0] + tileConstraintSize[0]))) &&
+           ((tileConstraintSize[1] == 0) ||
+            (tileConstraintOffset[1] >= tile[1] && tile[1] < (tileConstraintOffset[1] + tileConstraintSize[1])));
   }
 
-
 protected:
-  virtual bool     fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx);
-  virtual void     toDataStreamImpl(std::vector<uint8_t>& dataStream) const;
-  virtual exchange setParamSourceImpl(uint32_t paramIdx, dshandle) = 0;
+  inline virtual bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
+  {
+    return true;
+  }
+  inline virtual void toDataStreamImpl(std::vector<uint8_t>& dataStream) const {}
+  virtual exchange setParamSourceImpl(uint32_t paramIdx, Source) = 0;
 
   dshandle self;
 };

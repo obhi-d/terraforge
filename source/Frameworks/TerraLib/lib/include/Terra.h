@@ -4,12 +4,13 @@
 #include "Node.h"
 #include "Table.h"
 
+#include <WorkerThread.h>
 #include <map>
 #include <neo_registry.hpp>
 
 namespace terra
 {
-struct RenderDevice;
+struct ComputeDevice;
 struct ShaderBuilder;
 class Terra
 {
@@ -24,7 +25,7 @@ public:
   };
 
   using Localization = std::function<std::u8string_view(std::string_view)>;
-  void init(std::shared_ptr<RenderDevice> compute, Localization loc);
+  void init(std::shared_ptr<ComputeDevice> compute, Localization loc);
 
   inline void addImageCodec(std::u8string ext, std::shared_ptr<ImageCodec> codec)
   {
@@ -76,7 +77,6 @@ public:
     dataSources.erase(n);
   }
 
-
   template <typename T>
   inline void replace(T& oldT, T& newT, dshandle node)
   {
@@ -87,10 +87,10 @@ public:
   dshandle createNode(NodeMeta const&);
   dshandle getImage(std::filesystem::path path);
 
-
   GfxSampler::handle getSampler(ImageSampling sampling);
+  void               addMeta(std::string name, NodeMeta::ShaderContent const& content, NodeMeta&& meta);
 
-  inline NodeMeta* getNodeMeta(std::string name)
+  inline NodeMeta* getNodeMeta(std::string const& name)
   {
     auto it = metaMap.find(name);
     if (it != metaMap.end())
@@ -100,8 +100,19 @@ public:
     return {};
   }
 
-  inline RenderDevice& getDevice()
+  /*
+  template <typename T>
+  auto deviceTask(T&& t)
   {
+    return computeThread.add([this, t]() 
+      {
+        return t(*device);
+      });
+  }
+  */
+  auto& getDevice() 
+  {
+    // assert(computeThread.isThisThread());
     return *device;
   }
 
@@ -136,10 +147,14 @@ public:
   inline void forEachNode(L&& l)
   {
     dataSources.for_each(
-      [](DataSourcePtr& ds) -> bool
+      [&l](DataSourcePtr& ds) -> bool
       {
         if (ds->getType() == DataSource::Type::eNode)
-          l(*(Node*)ds.get());
+        {
+          if(!l(*(Node*)ds.get()))
+            return false;
+        }
+        return true;
       });
   }
 
@@ -160,10 +175,12 @@ private:
   NodeMetaMap                   metaMap;
   std::string                   unsupportedShaderConfigs;
   neo::registry                 registry;
-  std::shared_ptr<RenderDevice> device;
+  std::shared_ptr<ComputeDevice> device;
   ImageCodecMap                 imageCodecs;
   table<DataSourcePtr>          dataSources;
   SamplerList                   samplers;
+
+  // WorkerThread computeThread;
 };
 
 inline Terra& get()

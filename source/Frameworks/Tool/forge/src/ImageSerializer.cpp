@@ -96,7 +96,6 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
     logError("Failed to open file : {}", path.string());
     return false;
   }
-  data.source         = path;
   png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
   if (!png_ptr)
     return false;

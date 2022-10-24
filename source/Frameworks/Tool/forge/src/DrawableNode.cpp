@@ -14,12 +14,12 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
 {
   this->id         = id;
   this->pos        = pos;
-  auto&       node = get().get(id);
+  auto&       node = get().get<Node>(id);
   auto const& meta = node.getMeta();
   style            = app.getTheme().getNodeStyle(meta.style);
 
   // imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
-  output.id    = pack(id.um_value(), 0);
+  output.id    = pack(id.um_index(), 0);
   output.flags = PinStateFlags::fOutput;
   imne::SetPinFlags(output.id, imne::PinKind::Output, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
 
@@ -28,8 +28,8 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
   {
     auto& p = parameters[i];
     auto& d = node.paramMeta(i);
-    p.id    = pack(id.um_value(), i + 1);
-    if (d.format.type == DataType::eBufferOutput || d.format.type == DataType::eImage)
+    p.id    = pack(id.um_index(), i + 1);
+    if (d.format.type == DataType::eBuffer || d.format.type == DataType::eImage)
     {
       p.flags = PinStateFlags::fInputPin;
       imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -52,7 +52,7 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
   case DataType::eImage:
     icon = IconType::Circle;
     break;
-  case DataType::eBufferOutput:
+  case DataType::eBuffer:
     icon = IconType::Diamond;
     switch (format.scalarSubType)
     {
@@ -172,22 +172,30 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     if (drawScalar(style, def, def.format.type, std::get<ScalarValue>(param)))
       node.setValueModified(i);
     break;
-  case DataType::eBufferOutput:
-  {
-    DataSource& v = std::get<DataSource>(param);
-    if (v.node)
+  case DataType::eEnum:
+    // draw combo
+    assert(false);
+    break;
+  case DataType::eCurveData:
+    assert(false);
+    break;
+  case DataType::eBuffer:
+    if (std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source))
+    {
       ImGui::TextUnformatted((const char*)def.name.data());
+    }
     else
     {
+      auto& sv = std::get<ScalarValue>(param);
       ImGui::SetNextItemWidth(style.fixedWidth);
-      if (drawScalar(style, def, def.format.scalarSubType, v.constVal))
+      if (drawScalar(style, def, def.format.scalarSubType, sv))
         node.setValueModified(i);
     }
-  }
-  break;
+    break;
   case DataType::eImage:
   {
-    ImageSource v = std::get<ImageSource>(param);
+    assert(false);
+    break;
   }
   break;
   }
@@ -203,7 +211,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
 bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, bool& previewNode)
 {
   bool        changed = false;
-  auto&       node    = get().get(id);
+  auto&       node    = get().get<Node>(id);
   auto const& meta    = node.getMeta();
   auto const& style   = app.getTheme().getNodeStyle(this->style);
 
@@ -271,7 +279,7 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
   auto min = ImGui::GetItemRectMin();
   auto max = ImGui::GetItemRectMax();
 
-  auto&       node  = get().get(id);
+  auto&       node  = get().get<Node>(id);
   auto const& meta  = node.getMeta();
   auto const& style = app.getTheme().getNodeStyle(this->style);
 

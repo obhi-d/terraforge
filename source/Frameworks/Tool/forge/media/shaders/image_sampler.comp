@@ -1,0 +1,8 @@
+
+vec4 image_sampler(NodeParams np)
+{
+  Coordf c = get_uv(np);
+  c.x = c.x * vec4(np.uniforms.uv_scale.x) + vec4(np.uniforms.uv_offset.x);
+  c.y = c.y * vec4(np.uniforms.uv_scale.y) + vec4(np.uniforms.uv_offset.y);
+  return sample_source(c.x, c.y, np);
+}
