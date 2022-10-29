@@ -12,11 +12,11 @@ class Terra;
 
 struct Image : public DataSource
 {
-  std::filesystem::path source;
-  GfxImage2D::handle    handle;
-  uint32_t              width  = 0;
-  uint32_t              height = 0;
-  ImageFormat           format = ImageFormat::eFloat;
+  std::filesystem::path        source;
+  std::unique_ptr<std::byte[]> data;
+  uint32_t                     width  = 0;
+  uint32_t                     height = 0;
+  ImageFormat                  format = ImageFormat::eFloat;
 
   Image() = default;
   Image(std::filesystem::path path) : source(std::move(path)) {}
@@ -36,7 +36,7 @@ struct Image : public DataSource
 
   DataFormat getFormat() const final
   {
-    return DataFormat{.type = DataType::eImage, .scalarSubType = DataType::eFloat};
+    return DataFormat(DataType::eImage);
   }
 
   inline std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, Source) final
@@ -46,10 +46,10 @@ struct Image : public DataSource
 
   inline void accept(dshandle source, Event) final {}
   void        unload();
-  bool        isEnabled(Pipeline const&) const final;
-  bool        ensure(Pipeline&) final;
+  bool        load();
+  // bool        isEnabled(Pipeline const&) const final;
+  // bool        ensure(Pipeline&) final;
   void        remove(dshandle node) final;
-  void        fillDescriptor(Pipeline const&, GfxDescriptorSet::rhandle&, std::byte*) final;
   bool        fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
   void        toDataStreamImpl(std::vector<uint8_t>& dataStream) const;
 };

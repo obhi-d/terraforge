@@ -3,7 +3,7 @@
 
 #include "Common.h"
 #include "GpuBuffer.h"
-#include "Node.h"
+#include "NodeMeta.h"
 #include <variant>
 
 namespace terra
@@ -18,97 +18,77 @@ struct DispatchTask
 class Pipeline
 {
 public:
-  Pipeline(uint32_t taskId);
+  
   ~Pipeline()
   {
     cleanup();
   }
 
-  void compute(dshandle, LaunchParams const&, uvec2 start, uvec2 size); // wrap in Modifiers.toR16
-  void run();
 
-  int32_t declBuffer(int32_t declIdx, uint32_t size, bool transient);
-  int32_t declImage(int32_t declIdx, uint32_t width, uint32_t height, ImageFormat fmt, bool transient);
+  void compute(dshandle, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
+  
+  // this function is called once results are available
+  virtual std::unique_ptr<float[]> getResults() = 0;
+
+  void cancel();
 
   // Read for the given node
-  GfxBuffer::handle  getOutputBuffer(dshandle nodeIdx) const;
-  GfxImage2D::handle getOutputImage(dshandle nodeIdx) const;
-
   void cleanup();
-  void enqueue(dshandle);
-
-  EnvParams const& params() const
-  {
-    return tiles[subTask].envParams;
-  }
-
-  GpuBuffer& getUbo()
-  {
-    return ubo;
-  }
-
-  TaskKey taskId() const
-  {
-    return pack(id, subTask);
-  }
 
   int32_t getIteration() const
   {
     return iteration;
   }
 
-private:
-  void determineBufferLifetimes();
-  void allocateResources();
+  bool reissue(dshandle);
   
-  void prepareNodes(dshandle);
-
-  // Images are not shared
-  struct Image
+  float frequency() const
   {
-    GfxImage2D::handle image;
-    ImageFormat        format = ImageFormat::eFloat;
-    uint32_t           width  = 0;
-    uint32_t           height = 0;
-    bool               transient;
+    return launchParams.frequency;
+  }
 
-    ~Image();
-  };
-
-  // Buffers are reused
-  struct Buffer
+  int32_t seed() const 
   {
-    uint32_t size       = 0;
-    int32_t  phyId      = 0;
-    int32_t  write      = -1;
-    int32_t  read       = -1;
-    int32_t  usageCount = 0;
-    bool     transient  = false;
-  };
+    return launchParams.seed;
+  }
 
-  struct TileTask
+protected:
+
+  dshandle getActor() const
   {
-    EnvParams              envParams;
-    std::vector<Image>     images;
-    std::vector<Buffer>    buffers;
-    std::vector<GpuBuffer> gpuBuffers;
-    std::vector<dshandle>  nodesToDelete;
-    // all nodes that are executed, and in order
-    std::vector<dshandle> tasks;
-  };
+    return actor;
+  }
 
-  std::vector<TileTask> tiles;
+  LaunchParams const& params() const
+  {
+    return launchParams;
+  }
+
+  uvec2 const& launchSize() const
+  {
+    return size;
+  }
+    
+  uvec2 const& launchOffset() const
+  {
+    return start;
+  }
+
+  virtual void launch()                       = 0;
+  virtual void pushTileTask(EnvParams const&) = 0;
+
+private:
+  
 
   // main actor
   dshandle actor;
-
-  GpuBuffer        ubo;
+  dshandle reissued;
   LaunchParams     launchParams;
-  GfxFence::handle sync;
+  uvec2            start;
+  uvec2            size;
   int32_t          iteration = 0;
-  uint32_t         id        = 0;
-  uint32_t         subTask   = 0;
-  bool             dirty     = false;
+  uint32_t         tile      = 0;
+  uint32_t         nbTiles   = 0;
 };
 
 } // namespace terra

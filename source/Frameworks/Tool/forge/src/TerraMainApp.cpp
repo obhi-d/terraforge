@@ -145,11 +145,10 @@ void TerraMainApp::run()
 {
   initalize();
   createContext();
-  terra::get().init(device,
-                    [this](std::string_view name) -> std::u8string_view
+  terra::get().init([this](std::string_view name) -> std::u8string_view
                     {
                       return getLocalizedString(name);
-                    });
+                    }, nullptr);
 
   viewer.init(*this);
   reloadTheme();

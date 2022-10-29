@@ -14,12 +14,7 @@ namespace terra
 {
 
 void NodeEditor::init(TerraMainApp& app)
-{
-  for (auto const& dir_entry : std::filesystem::directory_iterator{getMediaPath() / "effects"})
-  {
-    if (dir_entry.is_regular_file() && dir_entry.path().has_extension() && dir_entry.path().extension() == ".ns")
-      Terra::get().scanShader(dir_entry.path());
-  }
+{  
   cachedMetas.clear();
   CategoryMap names;
   terra::get().forEachMeta(
@@ -145,7 +140,7 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
                 frameCache.createSelected = &entry;
               if (frameCache.createSelected == &entry)
                 ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.highlight);
-              if (ImGui::MenuItemEx((const char*)entry.name.data(), (const char*)entry.icon.c_str()))
+              if (ImGui::MenuItemEx((const char*)entry.name.data(), (const char*)entry.icon.data()))
               {
                 pendingAction.meta     = &entry;
                 pendingAction.action   = Action::eCreateNode;
@@ -216,7 +211,7 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
     if (pendingAction.node && get().isValid((uint32_t)(size_t)pendingAction.node))
     {
       auto const& node = get().get<Node>((uint32_t)(size_t)pendingAction.node);
-      ImGui::TextUnformatted((const char*)node.getMeta().tooltip.data());
+      ImGui::TextUnformatted((const char*)node.meta.tooltip.data());
     }
     else if (pendingAction.pin)
     {
@@ -225,9 +220,9 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
       {
         auto const& node = get().get<Node>(nodel);
         if (param == 0)
-          ImGui::TextUnformatted((const char*)node.getMeta().tooltip.data());
+          ImGui::TextUnformatted((const char*)node.meta.tooltip.data());
         else
-          ImGui::TextUnformatted((const char*)node.paramMeta(param - 1).tooltip.data());
+          ImGui::TextUnformatted((const char*)node.meta.parameterDef[param - 1].tooltip.data());
       }
     }
     if (pendingAction.action == Action::eShowHelp)
@@ -235,8 +230,8 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
       if (pendingAction.node && get().isValid((uint32_t)(size_t)pendingAction.node))
       {
         auto const& node = get().get<Node>((uint32_t)(size_t)pendingAction.node);
-        if (!node.getMeta().help.empty())
-          ImGui::TextUnformatted((const char*)node.getMeta().help.data());
+        if (!node.meta.help.empty())
+          ImGui::TextUnformatted((const char*)node.meta.help.data());
       }
       else if (pendingAction.pin)
       {
@@ -246,13 +241,13 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
           auto const& node = get().get<Node>(nodel);
           if (param == 0)
           {
-            if (!node.getMeta().help.empty())
-              ImGui::TextUnformatted((const char*)node.getMeta().help.data());
+            if (!node.meta.help.empty())
+              ImGui::TextUnformatted((const char*)node.meta.help.data());
           }
           else
           {
-            if (!node.paramMeta(param - 1).help.empty())
-              ImGui::TextUnformatted((const char*)node.paramMeta(param - 1).help.data());
+            if (!node.meta.parameterDef[param - 1].help.empty())
+              ImGui::TextUnformatted((const char*)node.meta.parameterDef[param - 1].help.data());
           }
         }
       }
@@ -320,7 +315,7 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
         auto const& node = get().get<Node>(id.first);
         if (!id.second)
           return node.getFormat();
-        return node.paramMeta(id.second - 1).format;
+        return node.meta.parameterDef[id.second - 1].format;
       };
 
       imne::PinId startPinId = 0, endPinId = 0;
@@ -429,13 +424,13 @@ void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair e
 {
   auto&    src    = get().get<Node>(start.first);
   auto&    dst    = get().get<Node>(end.first);
-  Color color  = src.hasTextureOutput() ? col.texLink : col.dsLink;
-  dshandle oldSrc = src.hasTextureOutput() ? dst.setValue(end.second - 1, Source(dshandle(start.first), 0))
-                                        : dst.setValue(end.second - 1, Source(dshandle(start.first), 0));
-  if (oldSrc)
+  Color color  = col.dsLink;
+  auto oldSrc = dst.param(end.second - 1, Source(dshandle(start.first), 0));
+  if (std::holds_alternative<Source>(oldSrc))
   {
+    auto oldSrcHandle = DataSource::isValid(std::get<Source>(oldSrc).source);
     uint32_t    del      = 0;
-    imne::PinId pinStart = pack(oldSrc, 0);
+    imne::PinId pinStart     = pack(oldSrcHandle, 0);
     imne::PinId pinEnd   = pack(end.first, end.second);
 
     links.for_each(
@@ -476,7 +471,7 @@ void NodeEditor::deleteLink(imne::LinkId l)
 void NodeEditor::setNextDataSource(ImThemeColors const& col, dshandle id, imne::PinId src)
 {
   auto&       node    = get().get<Node>(id);
-  auto const& meta    = node.getMeta();
+  auto const& meta    = node.meta;
   auto        srcPin  = unpack(src.Get());
   auto const& srcNode = get().get<Node>(srcPin.first);
 
@@ -485,7 +480,7 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, dshandle id, imne::
     uint32_t paramChoice = (uint32_t)meta.parameterDef.size();
     for (uint32_t i = 0; i < paramChoice; ++i)
     {
-      if (meta.parameterDef[i].id == "source" && meta.parameterDef[i].format == srcNode.getFormat())
+      if (meta.parameterDef[i].semantic == Semantic::eSource && meta.parameterDef[i].format == srcNode.getFormat())
       {
         paramChoice = i;
         break;
@@ -508,7 +503,7 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, dshandle id, imne::
   }
   else
   {
-    if (node.getFormat() == srcNode.getMeta().parameterDef[srcPin.second].format)
+    if (node.getFormat() == srcNode.meta.parameterDef[srcPin.second].format)
     {
       createLink(col, uintpair(id, 0), srcPin);
     }

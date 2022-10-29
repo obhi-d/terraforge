@@ -4,17 +4,7 @@
 namespace terra
 {
 
-Pipeline::Image::~Image() 
-{
-  terra::get().getDevice().destroy(image);
-}
-
-Pipeline::Pipeline(uint32_t taskId) : id(taskId) 
-{
-  ubo.setDesc(GfxBuffer::Usage::fUniform, GfxStorageClass::eDynamicDeviceReadonly);
-}
-
-void Pipeline::compute(dshandle h, LaunchParams const& params, uvec2 start, uvec2 size)
+void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec2 size)
 {
   assert(start[0] >= 1);
   assert(start[1] >= 1);
@@ -24,7 +14,6 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, uvec2 start, uvec
   actor      = h;
   launchParams = params;
   iteration  = 0;
-  subTask      = 0;
 
   // how many tiles
   // top corner is (1, 1)
@@ -36,39 +25,47 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, uvec2 start, uvec
   tileStart[0] = ((start[0] - 1) / params.tileSize[0]);
   tileStart[1] = ((start[1] - 1) / params.tileSize[1]);
 
-  tiles.reserve(tileCount[0] * tileCount[1]);
 
   for (uint32_t i = 0; i < tileCount[0]; ++i)
   {
     for (uint32_t j = 0; j < tileCount[1]; ++j)
     {
-      TileTask task;
-      task.envParams.tile[0] = i + tileStart[0];
-      task.envParams.tile[1] = i + tileStart[1];
+      EnvParams envParams;
+      envParams.tile[0] = i + tileStart[0];
+      envParams.tile[1] = i + tileStart[1];
       
-      task.envParams.tileOffset[0] = tileStart[0] + i * params.tileSize[0];
-      task.envParams.tileOffset[1] = tileStart[1] + i * params.tileSize[1];
-      task.envParams.tileSize      = params.tileSize;
-      task.envParams.offset[0]     = std::max(task.envParams.tileOffset[0], start[0]) - task.envParams.tileOffset[0];
-      task.envParams.offset[1]     = std::max(task.envParams.tileOffset[1], start[1]) - task.envParams.tileOffset[1];
-      task.envParams.size[0]       = params.tileSize[0] - task.envParams.offset[0];
-      task.envParams.size[1]       = params.tileSize[1] - task.envParams.offset[1];
-      if (task.envParams.size[0] > 0 && task.envParams.size[1] > 0)
+      envParams.tileOffset[0] = tileStart[0] + i * params.tileSize[0];
+      envParams.tileOffset[1] = tileStart[1] + i * params.tileSize[1];
+      envParams.tileSize      = params.tileSize;
+      envParams.offset[0]     = std::max(envParams.tileOffset[0], start[0]) - envParams.tileOffset[0];
+      envParams.offset[1]     = std::max(envParams.tileOffset[1], start[1]) - envParams.tileOffset[1];
+      envParams.size[0]       = params.tileSize[0] - envParams.offset[0];
+      envParams.size[1]       = params.tileSize[1] - envParams.offset[1];
+      if (envParams.size[0] > 0 && envParams.size[1] > 0)
       {
-        task.envParams.textureOffset[0] = task.envParams.tileOffset[0] - start[0];
-        task.envParams.textureOffset[1] = task.envParams.tileOffset[1] - start[1];
-        task.envParams.frequency        = params.frequency;
-        task.envParams.wavelength       = params.wavelength;
-        task.envParams.seed             = params.seed;
-        task.envParams.bufferArraySize  = (task.envParams.size[0] + 2) * (task.envParams.size[1] + 2);
-        tiles.emplace_back(task);
+        //envParams.textureOffset[0] = envParams.tileOffset[0] - start[0];
+        //envParams.textureOffset[1] = envParams.tileOffset[1] - start[1];
+        envParams.frequency        = params.frequency;
+        envParams.wavelength       = params.wavelength;
+        envParams.seed             = params.seed;
+        //envParams.bufferArraySize  = (envParams.size[0] + 2) * (envParams.size[1] + 2);
+        pushTileTask(envParams);
       }
     }
   }
-  dirty = true;
-  
+
+  launch();
 }
 
+bool Pipeline::reissue(dshandle handle)
+{
+  if (reissued)
+    return false;
+  reissued = handle;
+  return true;
+}
+
+/*
 void Pipeline::run() 
 {
   if (dirty)
@@ -247,5 +244,6 @@ void Pipeline::enqueue(dshandle task)
 {
   tiles[subTask].tasks.emplace_back(task);
 }
+*/
 
 } // namespace terra

@@ -1,5 +1,5 @@
 
-#include "Node.h"
+#include "NodeMeta.h"
 #include "Logger.h"
 #include "Pipeline.h"
 #include "ShaderBuilder.h"
@@ -167,6 +167,7 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
   }
 }
 
+/*
 bool ParameterMeta::affectsOptions() const
 {
   switch (format.type)
@@ -586,7 +587,7 @@ Node::exchange Node::setParamSourceImpl(uint32_t i, Source value)
   markValueChanged();
   return ex;
 }
-/*
+
 int32_t Node::incomingEdges() const
 {
   int32_t nb = 0;
@@ -603,7 +604,7 @@ int32_t Node::incomingEdges() const
   }
   return nb;
 }
-*/
+
 void Node::markValueChanged()
 {
   for (auto& t : tasks)
@@ -792,5 +793,6 @@ void Node::accept(dshandle source, Event)
 {
   markValueChanged();
 }
+*/
 
 } // namespace terra

@@ -11,9 +11,7 @@ void Image::unload()
 {
   auto& main = Terra::get();
 
-  if (handle)
-    main.getDevice().destroy(handle);
-  handle = {};
+  data = {};
 }
 
 void Image::remove(dshandle node)
@@ -23,11 +21,10 @@ void Image::remove(dshandle node)
     unload();
 }
 
-bool Image::ensure(Pipeline&)
+bool Image::load()
 {
-  if (handle)
+  if (this->data)
     return true;
-
   auto& main  = Terra::get();
   auto  codec = main.getImageCodeFor(source.extension().u8string());
   if (!codec)
@@ -37,14 +34,11 @@ bool Image::ensure(Pipeline&)
   if (!codec->loadImage(data, source))
     return false;
 
-  width  = data.width;
-  height = data.height;
-  format = data.format;
-
-  if (!handle)
-    handle = main.getDevice().createImage(GfxStorageClass::eStaticDeviceReadonly, data.width, data.height, data.format,
-                                          data.data.get());
-  return (bool)handle;
+  this->width  = data.width;
+  this->height = data.height;
+  this->format = data.format;
+  this->data   = std::move(data.data);
+  return this->data != nullptr;
 }
 
 bool Image::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)

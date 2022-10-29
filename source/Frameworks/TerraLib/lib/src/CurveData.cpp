@@ -50,7 +50,7 @@ bool CurveData::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_
     return false;
 
   spline = tk::spline<>::spline(cx, cy, type, monotonic, left, leftValue, right, rightValue);
-  bufferDirty = true;
+  version = (self.index() << 16) | version++;
   return true;
 }
 
@@ -79,16 +79,16 @@ void CurveData::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
   addToDataStream(dataStream, type);
 }
 
-bool CurveData::ensure(Pipeline&) 
+bool CurveData::getBuffer(ComputeDevice& dev, uint32& bufferVer, GfxBuffer::handle& handle)
 {
-  if (!handle || bufferDirty)
+  if (!handle || version != bufferVer)
   {
-    get().getDevice().destroy(handle);
+    dev.destroy(handle);
     auto size = (1 + 1 + 5 * (uint32_t)spline.get_x().size()) * 4;
-    handle = get().getDevice().createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::Usage::fStorage, size);
+    handle = dev.createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::Usage::fStorage, size);
     if (!handle)
       return false;
-    std::byte* data = get().getDevice().mapBuffer(handle, 0, size);
+    std::byte* data = dev.mapBuffer(handle, 0, size);
     if (!data)
       return false;
     auto     nbpts  = (uint32_t)spline.get_x().size();
@@ -102,14 +102,15 @@ bool CurveData::ensure(Pipeline&)
     std::memcpy(data + offset, spline.get_c().data(), nbpts * 4);
     offset += nbpts * 4;
     std::memcpy(data + offset, spline.get_d().data(), nbpts * 4);
-    get().getDevice().unmapBuffer(handle);
+    dev.unmapBuffer(handle);
+    bufferVer = version;
+    return true;
   }
-  return true;
+  return false;
 }
 
 CurveData::~CurveData() 
 {
-  get().getDevice().destroy(handle);
 }
 
 }

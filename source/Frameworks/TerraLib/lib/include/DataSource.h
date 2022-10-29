@@ -38,11 +38,11 @@ public:
   }
 
   // Option
-  virtual bool isEnabled(Pipeline const&) const = 0;
+  // virtual bool isEnabled(Pipeline const&) const = 0;
   // Ensure data exists in consumable form (ex. In the GPU)
   // This is always called from GPU-thread
   // So proper sync is expected between data accessed here and main thread
-  virtual bool       ensure(Pipeline&) = 0;
+  // virtual bool       ensure(Pipeline&) = 0;
 
   virtual Type       getType() const   = 0;
   virtual DataFormat getFormat() const = 0;
@@ -82,9 +82,6 @@ public:
 
   using exchange = std::pair<dshandle, bool>;
 
-  // GPU thread functions
-  virtual void fillDescriptor(Pipeline const&, GfxDescriptorSet::rhandle&, std::byte*) = 0;
-
   static inline bool isWithinTile(uvec2 tile, uvec2 tileConstraintOffset, uvec2 tileConstraintSize)
   {
     return ((tileConstraintSize[0] == 0) ||
@@ -99,7 +96,10 @@ protected:
     return true;
   }
   inline virtual void toDataStreamImpl(std::vector<uint8_t>& dataStream) const {}
-  virtual exchange setParamSourceImpl(uint32_t paramIdx, Source) = 0;
+  virtual exchange    setParamSourceImpl(uint32_t paramIdx, Source)
+  {
+    return exchange();
+  }
 
   dshandle self;
 };

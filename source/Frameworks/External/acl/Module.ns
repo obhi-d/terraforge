@@ -1,0 +1,12 @@
+type = extern;
+
+fetch "https://github.com/obhi-d/acl.git"
+{
+  license    : "LICENSE";
+  commit     : "72549c36a4eec917d4c029ee978665f465ffe4a8";
+  package    : acl;
+  args
+  {
+    ACL_BUILD_TESTS : OFF;
+  }
+}

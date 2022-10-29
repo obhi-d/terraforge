@@ -5,11 +5,13 @@
 
 namespace terra
 {
+struct ComputeDevice;
 class Terra;
 struct RenderDevice;
 class GpuBuffer
 {
 public:
+  GpuBuffer(ComputeDevice& dev) : cd(dev) {}
   ~GpuBuffer();
 
   void setDesc(GfxBuffer::Usage usage, GfxStorageClass storage)
@@ -45,6 +47,7 @@ public:
   void       unmap();
 
 private:
+  ComputeDevice&    cd;
   GfxBuffer::Usage  usage;
   GfxStorageClass   storage = GfxStorageClass::eStaticDeviceReadonly;
   GfxBuffer::handle handle;

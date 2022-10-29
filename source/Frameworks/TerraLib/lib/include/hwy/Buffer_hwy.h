@@ -1,0 +1,109 @@
+
+#pragma once
+#include "Common.h"
+#include <hwy/aligned_allocator.h>
+
+namespace terra
+{
+template <typename T>
+class Buffer_hwy
+{
+public:
+  Buffer_hwy() = default;
+  Buffer_hwy(uint32_t width, uint32_t height, uint32_t lanes)
+      : lanes_(lanes), width_(width), height_(height)
+  {
+    size_ = pitch() * height_;
+  }
+  Buffer_hwy(Buffer_hwy const& other)
+  {
+    *this = other;
+  }
+  Buffer_hwy& operator=(Buffer_hwy const& other)
+  {
+    if (data_)
+      hwy::FreeAlignedBytes(data_, &deallocate, nullptr);
+        
+    width_  = other.width_;
+    height_ = other.height_;
+    lanes_  = other.lanes_;
+    size_   = other.size_;
+
+    ensure();
+    std::memcpy(data_, other.data_, size_ * sizeof(T));
+    return *this;
+  }
+  Buffer_hwy(Buffer_hwy&& other) noexcept
+  {
+    *this = std::move(other);
+  }
+  ~Buffer_hwy()
+  {
+    if (data_)
+      hwy::FreeAlignedBytes(data_, &deallocate, nullptr);
+  }
+
+  Buffer_hwy& operator=(Buffer_hwy&& other) noexcept
+  {
+    if (data_)
+      hwy::FreeAlignedBytes(data_, &deallocate, nullptr);
+
+    data_       = other.data_;
+    width_      = other.width_;
+    height_     = other.height_;
+    lanes_      = other.lanes_;
+    size_       = other.size_;
+    other.data_ = nullptr;
+    return *this;
+  }
+
+  T* data()
+  {
+    if (!data_)
+      ensure();
+    return data_;
+  }
+
+  T const* data() const
+  {
+    return data_;
+  }
+
+  uint32_t size() const
+  {
+    return size_;
+  }
+
+  uint32_t pitch() const 
+  {
+    return ((width_ + (lanes_ - 1)) / lanes_) * lanes_;
+  }
+
+  void ensure()
+  {
+    data_ = (T*)hwy::AllocateAlignedBytes(size_ * sizeof(T), &allocate, nullptr);
+  }
+
+  uint32_t height() const
+  {
+    return height_;
+  }
+
+private:
+  static void* allocate(void* , size_t size)
+  {
+    return mi_malloc(size);
+  }
+
+  static void deallocate(void*, void* memory)
+  {
+    mi_free(memory);
+  }
+
+  T*                    data_      = nullptr;
+  uint32_t              size_   = 0;
+  uint32_t              width_  = 0;
+  uint32_t              height_    = 0;
+  uint32_t              lanes_  = 0;
+};
+} // namespace terra

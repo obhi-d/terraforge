@@ -1,6 +1,6 @@
 
 #pragma once
-#include "Node.h"
+#include "NodeMeta.h"
 #include <RenderResource.h>
 #include <string>
 #include <vector>

@@ -1,16 +1,15 @@
 
-#include "Updater.h"
 #include "CurveData.h"
 #include "Image.h"
-#include "Node.h"
+#include "NodeMeta.h"
 #include "Pipeline.h"
 #include "ShaderBuilder.h"
 #include "Terra.h"
+#include "Updater.h"
 
-namespace terra
+namespace terra::glsl
 {
-namespace glsl
-{
+
 #include "glsl/buffer.glsl"
 #include "glsl/curve430.glsl"
 #include "glsl/image.glsl"
@@ -67,7 +66,7 @@ std::string_view bufferWriteType(DataType type)
   }
   return "invalid";
 }
-
+/*
 void declPreamble(std::string& ubo, std::string& opaque, DescriptorList& dl, OptionList& ol, ParameterMeta& pm,
                   int32& offset, ShaderBuilder& sb)
 {
@@ -211,7 +210,7 @@ void CurveData::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhand
 
 void Node::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, std::byte* data)
 {
-  
+
   if (isEnabled(pipeline))
   {
     if (getMeta().fillDescriptor)
@@ -264,7 +263,7 @@ void ImageSource::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rha
   {
     *(float*)data = defaultValue;
   }
-}*/
+}
 // ----------------------------------------------
 // ----------------- Options --------------------
 bool CurveData::isEnabled(Pipeline const& pipeline) const
@@ -276,7 +275,7 @@ bool Image::isEnabled(Pipeline const& pipeline) const
 {
   return true;
 }
-/*
+
 bool ImageSource::isEnabled(Pipeline const& pipeline)
 {
   DataSource& ds = get().get<DataSource>(source);
@@ -284,7 +283,7 @@ bool ImageSource::isEnabled(Pipeline const& pipeline)
     return true;
   return false;
 }
-*/
+
 bool Node::isEnabled(Pipeline const& pipe) const
 {
   if (meta->isEnabled)
@@ -296,5 +295,5 @@ bool Node::isEnabled(Pipeline const& pipe) const
   }
   return true;
 }
-
-} // namespace terra
+*/
+} // namespace terra::glsl

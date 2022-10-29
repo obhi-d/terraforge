@@ -15,7 +15,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
   this->id         = id;
   this->pos        = pos;
   auto&       node = get().get<Node>(id);
-  auto const& meta = node.getMeta();
+  auto const& meta = node.meta;
   style            = app.getTheme().getNodeStyle(meta.style);
 
   // imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -23,11 +23,11 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
   output.flags = PinStateFlags::fOutput;
   imne::SetPinFlags(output.id, imne::PinKind::Output, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
 
-  parameters.resize(node.getNumParams());
-  for (uint32 i = 0; i < node.getNumParams(); ++i)
+  parameters.resize(meta.parameterDef.size());
+  for (uint32 i = 0; i < (uint32)parameters.size(); ++i)
   {
     auto& p = parameters[i];
-    auto& d = node.paramMeta(i);
+    auto const& d = meta.parameterDef[i];
     p.id    = pack(id.um_index(), i + 1);
     if (d.format.type == DataType::eBuffer || d.format.type == DataType::eImage)
     {
@@ -159,8 +159,8 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
 
 void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& node, uint32_t i)
 {
-  ParameterMeta const& def   = node.paramMeta(i);
-  Parameter&           param = node.param(i);
+  ParameterMeta const& def   = node.meta.parameterDef[i];
+  Parameter const&     param = node.param(i);
   auto&                pin   = parameters[i];
   switch (def.format.type)
   {
@@ -169,8 +169,11 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
   case DataType::eInt:
   case DataType::eInt2:
   case DataType::eBool:
-    if (drawScalar(style, def, def.format.type, std::get<ScalarValue>(param)))
-      node.setValueModified(i);
+  {
+    ScalarValue value = std::get<ScalarValue>(param);
+    if (drawScalar(style, def, def.format.type, value))
+      node.param(i, value);
+  }
     break;
   case DataType::eEnum:
     // draw combo
@@ -186,10 +189,10 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     }
     else
     {
-      auto& sv = std::get<ScalarValue>(param);
+      ScalarValue value = std::get<ScalarValue>(param);
       ImGui::SetNextItemWidth(style.fixedWidth);
-      if (drawScalar(style, def, def.format.scalarSubType, sv))
-        node.setValueModified(i);
+      if (drawScalar(style, def, def.format.scalarSubType, value))
+        node.param(i, value);
     }
     break;
   case DataType::eImage:
@@ -212,7 +215,7 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
 {
   bool        changed = false;
   auto&       node    = get().get<Node>(id);
-  auto const& meta    = node.getMeta();
+  auto const& meta    = node.meta;
   auto const& style   = app.getTheme().getNodeStyle(this->style);
 
   imne::BeginNode(id.reserved);
@@ -233,7 +236,7 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
 
   // auto pos = ImGui::GetCursorPos();
   output.xy.y = ImGui::GetCursorPosY();
-  ImGui::TextUnformatted((const char*)node.getName().data());
+  ImGui::TextUnformatted((const char*)node.name.c_str());
 
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
     ne.showHelp(imne::NodeId(id.reserved));
@@ -280,12 +283,12 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
   auto max = ImGui::GetItemRectMax();
 
   auto&       node  = get().get<Node>(id);
-  auto const& meta  = node.getMeta();
+  auto const& meta  = node.meta;
   auto const& style = app.getTheme().getNodeStyle(this->style);
 
   // Output
   output.xy.x = max.x;
-  drawPinIcon(ne, style, output, node.getMeta().format, !node.isDetached());
+  drawPinIcon(ne, style, output, node.meta.format, !node.isDetached());
 
   // Parameters
   for (uint32_t i = 0; i < node.getNumParams(); ++i)

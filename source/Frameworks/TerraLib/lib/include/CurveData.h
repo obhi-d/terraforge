@@ -1,7 +1,7 @@
 #pragma once
 
-#include "DataSource.h"
 #include "ComputeDevice.h"
+#include "DataSource.h"
 #include "RenderResource.h"
 #include "Serializer.h"
 #include "spline.h"
@@ -32,9 +32,7 @@ struct CurveData : public DataSource
 
   tk::spline<> spline;
   Edit         edits;
-
-  GfxBuffer::handle handle;
-  bool              bufferDirty = true;
+  uint32       version = 0;
 
   CurveData()
   {
@@ -79,8 +77,8 @@ struct CurveData : public DataSource
     }
     if ((edits.liveUpdate || apply) && edits.edited && edits.dirty)
     {
-      spline      = edits.spline;
-      bufferDirty = true;
+      spline  = edits.spline;
+      version = (self.index() << 16) | version++;
       if (apply)
       {
         edits.edited  = false;
@@ -97,7 +95,7 @@ struct CurveData : public DataSource
     return spline == other.spline;
   }
 
-  bool ensure(Pipeline&) final;
+  bool getBuffer(ComputeDevice&, uint32& version, GfxBuffer::handle& ioBuffer);
 
   inline Type getType() const final
   {
@@ -106,7 +104,7 @@ struct CurveData : public DataSource
 
   inline DataFormat getFormat() const final
   {
-    return DataFormat{.type = DataType::eCurveData, .scalarSubType = DataType::eInvalid};
+    return DataFormat(DataType::eCurveData);
   }
 
   inline std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, Source) final
@@ -114,11 +112,10 @@ struct CurveData : public DataSource
     return std::make_pair<dshandle, bool>({}, false);
   }
 
-  bool isEnabled(Pipeline const&) const final;
+  // bool isEnabled(Pipeline const&) const final;
 
   inline void accept(dshandle source, Event) final {}
 
-  void fillDescriptor(Pipeline const&, GfxDescriptorSet::rhandle&, std::byte*) final;
   bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
   void toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
 };

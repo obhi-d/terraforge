@@ -1,9 +1,13 @@
 type = lib;
+source_paths : [hwy, metas, gpu];
 
 public:
 {
   dependencies: [ 
-    "External.neoscript"
+    "External.neoscript",
+    "External.hwy",
+    "External.acl",
+    "External.mimalloc"
   ];
 
 }

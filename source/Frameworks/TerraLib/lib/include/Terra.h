@@ -1,9 +1,12 @@
 
 #pragma once
+
+#include "ComputeDevice.h"
 #include "ImageCodec.h"
-#include "Node.h"
+#include "NodeMeta.h"
 #include "Table.h"
 
+#include <ThreadPool.h>
 #include <WorkerThread.h>
 #include <map>
 #include <neo_registry.hpp>
@@ -16,34 +19,13 @@ class Terra
 {
 public:
 
-  struct CommonShaderContent
-  {
-    std::string fixedResources;
-    std::string main;
-    std::string typesAndConstants;
-    std::string utilityFunctions;
-  };
 
   using Localization = std::function<std::u8string_view(std::string_view)>;
-  void init(std::shared_ptr<ComputeDevice> compute, Localization loc);
+  void init(Localization loc, std::shared_ptr<ComputeDevice> iDev);
 
   inline void addImageCodec(std::u8string ext, std::shared_ptr<ImageCodec> codec)
   {
     imageCodecs[ext] = codec;
-  }
-
-  inline bool isShaderConfigSupported(std::string_view name)
-  {
-    if (unsupportedShaderConfigs.find(name) != unsupportedShaderConfigs.npos)
-      return false;
-    return true;
-  }
-
-  void scanShader(std::filesystem::path path);
-
-  inline CommonShaderContent const& getShaderContent(ShaderLang) const
-  {
-    return shaderContent;
   }
   
   inline std::shared_ptr<ImageCodec> getImageCodeFor(std::u8string ext)
@@ -87,8 +69,7 @@ public:
   dshandle createNode(NodeMeta const&);
   dshandle getImage(std::filesystem::path path);
 
-  GfxSampler::handle getSampler(ImageSampling sampling);
-  void               addMeta(std::string name, NodeMeta::ShaderContent const& content, NodeMeta&& meta);
+  void  addMeta(std::string name, NodeMeta const& meta);
 
   inline NodeMeta* getNodeMeta(std::string const& name)
   {
@@ -98,22 +79,6 @@ public:
       return &nodeMetaTable[it->second];
     }
     return {};
-  }
-
-  /*
-  template <typename T>
-  auto deviceTask(T&& t)
-  {
-    return computeThread.add([this, t]() 
-      {
-        return t(*device);
-      });
-  }
-  */
-  auto& getDevice() 
-  {
-    // assert(computeThread.isThisThread());
-    return *device;
   }
 
   inline uint32_t frameNumber() const
@@ -160,31 +125,41 @@ public:
 
   uint32_t getSemantic(std::string_view from);
 
+  ThreadPool& pool()
+  {
+    return threadPool;
+  }
+
+  std::shared_ptr<Pipeline> createPipeline() const;
+
 private:
   static Terra instance;
 
   using ImageCodecMap = std::unordered_map<std::u8string, std::shared_ptr<ImageCodec>>;
-  using SamplerList   = std::vector<std::pair<ImageSampling, GfxSampler::handle>>;
 
   uint32_t                 frame = 0;
-  CommonShaderContent      shaderContent;
   std::vector<std::string> semantics;
 
   using NodeMetaMap = std::map<std::string, uint32_t>;
   std::vector<NodeMeta>         nodeMetaTable;
   NodeMetaMap                   metaMap;
-  std::string                   unsupportedShaderConfigs;
   neo::registry                 registry;
-  std::shared_ptr<ComputeDevice> device;
   ImageCodecMap                 imageCodecs;
   table<DataSourcePtr>          dataSources;
-  SamplerList                   samplers;
-
+  ThreadPool                    threadPool;
   // WorkerThread computeThread;
+  std::shared_ptr<ComputeDevice> device;
+  PipelineType                   pipelineType = PipelineType::eCPU;
 };
 
 inline Terra& get()
 {
   return Terra::get();
 }
+
+inline std::u8string_view operator""_ls(const char* input, std::size_t len) 
+{
+  return get().localizationProvider(std::string_view(input, len));
+}
 } // namespace terra
+

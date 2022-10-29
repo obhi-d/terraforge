@@ -1,0 +1,16 @@
+type = extern;
+
+fetch "https://github.com/obhi-d/mimalloc.git"
+{
+  license    : "LICENSE";
+  commit     : "7ddf5283719bcdb01ee373a2197f0b109f0ff291";
+  package    : mimalloc;
+  targets    : mimalloc;
+  skip_namespace : true;
+  args
+  {
+    MI_BUILD_TESTS  : OFF;
+    MI_BUILD_SHARED : OFF;
+    MI_BUILD_STATIC : ON;
+  }
+}

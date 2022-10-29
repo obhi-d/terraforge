@@ -1,4 +1,5 @@
 #pragma once
+#include <acl/linear_arena_allocator.hpp>
 #include <array>
 #include <cassert>
 #include <cctype>
@@ -7,6 +8,8 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mimalloc-2.0/mimalloc-new-delete.h>
+#include <mimalloc-2.0/mimalloc.h>
 #include <optional>
 #include <stdexcept>
 
@@ -34,6 +37,17 @@
 
 namespace terra
 {
+
+namespace consts
+{
+static constexpr int32_t X     = 501125321;
+static constexpr int32_t Y     = 1136930381;
+static constexpr int32_t Z     = 1720413743;
+static constexpr int32_t W     = 1066037191;
+static constexpr float   root2 = 1.4142135623730950488f;
+static constexpr float   root3 = 1.7320508075688772935f;
+} // namespace consts
+
 using uint32 = std::uint32_t;
 using uint   = uint32;
 using int32  = std::int32_t;
@@ -42,6 +56,17 @@ using vec4   = std::array<float, 4>;
 using ivec4  = std::array<int, 4>;
 using ivec2  = std::array<int, 2>;
 using uvec2  = std::array<uint32, 2>;
+
+template <auto>
+struct MemberPtr;
+
+template <typename T, typename M, M T::*P>
+struct MemberPtr<P>
+{
+  static inline auto constexpr pmem = P;
+  using class_t                     = std::decay_t<T>;
+  using member_t                    = std::decay_t<M>;
+};
 
 union ScalarValue
 {
@@ -132,7 +157,7 @@ using ghandle = handle<std::void_t<>>;
 
 template <typename T>
 struct HandleHash
-{  
+{
   inline uint32_t operator()(handle<T> d) const noexcept
   {
     return d.reserved;
@@ -147,12 +172,13 @@ class Node;
 
 // default values recommended by http://isthe.com/chongo/tech/comp/fnv/
 /// hash a single byte
-constexpr uint32_t Seed = 0x811C9DC5; // 2166136261
-inline uint32_t    fnv1a(unsigned char oneByte, uint32_t hash = Seed)
+constexpr uint32_t        Seed = 0x811C9DC5; // 2166136261
+constexpr inline uint32_t fnv1a(unsigned char oneByte, uint32_t hash = Seed)
 {
   constexpr uint32_t Prime = 0x01000193; //   16777619
   return (oneByte ^ hash) * Prime;
 }
+
 inline uint32_t fnv1a(const void* data, size_t numBytes, uint32_t hash = Seed)
 {
   assert(data);
@@ -211,17 +237,34 @@ enum class DataType
 
 enum class Semantic
 {
-  eNone
+  eNone,
+  eSource
 };
 
 struct DataFormat
 {
   DataType type          = DataType::eInvalid;
   DataType scalarSubType = DataType::eInvalid;
-  
+
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
+  constexpr DataFormat() = default;
+  constexpr DataFormat(DataType itype, DataType iscalarSubType = DataType::eFloat)
+      : type(itype), scalarSubType(iscalarSubType)
+  {}
   static bool isCompatible(DataFormat const& from, DataFormat const& to);
+};
+
+template <DataType Type, DataType Scalar = DataType::eFloat>
+struct Format
+{
+  static inline constexpr DataType type   = Type;
+  static inline constexpr DataType scalar = Scalar;
+
+  static inline constexpr auto get()
+  {
+    return DataFormat(type, scalar);
+  }
 };
 
 DataType         stringToType(std::string_view);
@@ -239,35 +282,33 @@ union DataValue
 
 struct LaunchParams
 {
-  uvec2    tileSize;
-  float    frequency;
-  float    wavelength;
-  uint32_t seed;
+  ivec2   tileSize;
+  float   frequency;
+  float   wavelength;
+  int32_t seed;
 };
 
 // Rendering is done 1 tile at a time
 struct EnvParams
 {
-  uvec2 tile;
-  uvec2 textureOffset; // if we are writing to a texture
-
+  ivec2 tile;
   // Current tile offset
-  uvec2 tileOffset;
+  ivec2 tileOffset;
   // Current tile size
-  uvec2 tileSize;
+  ivec2 tileSize;
   // Offset within the tile
-  uvec2 offset;
+  ivec2 offset;
   // Size within the tile
-  uvec2 size; // writable size
+  ivec2 size; // writable size
   // Derived : Reciprocal size
   vec2 recipSize;
   // Derived : Reciprocal tileSize
   vec2 recipTileSize;
 
-  float    frequency;
-  float    wavelength;
-  uint32_t seed;
-  uint32_t bufferArraySize;
+  float   frequency;
+  float   wavelength;
+  int32_t seed;
+  int32_t padding;
 
   inline constexpr auto operator<=>(EnvParams const&) const noexcept = default;
 };
@@ -300,4 +341,13 @@ inline uintpair unpack(uintptr_t v)
 {
   return std::make_pair<uint32_t, uint32_t>(static_cast<uint32_t>(v >> 32ull), static_cast<uint32_t>(v & 0xffffffff));
 }
+
+using ThreadLocalAllocator = acl::linear_arena_allocator<>;
+
+enum class PipelineType
+{
+  eGPU,
+  eCPU
+};
+
 } // namespace terra

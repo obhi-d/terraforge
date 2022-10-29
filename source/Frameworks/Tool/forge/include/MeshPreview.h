@@ -15,9 +15,9 @@ public:
   void regenerate(TerraMainApp const&, dshandle);
 
 private:
-  Pipeline          pipeline;
-  GfxBuffer::handle buffer;
-  GfxMesh::handle   layout;
-  GfxMaterial       material;
+  std::shared_ptr<Pipeline> pipeline;
+  GfxBuffer::handle         buffer;
+  GfxMesh::handle           layout;
+  GfxMaterial               material;
 };
 } // namespace terra
