@@ -213,7 +213,7 @@ void Operators_hwy()
   };
 
   // Add
-  meta.icon    = u8"\xef\x81\x95";
+  meta.icon    = "\xef\x81\x95";
   meta.name    = "@Add"_ls;
   meta.tooltip = "@AddTooltip"_ls;
   meta.help    = "@AddHelp"_ls;
@@ -221,7 +221,7 @@ void Operators_hwy()
   get().addMeta("add", meta);
 
   // Sub
-  meta.icon     = u8"\xef\x81\x96";
+  meta.icon     = "\xef\x81\x96";
   meta.name     = "@Sub"_ls;
   meta.category = "@Operators"_ls;
   meta.tooltip  = "@SubTooltip"_ls;
@@ -230,7 +230,7 @@ void Operators_hwy()
   get().addMeta("sub", meta);
 
   // Mul
-  meta.icon     = u8"\xef\x81\x97";
+  meta.icon     = "\xef\x81\x97";
   meta.name     = "@Mul"_ls;
   meta.category = "@Operators"_ls;
   meta.tooltip  = "@MulTooltip"_ls;
@@ -239,7 +239,7 @@ void Operators_hwy()
   get().addMeta("mul", meta);
 
   // Divide
-  meta.icon     = u8"\xef\x94\xa9";
+  meta.icon     = "\xef\x94\xa9";
   meta.name     = "@Div"_ls;
   meta.category = "@Operators"_ls;
   meta.tooltip  = "@DivTooltip"_ls;
@@ -248,7 +248,7 @@ void Operators_hwy()
   get().addMeta("div", meta);
 
   // Pow
-  meta.icon     = u8"\xef\x84\xab";
+  meta.icon     = "\xef\x84\xab";
   meta.name     = "@Pow"_ls;
   meta.category = "@Operators"_ls;
   meta.tooltip  = "@PowTooltip"_ls;
@@ -270,7 +270,7 @@ void Operators_hwy()
   };
 
   // MAdd
-  meta.icon     = u8"\xef\x84\xab";
+  meta.icon     = "\xef\x81\x97";
   meta.name     = "@Madd"_ls;
   meta.category = "@Operators"_ls;
   meta.tooltip  = "@MaddTooltip"_ls;

@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Generator",
+    "namespace": "terra",
+    "type": "std::uint32_t",
+    "usage": "autoflags",
+    "default": "None",
+    "options": [ "string-key" ],
+    "values": [
+      "GPU",
+      "CPU"
+    ]
+  }
+]

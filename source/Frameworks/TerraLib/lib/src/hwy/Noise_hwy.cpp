@@ -174,14 +174,14 @@ void Noise_hwy()
     return std::make_shared<Noise>(meta);
   };
 
-  meta.icon    = u8"\xef\x87\xbe";
+  meta.icon    = "\xef\x87\xbe";
   meta.name    = "@OpenSimplex"_ls;
   meta.tooltip = "@OpenSimplexTooltip"_ls;
   meta.help    = "@OpenSimplexHelp"_ls;
   meta.fn      = HWY_DYNAMIC_DISPATCH(openSimplex);
   get().addMeta("openSimplex", meta);
 
-  meta.icon    = u8"\xef\x87\xbe";
+  meta.icon    = "\xef\x87\xbe";
   meta.name    = "@Simplex"_ls;
   meta.tooltip = "@SimplexTooltip"_ls;
   meta.help    = "@SimplexHelp"_ls;

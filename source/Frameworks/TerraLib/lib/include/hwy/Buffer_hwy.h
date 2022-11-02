@@ -89,6 +89,11 @@ public:
     return height_;
   }
 
+  uint32_t width() const 
+  {
+    return width_;
+  }
+
 private:
   static void* allocate(void* , size_t size)
   {

@@ -38,6 +38,42 @@ void writeInputLine(float freq, uint32_t startx, uint32_t liney, uint32_t pitch,
   }
 }
 
+vec2 getMinMax(float const* input, uint32_t pitch, uint32_t width, uint32_t height) 
+{
+  const hn::ScalableTag<T> d;
+  auto const               lanes = (uint32_t)hn::Lanes(d);
+  
+  auto const minv = hn::Set(d, std::numeric_limits<float>::max());
+  auto const maxv = hn::Set(d, std::numeric_limits<float>::min());
+  
+  auto min = minv;
+  auto max = maxv;
+  for (uint32_t h = 0; h < height; h++)
+  {
+    auto line = input + pitch * h;
+    for (uint32_t i = 0; i < pitch; i += lanes)
+    {
+      if (i + lanes <= width)
+      {
+        auto v = hn::Load(d, line + i);
+        max = hn::Max(v, max);
+        min = hn::Min(v, min);
+      }
+      else
+      {
+        auto m = hn::FirstN(d, i + lanes - width);
+        max    = hn::Max(hn::IfThenElse(m, hn::Load(d, line + i), maxv), max);
+        min    = hn::Min(hn::IfThenElse(m, hn::Load(d, line + i), minv), min);
+      }
+    }
+  }
+
+  vec2 value;
+  value[0] = hn::GetLane(hn::MinOfLanes(d, min));
+  value[1] = hn::GetLane(hn::MaxOfLanes(d, max));
+  return value;
+}
+
 } // namespace terra::HWY_NAMESPACE
 
 HWY_AFTER_NAMESPACE();
@@ -49,6 +85,7 @@ namespace terra
 
 HWY_EXPORT(lanes);
 HWY_EXPORT(writeInputLine);
+HWY_EXPORT(getMinMax);
 
 uint32_t lanes()
 {
@@ -155,6 +192,12 @@ void Pipeline_hwy::launch()
       [id, this]()
       {
         NodeMeta_hwy::run(getActor(), *this, id, lanes());
+        if (!threadDatas[id].outputs.empty())
+        {
+          auto& back = threadDatas[id].outputs.back();
+          threadDatas[id].minMax = HWY_DYNAMIC_DISPATCH(getMinMax)(back.data(), back.pitch(), back.width(), back.height());
+        }
+
         if(finished.fetch_sub(1) == 1)
           semaphore.release();
 
@@ -162,32 +205,52 @@ void Pipeline_hwy::launch()
   }
 }
 
-std::unique_ptr<float[]> Pipeline_hwy::getResults() 
+std::size_t Pipeline_hwy::hasResults() 
 {
+  if (finished.load() == 0)
+  {
+    auto const& ls = launchSize();
+    return ls[0] * ls[1];
+  }
+  return 0;
+}
+
+void Pipeline_hwy::getResults(float* ready, float& min, float& max)
+{
+  min = std::numeric_limits<float>::max();
+  max = std::numeric_limits<float>::min();
   if (finished.load() == 0)
   {
     auto const& ls    = launchSize();
     auto const& lo    = launchOffset();
-    auto        ready = std::unique_ptr<float[]>(new float[ls[0] * ls[1]]);
+    // auto        ready = std::unique_ptr<float[]>(new float[ls[0] * ls[1]]);
     for (auto& td : threadDatas)
     {
       if (!td.outputs.empty())
       {
         auto& back = td.outputs.back();
-        auto& buffer = td.outputs.back();
-        for (uint32 i = 0; i < buffer.height(); ++i)
+        for (uint32 i = 0; i < back.height(); ++i)
         {
           uint32 x = td.params.tileOffset[0] + td.params.offset[0] - lo[0];
           uint32 y = td.params.tileOffset[1] + td.params.offset[1] - lo[1];
-          auto offset = ready.get() + (y * ls[0]) + x;
+          auto offset = ready + (y * ls[0]) + x;
           std::memcpy(offset, back.data() + 1, td.params.size[0] * sizeof(float));
         }
+
+        min = std::min(min, td.minMax[0]);
+        max = std::max(max, td.minMax[1]);
       }
     }
-    return ready;
+    finished = -1;
+    if (updateActor())
+      launch();
   }
-  return nullptr;
 }
 
+void Pipeline_hwy::wait() 
+{
+  semaphore.acquire();
+  semaphore.release();
+}
 } // namespace terra
 #endif

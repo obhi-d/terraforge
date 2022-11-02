@@ -168,7 +168,7 @@ public:
     std::string shaderContent;
   };
 
-  std::u8string_view         icon;
+  std::string_view           icon;
   std::u8string_view         name;
   std::u8string_view         category;
   std::u8string_view         tooltip;
@@ -218,7 +218,7 @@ public:
     return meta.parameterDef[i].getter(*this);
   }
 
-  Parameter param(uint32_t i, Parameter&& sv) 
+  Parameter param(uint32_t i, Parameter&& sv)
   {
     auto old = meta.parameterDef[i].getter(*this);
     meta.parameterDef[i].setter(*this, std::move(sv));

@@ -10,7 +10,7 @@ fetch "https://github.com/obhi-d/mimalloc.git"
   args
   {
     MI_BUILD_TESTS  : OFF;
-    MI_BUILD_SHARED : OFF;
-    MI_BUILD_STATIC : ON;
+    MI_BUILD_SHARED : ON;
+    MI_BUILD_STATIC : OFF;
   }
 }

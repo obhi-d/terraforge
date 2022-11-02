@@ -1109,12 +1109,16 @@ ed::EditorContext::~EditorContext()
     m_Splitter.ClearFreeMemory();
 }
 
-void ed::EditorContext::Begin(const char* id, const ImVec2& size)
+bool ed::EditorContext::Begin(const char* id, const ImVec2& size)
 {
+    auto availableContentSize = ImGui::GetContentRegionAvail();
+    
+    if (availableContentSize.x <= 0.0f || availableContentSize.y <= 0.0f)
+      return false;
+
     m_EditorActiveId = ImGui::GetID(id);
     ImGui::PushID(id);
 
-    auto availableContentSize = ImGui::GetContentRegionAvail();
     ImVec2 canvasSize = ImFloor(size);
     if (canvasSize.x <= 0.0f)
         canvasSize.x = ImMax(4.0f, availableContentSize.x);
@@ -1124,7 +1128,13 @@ void ed::EditorContext::Begin(const char* id, const ImVec2& size)
     if (!m_IsInitialized)
     {
         // Cycle canvas so it has a change to setup its size before settings are loaded
-        m_Canvas.Begin(id, canvasSize);
+        if (!m_Canvas.Begin(id, canvasSize))
+        {
+          ImGui::PopID();
+          LoadSettings();
+          m_IsInitialized = true;
+          return false;
+        };
         m_Canvas.End();
 
         LoadSettings();
@@ -1234,6 +1244,7 @@ void ed::EditorContext::Begin(const char* id, const ImVec2& size)
         ++m_SelectionId;
 
     m_LastSelectedObjects = m_SelectedObjects;
+    return true;
 }
 
 void ed::EditorContext::End()

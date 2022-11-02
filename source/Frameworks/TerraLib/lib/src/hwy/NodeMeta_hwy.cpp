@@ -1,5 +1,5 @@
 
-
+#include "Terra.h"
 #include "hwy/Pipeline_hwy.h"
 #include "hwy/NodeMeta_hwy.h"
 
@@ -29,6 +29,15 @@ void NodeMeta_hwy::write(Parameter const& param, Pipeline_hwy& pipe, uint32_t th
   {
     fill(std::get<ScalarValue>(param).value, pipe, threadGroupId, lanes);
   }
+}
+
+void NodeMeta_hwy::run(dshandle h, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes) 
+{
+  assert(DataSource::isValid(h));
+  
+  auto& node = get().get<Node>(h);
+  auto const& meta = (NodeMeta_hwy const&)node.meta;
+  meta.fn(node, pipe, threadGroupId);
 }
 
 }

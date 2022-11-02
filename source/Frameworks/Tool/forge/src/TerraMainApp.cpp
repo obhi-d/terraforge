@@ -11,6 +11,7 @@
 #include "ResourceUtils.h"
 #include "Terra.h"
 #include "GfxDevice45.h"
+#include "forgeEnums.hpp"
 
 neo_registry(ThemeBuilder);
 neo_registry(StringBuilder);
@@ -33,7 +34,7 @@ TerraMainApp::~TerraMainApp()
 
 void TerraMainApp::readLocalization()
 {
-  auto bytes = fileContentToBytes("localization/" + settings.language + ".nls");
+  auto bytes = fileContentToBytes("localization/" + settings.language.get() + ".nls");
 
   std::u8string_view ss((char8_t const*)bytes.data(), bytes.size());
   while (!ss.empty())
@@ -77,7 +78,7 @@ void TerraMainApp::reloadTheme()
 {
   neo::state_machine sm{themeReader, &theme};
   auto               f1_str = fileContentToString(settings.theme);
-  sm.parse(settings.theme, f1_str);
+  sm.parse(settings.theme.get(), f1_str);
   if (!sm.fail_bit())
   {
     viewer.setTheme(theme);
@@ -116,10 +117,12 @@ void TerraMainApp::createContext()
     throw std::runtime_error("createContext(): cannot create window");
   }
 
+  auto constexpr DebugActive = SDL_GL_CONTEXT_DEBUG_FLAG;
+
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, DebugActive | SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG);
 
   glContext = SDL_GL_CreateContext(window);
   int version = 450;
@@ -127,10 +130,18 @@ void TerraMainApp::createContext()
   {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
     glContext = SDL_GL_CreateContext(window);
 
     if (!glContext)
-      throw std::runtime_error("createContext(): cannot create glContext");
+    {
+      // try without robust access
+      SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, DebugActive);
+      glContext = SDL_GL_CreateContext(window);
+      settings.hasRobustAccess = false;
+      if (!glContext)
+        throw std::runtime_error("createContext(): cannot create glContext");
+    }
     version = 430;
   }
 
@@ -181,11 +192,6 @@ int TerraMainApp::Main(int argc, const char* argv[])
 
 void TerraMainApp::draw()
 {
-  get().forEachNode(
-    [frame = this->frame](auto& node) {
-      //node.prepare(frame);
-      return true;
-    });
   viewer.draw(*this);
   frame++;
 }

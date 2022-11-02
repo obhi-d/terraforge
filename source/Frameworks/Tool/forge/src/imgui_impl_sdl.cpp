@@ -896,7 +896,6 @@ static void ImGui_ImplSDL2_SwapBuffers(ImGuiViewport* viewport, void*)
     ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData;
     if (vd->GLContext)
     {
-        SDL_GL_MakeCurrent(vd->Window, vd->GLContext);
         SDL_GL_SwapWindow(vd->Window);
     }
 }

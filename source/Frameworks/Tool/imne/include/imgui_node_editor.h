@@ -305,7 +305,7 @@ void PushStyleVar(StyleVar varIndex, const ImVec2& value);
 void PushStyleVar(StyleVar varIndex, const ImVec4& value);
 void PopStyleVar(int count = 1);
 
-void Begin(const char* id, const ImVec2& size = ImVec2(0, 0));
+bool Begin(const char* id, const ImVec2& size = ImVec2(0, 0));
 void End();
 
 enum class ImneObjFlags

@@ -29,8 +29,8 @@ class Pipeline_hwy : public Pipeline
 {
 
 public:
-  
-  std::unique_ptr<float[]> getResults() final;
+  void        getResults(float*, float& min, float& max) final;
+  std::size_t hasResults() final;
 
   hwybuffer& getOutput(uint32_t thread, uint32_t lanes);
   hwybuffer& pushOutput(uint32_t thread, uint32_t lanes);
@@ -41,6 +41,7 @@ public:
   void   popInput(uint32_t thread);
 
 protected:
+  void wait() final;
   void launch() final;
   void pushTileTask(EnvParams const&) final;
 
@@ -50,6 +51,7 @@ private:
     EnvParams params;
     int32_t   width  = 0;
     int32_t   height = 0;
+    vec2      minMax = {-1.0f, 1.0f};
 
     std::vector<hwyvb>     inputs;
     std::vector<hwybuffer> outputs;

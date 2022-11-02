@@ -49,7 +49,7 @@ public:
     return glContext;
   }
 
-  std::shared_ptr<GfxDevice43> getDevice() const
+  std::shared_ptr<GfxDevice43> const& getDevice() const
   {
     return device;
   }

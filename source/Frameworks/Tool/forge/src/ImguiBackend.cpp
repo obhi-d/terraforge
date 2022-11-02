@@ -4,6 +4,7 @@
 #include "ImageSerializer.h"
 #include "Logger.h"
 #include "ResourceUtils.h"
+#include "ImguiTerraWindow.h"
 #include <SDL.h>
 
 namespace tmpl
@@ -25,6 +26,8 @@ void ImguiBackend::init(std::shared_ptr<GfxDevice43> renderer)
   {
     auto self = (ImguiBackend*)backend;
     self->renderer->flushStates();
+    if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
+      self->renderer->clearBackbuffer(self->clearColor);
     self->draw(glm::vec2(viewport->Size.x, viewport->Size.y), viewport->DrawData);
   };
   createDeviceObjects();
@@ -59,17 +62,21 @@ void ImguiBackend::applyTheme(ImguiTheme const& theme)
 void ImguiBackend::draw()
 {
   auto& io = ImGui::GetIO();
-
   draw(glm::vec2(io.DisplaySize.x, io.DisplaySize.y), ImGui::GetDrawData());
+}
+
+void ImguiBackend::drawOtherWindows() 
+{
+  auto& io = ImGui::GetIO();
   if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
   {
     SDL_Window*   backup_current_window  = SDL_GL_GetCurrentWindow();
     SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
     ImGui::UpdatePlatformWindows();
     ImGui::RenderPlatformWindowsDefault(nullptr, this);
-    SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
   }
 }
+
 void ImguiBackend::uploadFonts(ImguiTheme const& theme)
 {
   ImGuiIO& io = ImGui::GetIO();
@@ -201,6 +208,7 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
       renderer->destroy(b);
     pendingDeletion.clear();
   }
+  state.cullMode          = CullMode::eCullNone;
   state.viewport.offset.x = 0;
   state.viewport.offset.y = 0;
   state.viewport.size.x   = (gl::GLsizei)frameSize.x;
@@ -208,8 +216,7 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
   state.scissor           = state.viewport;
 
   renderer->setState(state);
-  renderer->clearBackbuffer(clearColor);
-
+  
   uint32_t vertexDataOffset = 0;
   uint32_t indexDataOffset  = 0;
   float    L                = data->DisplayPos.x;
@@ -493,7 +500,7 @@ void ImguiBackend::textCentered(std::string_view text, ImVec2 pos, ImVec2 window
   ImGui::SetCursorPos(ImVec2(pos.x + (windowWidth.x - textDim.x) * 0.5f, pos.y + (windowWidth.y - textDim.y) * 0.5f));
   ImGui::Text(text.data());
 }
-WindowAction ImguiBackend::windowDecoration(ImWith flags)
+WindowAction ImguiBackend::windowDecoration(ImguiTerraWindow& app, ImWith flags)
 {
   auto const& io          = ImGui::GetIO();
   int         saveY       = currentRegExtends.max.y;
@@ -510,46 +517,53 @@ WindowAction ImguiBackend::windowDecoration(ImWith flags)
   align(ImAlign::eRight);
   if (flags & ImWith::fClose)
   {
-    if (iconButton(0xf00d, glm::ivec2(30, 30), iconSz, color.icon, color.iconPressed, color.iconHover))
+    if (iconButton(0xf00d, glm::ivec2(30, 30), iconSz, color.icon, color.iconPressed, color.iconHover) &&
+        !io.WantCaptureMouse)
       name = WindowAction::eClose;
   }
   if (flags & ImWith::fMaximize)
   {
-    if (iconButton(0xf2d0, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
+    if (iconButton(0xf2d0, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed) &&
+        !io.WantCaptureMouse)
       name = WindowAction::eMaximize;
   }
   if (flags & ImWith::fRestore)
   {
-    if (iconButton(0xf2d2, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
+    if (iconButton(0xf2d2, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed) &&
+        !io.WantCaptureMouse)
       name = WindowAction::eRestore;
   }
   if (flags & ImWith::fMinimize)
   {
-    if (iconButton(0xf2d1, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed))
+    if (iconButton(0xf2d1, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed) &&
+        !io.WantCaptureMouse)
       name = WindowAction::eMinimize;
   }
   align(ImAlign::eLeft);
-  if (isIntersecting())
+  auto& locked = app.getMouseState().locked;
+  if (!io.WantCaptureMouse && locked == MouseLockedBy::eNone || locked == MouseLockedBy::eMainWndDecorations)
   {
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-      name = WindowAction::eDrag;
-    else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-      name = WindowAction::eToggleSize;
+    if (isIntersecting())
+    {
+      if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        name = WindowAction::eDrag;
+      else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        name = WindowAction::eToggleSize;
+    }
+    if (name == WindowAction::eNone && isIntersecting())
+    {
+      if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+        name = WindowAction::eDrag;
+      else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+        name = WindowAction::eToggleSize;
+    }
+    setLayout(glm::ivec2(saveX, saveY - 26), glm::ivec2(dx, 30), ImAlign::eRight, 1);
+    if (flags & ImWith::fResizeCtrl)
+    {
+      if (iconButton(ImageName::eResize, glm::ivec2(20, 20), 18, color.icon, color.iconHover, color.iconPressed, false))
+        name = WindowAction::eResize;
+    }
   }
-  if (name == WindowAction::eNone && isIntersecting())
-  {
-    if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-      name = WindowAction::eDrag;
-    else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-      name = WindowAction::eToggleSize;
-  }
-  setLayout(glm::ivec2(saveX, saveY - 26), glm::ivec2(dx, 30), ImAlign::eRight, 1);
-  if (flags & ImWith::fResizeCtrl)
-  {
-    if (iconButton(ImageName::eResize, glm::ivec2(20, 20), 18, color.icon, color.iconHover, color.iconPressed, false))
-      name = WindowAction::eResize;
-  }
-
   return name;
 }
 void ImguiBackend::endTitlebar()

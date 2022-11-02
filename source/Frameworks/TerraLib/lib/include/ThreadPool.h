@@ -56,8 +56,7 @@ class ThreadPool
 public:
 
   ThreadPool();
-
-
+  
   static ThreadPool& get();
 
   void shutdown();

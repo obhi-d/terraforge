@@ -45,10 +45,11 @@ void GfxDevice43::init()
   logInfo("OpenGL {}.{} - {}", version.majorVersion(), version.minorVersion(), glbinding::aux::ContextInfo::vendor());
 }
 
-void GfxDevice43::clearBackbuffer(glm::vec4 color)
+void GfxDevice43::clearBackbuffer(glm::vec4 color, bool depth)
 {
   gl43::glClearColor(color.r, color.g, color.b, color.a);
-  gl43::glClear(gl43::GL_COLOR_BUFFER_BIT);
+  gl43::glClearDepth(1.0f);
+  gl43::glClear(depth ? gl43::GL_COLOR_BUFFER_BIT | gl43::GL_DEPTH_BUFFER_BIT : gl43::GL_COLOR_BUFFER_BIT);
 }
 
 void GfxDevice43::flushStates()
@@ -57,6 +58,24 @@ void GfxDevice43::flushStates()
 }
 void GfxDevice43::setState(GlGfxState const& newState)
 {
+  if (newState.cullMode != state.cullMode || state.flush)
+  {
+    switch (newState.cullMode)
+    {
+    case CullMode::eCullBack:
+      gl43::glEnable(gl::GLenum::GL_CULL_FACE);
+      gl43::glCullFace(gl::GLenum::GL_BACK);
+      break;
+    case CullMode::eCullFront:
+      gl43::glEnable(gl::GLenum::GL_CULL_FACE);
+      gl43::glCullFace(gl::GLenum::GL_FRONT);
+      break;
+    case CullMode::eCullNone:
+      gl43::glDisable(gl::GLenum::GL_CULL_FACE);
+      break;
+    }
+    state.cullMode = newState.cullMode;
+  }
   if (newState.blend != state.blend || state.flush)
   {
     switch (newState.blend)
@@ -83,6 +102,7 @@ void GfxDevice43::setState(GlGfxState const& newState)
     case DepthTestMode::eLessEq:
       gl43::glEnable(gl43::GL_DEPTH_TEST);
       gl43::glDepthFunc(gl43::GL_LEQUAL);
+      break;
     case DepthTestMode::eGreaterEq:
       gl43::glEnable(gl43::GL_DEPTH_TEST);
       gl43::glDepthFunc(gl43::GL_GEQUAL);
@@ -604,9 +624,11 @@ void GfxDevice43::bindResources(GfxDescriptorSet::handle descriptorSet)
                                gl43::GL_FALSE, 0, toGlMapBit(layout.descriptors[i].access), gl43::GL_RG32F);
       break;
     case GfxDescriptorType::eTexture:
-      gl43::glBindSampler(layout.descriptors[i].binding, resources.samplers[res.values[i].second].glhandle);
+      if (res.values[i].second)
+        gl43::glBindSampler(layout.descriptors[i].binding, resources.samplers[res.values[i].second].glhandle);
       gl43::glActiveTexture(gl43::GL_TEXTURE0 + layout.descriptors[i].binding);
-      gl43::glBindTexture(gl43::GL_TEXTURE_2D, resources.images[res.values[i].first].glhandle);
+      if (res.values[i].first)
+        gl43::glBindTexture(gl43::GL_TEXTURE_2D, resources.images[res.values[i].first].glhandle);
       break;
     }
   }

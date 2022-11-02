@@ -7,7 +7,7 @@ namespace terra
 {
 struct ComputeDevice;
 class Terra;
-struct RenderDevice;
+
 class GpuBuffer
 {
 public:

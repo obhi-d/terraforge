@@ -60,24 +60,26 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
   imne::SetCurrentEditor(editorContext);
   if (ImGui::Begin((const char*)nodeEditor.data()))
   {
-    imne::Begin((const char*)nodeEditor.data(), ImVec2(0, 0));
-    imne::Detail::EditorContext* ec = (imne::Detail::EditorContext*)(editorContext);
-    auto                         rc = ec->GetViewRect();
+    if (imne::Begin((const char*)nodeEditor.data(), ImVec2(0, 0)))
     {
-      auto newSize           = ImGui::GetWindowSize();
-      auto openPopupPosition = ImGui::GetMousePos();
-      imne::Suspend();
-      // Menus
-      if (imne::ShowBackgroundContextMenu())
-        ImGui::OpenPopup("new_node");
+      imne::Detail::EditorContext* ec = (imne::Detail::EditorContext*)(editorContext);
+      auto                         rc = ec->GetViewRect();
+      {
+        auto newSize           = ImGui::GetWindowSize();
+        auto openPopupPosition = ImGui::GetMousePos();
+        imne::Suspend();
+        // Menus
+        if (imne::ShowBackgroundContextMenu())
+          ImGui::OpenPopup("new_node");
 
-      doContextMenu(app, openPopupPosition);
-      executePendingAction(app);
+        doContextMenu(app, openPopupPosition);
+        executePendingAction(app);
 
-      imne::Resume();
-      doNodes(app, backend);
-      imne::End();
-      imne::SetCurrentEditor(nullptr);
+        imne::Resume();
+        doNodes(app, backend);
+        imne::End();
+        imne::SetCurrentEditor(nullptr);
+      }
     }
   }
   ImGui::End();
@@ -99,6 +101,8 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
       ImGui::SetKeyboardFocusHere(0);
       frameCache.filterHasFocus = true;
     }
+    if (ImGui::IsMouseClicked(1))
+      ImGui::CloseCurrentPopup();
     if (ImGui::InputText("##filter", frameCache.filterData.data(), frameCache.filterData.size(),
                          ImGuiInputTextFlags_EnterReturnsTrue) &&
         frameCache.createSelected)

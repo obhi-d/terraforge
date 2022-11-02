@@ -9,22 +9,23 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
   assert(start[0] >= 1);
   assert(start[1] >= 1);
 
+  wait();
   cleanup();
 
-  actor      = h;
+  reissued     = {};
+  actor        = h;
   launchParams = params;
-  iteration  = 0;
+  iteration    = 0;
 
   // how many tiles
   // top corner is (1, 1)
   uvec2 tileCount;
-  tileCount[0] = (size[0] + ((start[0] - 1) % params.tileSize[0])) / params.tileSize[0]; 
-  tileCount[1] = (size[1] + ((start[1] - 1) % params.tileSize[1])) / params.tileSize[1]; 
+  tileCount[0] = (size[0] + ((start[0] - 1) % params.tileSize[0])) / params.tileSize[0];
+  tileCount[1] = (size[1] + ((start[1] - 1) % params.tileSize[1])) / params.tileSize[1];
 
   uvec2 tileStart;
   tileStart[0] = ((start[0] - 1) / params.tileSize[0]);
   tileStart[1] = ((start[1] - 1) / params.tileSize[1]);
-
 
   for (uint32_t i = 0; i < tileCount[0]; ++i)
   {
@@ -33,7 +34,7 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
       EnvParams envParams;
       envParams.tile[0] = i + tileStart[0];
       envParams.tile[1] = i + tileStart[1];
-      
+
       envParams.tileOffset[0] = tileStart[0] + i * params.tileSize[0];
       envParams.tileOffset[1] = tileStart[1] + i * params.tileSize[1];
       envParams.tileSize      = params.tileSize;
@@ -43,12 +44,12 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
       envParams.size[1]       = params.tileSize[1] - envParams.offset[1];
       if (envParams.size[0] > 0 && envParams.size[1] > 0)
       {
-        //envParams.textureOffset[0] = envParams.tileOffset[0] - start[0];
-        //envParams.textureOffset[1] = envParams.tileOffset[1] - start[1];
-        envParams.frequency        = params.frequency;
-        envParams.wavelength       = params.wavelength;
-        envParams.seed             = params.seed;
-        //envParams.bufferArraySize  = (envParams.size[0] + 2) * (envParams.size[1] + 2);
+        // envParams.textureOffset[0] = envParams.tileOffset[0] - start[0];
+        // envParams.textureOffset[1] = envParams.tileOffset[1] - start[1];
+        envParams.frequency  = params.frequency;
+        envParams.wavelength = params.wavelength;
+        envParams.seed       = params.seed;
+        // envParams.bufferArraySize  = (envParams.size[0] + 2) * (envParams.size[1] + 2);
         pushTileTask(envParams);
       }
     }
@@ -65,8 +66,10 @@ bool Pipeline::reissue(dshandle handle)
   return true;
 }
 
+void Pipeline::cleanup() {}
+
 /*
-void Pipeline::run() 
+void Pipeline::run()
 {
   if (dirty)
     return;
@@ -75,7 +78,7 @@ void Pipeline::run()
   subTask = 0;
   for (auto& t : tiles)
   {
-    
+
     if (DataSource::isValid(actor))
     {
       get().get<Node>(actor).ensure(*this);
@@ -113,7 +116,7 @@ int32_t Pipeline::declBuffer(int32_t declIdx, uint32_t size, bool transient)
   return declIdx;
 }
 
-int32_t Pipeline::declImage(int32_t declIdx, uint32_t width, uint32_t height, ImageFormat fmt, bool transient) 
+int32_t Pipeline::declImage(int32_t declIdx, uint32_t width, uint32_t height, ImageFormat fmt, bool transient)
 {
   auto& images = tiles[subTask].images;
   if (declIdx < 0 || declIdx >= (int)images.size())
@@ -186,13 +189,12 @@ void Pipeline::allocateResources()
     if (buffers[i].phyId)
       continue;
     buffers[i].phyId = ++phyId;
-    
+
     for (uint32_t j = i + 1; j < nbBuff; ++j)
     {
       // x1 <= y2 && y1 <= x2
-      if (buffers[j].phyId || !buffers[j].transient || !(buffers[i].read < buffers[j].write || buffers[j].read < buffers[i].write))
-        continue;
-      buffers[j].phyId = phyId;
+      if (buffers[j].phyId || !buffers[j].transient || !(buffers[i].read < buffers[j].write || buffers[j].read <
+buffers[i].write)) continue; buffers[j].phyId = phyId;
     }
   }
   auto& gpuBuffers = tiles[subTask].gpuBuffers;
@@ -212,10 +214,10 @@ void Pipeline::allocateResources()
   {
     if (!img.image)
       img.image = rd.createImage(GfxStorageClass::eDeviceAccess, img.width, img.height, img.format);
-  }   
+  }
 }
 
-void Pipeline::cleanup() 
+void Pipeline::cleanup()
 {
   auto& rd = Terra::get().getDevice();
   for (auto& t : tiles)
@@ -226,21 +228,21 @@ void Pipeline::cleanup()
   tiles.clear();
 }
 
-GfxBuffer::handle  Pipeline::getOutputBuffer(dshandle nodeIdx) const 
+GfxBuffer::handle  Pipeline::getOutputBuffer(dshandle nodeIdx) const
 {
   auto const& node = terra::get().get<Node>(nodeIdx);
   auto& buffers = tiles[subTask].buffers;
   return tiles[subTask].gpuBuffers[(uint32_t)buffers[(uint32_t)node.getOutputId(taskId())].phyId].get();
 }
 
-GfxImage2D::handle Pipeline::getOutputImage(dshandle nodeIdx) const 
+GfxImage2D::handle Pipeline::getOutputImage(dshandle nodeIdx) const
 {
   auto const& node = terra::get().get<Node>(nodeIdx);
   auto&       images = tiles[subTask].images;
   return images[(uint32_t)node.getOutputId(taskId())].image;
 }
 
-void Pipeline::enqueue(dshandle task) 
+void Pipeline::enqueue(dshandle task)
 {
   tiles[subTask].tasks.emplace_back(task);
 }

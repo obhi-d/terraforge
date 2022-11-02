@@ -133,9 +133,9 @@ void ax::NodeEditor::PopStyleVar(int count)
     s_Editor->GetStyle().PopVar(count);
 }
 
-void ax::NodeEditor::Begin(const char* id, const ImVec2& size)
+bool ax::NodeEditor::Begin(const char* id, const ImVec2& size)
 {
-    s_Editor->Begin(id, size);
+    return s_Editor->Begin(id, size);
 }
 
 void ax::NodeEditor::End()

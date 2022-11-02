@@ -38,6 +38,7 @@ void Terra::destroy()
 {  
   dataSources.clear();
   nodeMetaTable.clear();
+  threadPool.shutdown();
   // computeThread.shutdown();
  }
 

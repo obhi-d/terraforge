@@ -6,7 +6,7 @@ include_when = ready;
 fetch "https://github.com/obhi-d/imgui-node-editor.git"
 {
   license    : "LICENSE";
-  commit     : "78b2026bf8153655f751b8f19191bd6f387aec14";
+  commit     : "f43bb4dece7d8cfae4ab4917a06164c0639c6136";
   package    : imne;
   fetch_content : true;
   args

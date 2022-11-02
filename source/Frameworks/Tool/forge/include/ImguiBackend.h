@@ -40,12 +40,14 @@ enum class ImAlign
   eLeft
 };
 
+class ImguiTerraWindow;
 class ImguiBackend
 {
 public:
   void init(std::shared_ptr<GfxDevice43>);
   void destroy();
   void draw();
+  void drawOtherWindows();
   void applyTheme(ImguiTheme const&);
 
   // Draw Helpers
@@ -55,7 +57,7 @@ public:
   // Draw a titlebar with flags, returns the button name clicked
   // if Menu flag is used, cursor is placed at next menu draw
   // You can right align to draw from right
-  WindowAction windowDecoration(ImWith flags);
+  WindowAction windowDecoration(ImguiTerraWindow&, ImWith flags);
   void         endTitlebar();
   void         textCentered(std::string_view text, ImVec2 pos, ImVec2 size);
   bool         iconButton(std::string_view name, ImVec2 size, Color color, Color hover);

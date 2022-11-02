@@ -23,6 +23,13 @@ enum class DepthTestMode
   eGreaterEq
 };
 
+enum class CullMode
+{
+  eCullBack,
+  eCullFront,
+  eCullNone
+};
+
 struct GlRect
 {
   glm::ivec2 offset = glm::vec2(0, 0);
@@ -34,6 +41,7 @@ struct GlRect
 
 struct GlGfxState
 {
+  CullMode      cullMode        = CullMode::eCullBack;
   BlendMode     blend           = BlendMode::eDisabled;
   DepthTestMode depthTest       = DepthTestMode::eDisabled;
   bool          scissorsEnabled = false;

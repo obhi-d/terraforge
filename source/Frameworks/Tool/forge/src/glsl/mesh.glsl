@@ -1,20 +1,18 @@
 constexpr std::string_view gs_MeshUBO = R"_(
-layout(binding = 0) uniform Constants
-{
-  int width;
-  int height;
-  int style;
-  float frequency;
-  vec3 sun_dir;
-  float height_multiplier;
-  vec4 sun_color;
-  vec4 tint;
-  mat4 view_projection;
-}constants;
-)_";
+  mat4      view_projection;
+  int       width;
+  int       height;
+  float     style;
+  float     frequency;
+  vec3      sun_dir;
+  float     height_multiplier;
+  vec4      sun_color;
+  vec4      tint;
+  int       vertex_count;
+  float     max_height;
+  float     min_height;
+  float     crust;
 
-constexpr std::string_view gs_MeshRes = R"_(
-layout(binding = 0) uniform sampler2D height_colors;
 )_";
 
 constexpr std::string_view gs_MeshVS = R"_(
@@ -25,10 +23,22 @@ layout(location = 0) out highp vec3 world_pos;
 
 void main()
 {
-  int x = gl_VertexID % constants.width;
-  int y = gl_VertexID / constants.width;
-  world_pos = vec4(float(x) * constants.frequency, heights * constants.height_multiplier, float(y) * constants.frequency);
-  gl_Position = constants.view_projection * vec4(world_pos, 1.0);
+  ivec2 xy;
+  float height;
+  if (gl_VertexID >= constants.vertex_count)
+  {
+   xy.x = (gl_VertexID - constants.vertex_count) % constants.width;
+   xy.y = (gl_VertexID - constants.vertex_count) / constants.width;
+   height = constants.crust;
+  }
+  else
+  {
+   xy.x = gl_VertexID % constants.width;
+   xy.y = gl_VertexID / constants.width;
+   height = heights;
+  }
+  world_pos = vec3(float(xy.x) - float(constants.width - 1) * 0.5, height, float(xy.y) - float(constants.height - 1) * 0.5);
+  gl_Position = constants.view_projection * vec4(world_pos.x, world_pos.y * constants.height_multiplier, world_pos.z, 1.0);
 }
 )_";
 
@@ -44,9 +54,9 @@ void main()
       
     vec3 normal = normalize(cross(x,y));
     
-    vec4 light_x = texture(height_colors, vec2(clamp(normal.x * 0.5 + 0.5, 0.0, 1.0), 0.01 * abs(normal.x)));
-    vec4 light_y = texture(height_colors, vec2(clamp(world_pos.y, 0.0, 1.0), 0.5 * normal.y));
-    vec4 light_z = texture(height_colors, vec2(clamp(normal.z * 0.5 + 0.5, 0.0, 1.0), 0.99 * normal.z));
+    float sampleHeight = (world_pos.y - constants.min_height) / (constants.max_height - constants.min_height);
+    float sampleNormal = normal.y * 0.5 + 0.5;
+    vec4 light_y = texture(height_colors, vec2(sampleHeight, sampleNormal));
 
     if(!gl_FrontFacing) 
     { 
@@ -57,7 +67,7 @@ void main()
     float intensity = constants.sun_color.w;
 
     float factor = floor(clamp(dot(normal, constants.sun_dir), 0.0, 1.0) * float(constants.style)) / float(constants.style);
-    fragment_color = mix(color, light_x * .4 + light_y * .6 + light_z * .4, 0.8) * factor * intensity;
+    fragment_color = mix(color, light_y, 0.1) * factor * intensity;
 }
 
 )_";

@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 
+#include "MeshPreview.h"
 #include "ImguiBackend.h"
 #include "ImguiTheme.h"
 #include "NodeEditor.h"
@@ -17,11 +18,22 @@ class TerraMainApp;
 class ImguiTerraWindow
 {
 public:
+  
   void init(TerraMainApp&);
   bool pollEvents();
   void draw(TerraMainApp&);
   void setTheme(ImguiTheme const&);
   void drawWindowDecoration();
+
+  inline MouseState const& getMouseState() const
+  {
+    return mouseState;
+  }
+
+  inline MouseState& getMouseState() 
+  {
+    return mouseState;
+  }
 
 private:
   struct DragData
@@ -31,15 +43,17 @@ private:
     glm::ivec2 mouse = glm::ivec2(0, 0);
   };
 
+  MeshPreview   meshPreview;
   NodeEditor    nodeEditor;
   ImguiBackend  backend;
   SDL_Window*   window       = nullptr;
   ImGuiContext* imguiContext = nullptr;
   uint32        windowID     = 0;
 
-  DragData dragData;
-  bool mouseDragging  = false;
-  bool windowResizing = false;
-  bool windowDragging = false;
+  glm::ivec2 windowSize; 
+  DragData   dragData;
+  MouseState mouseState;
+  bool       windowResizing = false;
+  bool       windowDragging = false;
 };
 } // namespace terra
