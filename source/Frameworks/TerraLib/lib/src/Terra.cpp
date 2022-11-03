@@ -5,7 +5,7 @@
 #include "hwy/Pipeline_hwy.h"
 #include "gpu/Pipeline_gpu.h"
 
-#include <format>
+#include <fmt/format.h>
 #include <fstream>
 #include <mimalloc-2.0/mimalloc-new-delete.h>
 

@@ -184,6 +184,8 @@ void pow(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 
 } // namespace terra::HWY_NAMESPACE
 
+HWY_AFTER_NAMESPACE();
+
 #if HWY_ONCE
 
 namespace terra

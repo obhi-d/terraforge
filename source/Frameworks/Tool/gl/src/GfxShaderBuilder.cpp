@@ -1,6 +1,7 @@
 
 #include "GfxShaderBuilder.h"
 #include "GlGfxUtils.h"
+#include "fmt/format.h"
 
 namespace terra
 {
@@ -14,7 +15,7 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declBuffer(std::string_view prefix,
 {
   BindingInfo info;
   info.content =
-    std::format("layout(std430, binding = {}) {} buffer {}{}", bufferBindingCounter, toString(access), prefix, name);
+    fmt::format("layout(std430, binding = {}) {} buffer {}{}", bufferBindingCounter, toString(access), prefix, name);
   info.descriptor.access  = access;
   info.descriptor.binding = bufferBindingCounter++;
   info.descriptor.type    = GfxDescriptorType::eBuffer;
@@ -23,7 +24,7 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declBuffer(std::string_view prefix,
 ShaderBuilder::BindingInfo GfxShaderBuilder::declConstants(std::string_view prefix, std::string_view name)
 {
   BindingInfo info;
-  info.content = std::format("layout(std140, binding = {}) uniform {}{}", constantBindingCounter, prefix, name);
+  info.content = fmt::format("layout(std140, binding = {}) uniform {}{}", constantBindingCounter, prefix, name);
   info.descriptor.access  = Access::eReadonly;
   info.descriptor.binding = constantBindingCounter++;
   info.descriptor.type    = GfxDescriptorType::eConstants;
@@ -32,7 +33,7 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declConstants(std::string_view pref
 ShaderBuilder::BindingInfo GfxShaderBuilder::declTexture(std::string_view name)
 {
   BindingInfo info;
-  info.content            = std::format("layout(binding = {}) uniform sampler2D {}", textureBindingCounter, name);
+  info.content            = fmt::format("layout(binding = {}) uniform sampler2D {}", textureBindingCounter, name);
   info.descriptor.access  = Access::eReadonly;
   info.descriptor.binding = textureBindingCounter++;
   info.descriptor.type    = GfxDescriptorType::eTexture;
@@ -41,7 +42,7 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declTexture(std::string_view name)
 ShaderBuilder::BindingInfo GfxShaderBuilder::declTextureArray(std::string_view name)
 {
   BindingInfo info;
-  info.content            = std::format("layout(binding = {}) uniform sampler2DArray {}", textureBindingCounter, name);
+  info.content            = fmt::format("layout(binding = {}) uniform sampler2DArray {}", textureBindingCounter, name);
   info.descriptor.access  = Access::eReadonly;
   info.descriptor.binding = textureBindingCounter++;
   info.descriptor.type    = GfxDescriptorType::eTexture;
@@ -61,7 +62,7 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declImage(std::string_view name, Im
     sformat = "r32f";
     break;
   }
-  info.content = std::format("layout(binding = {}, {}) restrict {} uniform image2D {}", imageBindingCounter, sformat,
+  info.content = fmt::format("layout(binding = {}, {}) restrict {} uniform image2D {}", imageBindingCounter, sformat,
                              toString(access), name);
   info.descriptor.access  = access;
   info.descriptor.binding = textureBindingCounter++;

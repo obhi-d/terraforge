@@ -11,6 +11,50 @@ manifests_dir  : "media/Plugins";
 plugin_dir     : "media/Plugins/bin"; // plugins will be placed in Plugins/bin, manifests will be placed in 
 verbose        : true;
 
+preset linux-asan
+{
+  display_name         : "linux-asan";
+  build_type           : debug;
+  allow                : [debug, linux];
+  disallow             : [release];
+  static_libs          : true;
+  cppcheck             : false;
+  unity_build          : false; // Intellisense does not work with this as true
+  naming               : "terra_$(module_name)";
+
+  config [gcc]
+  {
+    compiler_flags  : [
+      "-std=c++20", "-fsanitize=address", "-march=native"
+    ];
+    linker_flags    : [
+      "-Wl,--no-undefined", "-fsanitize=address"
+    ];
+  }
+}
+
+preset linux-tsan
+{
+  display_name         : "linux-tsan";
+  build_type           : debug;
+  allow                : [debug, linux];
+  disallow             : [release];
+  static_libs          : true;
+  cppcheck             : false;
+  unity_build          : false; // Intellisense does not work with this as true
+  naming               : "terra_$(module_name)";
+
+  config [gcc]
+  {
+    compiler_flags  : [
+      "-std=c++20", "-fsanitize=threads", "-march=native"
+    ];
+    linker_flags    : [
+      "-Wl,--no-undefined", "-fsanitize=threads"
+    ];
+  }
+}
+
 preset win-dbg
 {
   display_name         : "win-dbg";
@@ -30,7 +74,7 @@ preset win-dbg
   config [gcc]
   {
     compiler_flags  : [
-      "-std=c++2a"
+      "-std=c++20", "-march=native"
     ];
     linker_flags    : [
       "-Wl,--no-undefined"
@@ -57,7 +101,7 @@ preset win-rel
   config [gcc]
   {
     compiler_flags  : [
-      "-std=c++2a"
+      "-std=c++20", "-march=native"
     ];
     linker_flags    : [
       "-Wl,--no-undefined"

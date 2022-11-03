@@ -1,14 +1,12 @@
-
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "Pipeline_hwy.cpp"
+#include <hwy/foreach_target.h>
 
 #include "hwy/NodeMeta_hwy.h"
 #include "hwy/Pipeline_hwy.h"
 
 #include "Terra.h"
 #include "Logger.h"
-
-#include <hwy/foreach_target.h>
 #include <hwy/highway.h>
 
 HWY_BEFORE_NAMESPACE();
@@ -39,14 +37,14 @@ void writeInputLine(float freq, uint32_t startx, uint32_t liney, uint32_t pitch,
   }
 }
 
-vec2 getMinMax(float const* input, uint32_t pitch, uint32_t width, uint32_t height) 
+vec2 getMinMax(float const* input, uint32_t pitch, uint32_t width, uint32_t height)
 {
   const hn::ScalableTag<T> d;
   auto const               lanes = (uint32_t)hn::Lanes(d);
-  
+
   auto const minv = hn::Set(d, std::numeric_limits<float>::max());
   auto const maxv = hn::Set(d, std::numeric_limits<float>::min());
-  
+
   auto min = minv;
   auto max = maxv;
   for (uint32_t h = 0; h < height; h++)
@@ -93,8 +91,8 @@ uint32_t lanes()
   return HWY_DYNAMIC_DISPATCH(lanes)();
 }
 
-hwybuffer& Pipeline_hwy::getOutput(uint32_t thread, uint32_t lanes) 
-{ 
+hwybuffer& Pipeline_hwy::getOutput(uint32_t thread, uint32_t lanes)
+{
   auto& threadData = threadDatas[thread];
   if (threadData.outputs.empty())
     return pushOutput(thread, lanes);
@@ -102,14 +100,14 @@ hwybuffer& Pipeline_hwy::getOutput(uint32_t thread, uint32_t lanes)
   return threadData.outputs.back();
 }
 
-hwybuffer& Pipeline_hwy::pushOutput(uint32_t thread, uint32_t lanes) 
+hwybuffer& Pipeline_hwy::pushOutput(uint32_t thread, uint32_t lanes)
 {
   auto& threadData = threadDatas[thread];
   threadData.outputs.emplace_back(threadData.width, threadData.height, lanes);
   return threadData.outputs.back();
 }
 
-void Pipeline_hwy::popOutput(uint32_t thread) 
+void Pipeline_hwy::popOutput(uint32_t thread)
 {
   auto& threadData = threadDatas[thread];
   threadData.outputs.pop_back();
@@ -138,7 +136,7 @@ hwyvb& Pipeline_hwy::pushInput(uint32_t thread, uint32_t lanes, bool populated)
     auto  ystart = threadData.params.startxy[1] - 1;
     for (int i = 0; i < threadData.height; ++i)
     {
-      HWY_DYNAMIC_DISPATCH(writeInputLine)(frequency(), xstart, 
+      HWY_DYNAMIC_DISPATCH(writeInputLine)(frequency(), xstart,
          ystart + i, inp.pitch(), x, y);
       x += inp.pitch();
       y += inp.pitch();
@@ -153,7 +151,7 @@ void Pipeline_hwy::popInput(uint32_t thread)
   threadData.inputs.pop_back();
 }
 
-void Pipeline_hwy::pushTileTask(EnvParams const& envParams) 
+void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 {
   // auto div = N * lanes();
   int32      nbWidth  = (envParams.tileRegion.size[0] + (N - 1)) / N;
@@ -194,13 +192,13 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
   }
 }
 
-void Pipeline_hwy::launch() 
+void Pipeline_hwy::launch()
 {
-  finished = 0; 
+  finished = 0;
   event.reset();
   for (uint32_t id = 0; id < (uint32_t)threadDatas.size(); ++id)
   {
-        
+
     get().pool().add(
       [id, this]()
       {
@@ -218,7 +216,7 @@ void Pipeline_hwy::launch()
   }
 }
 
-std::size_t Pipeline_hwy::hasResults() 
+std::size_t Pipeline_hwy::hasResults()
 {
   if (finished.load() == (uint32_t)threadDatas.size())
   {
@@ -260,7 +258,7 @@ void Pipeline_hwy::getResults(float* ready, float& min, float& max)
   finished = -1;
   if (updateActor())
     launch();
-  
+
 }
 
 void Pipeline_hwy::wait()

@@ -3,11 +3,11 @@
 #define HWY_TARGET_INCLUDE "Noise_hwy.cpp"
 
 #include <hwy/foreach_target.h>
-
+#include "Common.h"
 #include "NodeMeta.h"
 
 #include "hwy/NodeMeta_hwy.h"
-#include "hwy/Utility_hwy.hpp"
+#include "hwy/Utility_hwy.h"
 #include "hwy/Pipeline_hwy.h"
 
 #include "Terra.h"
@@ -19,7 +19,7 @@ namespace terra::HWY_NAMESPACE
 {
 namespace hn = hwy::HWY_NAMESPACE;
 
-void simplex(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId) 
+void simplex(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
   const I_t itag{};
@@ -40,11 +40,11 @@ void simplex(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
   {
     const auto x = hn::Load(vtag, inp_x_data + ii);
     const auto y = hn::Load(vtag, inp_y_data + ii);
-    
+
     auto f  = hn::Mul(hn::Set(vtag, F2), hn::Add(x, y));
     auto x0 = hn::Floor(hn::Add(x, f));
     auto y0 = hn::Floor(hn::Add(y, f));
-    
+
     auto i = hn::Mul(hn::ConvertTo(itag, x0), hn::Set(itag, consts::X));
     auto j = hn::Mul(hn::ConvertTo(itag, y0), hn::Set(itag, consts::Y));
 
@@ -154,6 +154,7 @@ void openSimplex(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 }
 
 } // namespace terra::HWY_NAMESPACE
+HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
 
@@ -161,7 +162,7 @@ namespace terra
 {
 HWY_EXPORT(simplex);
 HWY_EXPORT(openSimplex);
-void Noise_hwy() 
+void Noise_hwy()
 {
   // Common
   NodeMeta_hwy meta;

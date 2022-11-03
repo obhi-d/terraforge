@@ -67,8 +67,8 @@ public:
     return value == other;
   }
 
-  template <typename T>
-  const char* getDisplayName(T& app) 
+  template <typename Ter>
+  const char* getDisplayName(Ter& app)
   {
     if (displayName.empty())
       displayName = app.getLocalizedString(name);

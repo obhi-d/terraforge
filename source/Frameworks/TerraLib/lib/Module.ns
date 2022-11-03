@@ -7,7 +7,8 @@ public:
     "External.neoscript",
     "External.hwy",
     "External.acl",
-    "External.mimalloc"
+    "External.mimalloc",
+    "External.fmt"
   ];
 
 }

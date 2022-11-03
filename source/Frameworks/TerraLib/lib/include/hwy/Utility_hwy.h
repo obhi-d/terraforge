@@ -55,7 +55,7 @@ HWY_API auto gradientDotFancy(I hash, V x, V y)
   b        = hn::BitCast(v, hn::Xor(hn::BitCast(d, b), hn::ShiftLeft<31>(index)));
   auto ax2 = hn::RebindMask(v, hn::ShiftRight<31>(hn::ShiftLeft<30>(index)) != hn::Set(d, 0));
 
-  a = hn::Mul(a, hn::IfThenElse(ax2, hn::Set(v, 2.0f), hn::Set(v, consts::root3)));
+  a = hn::Mul(a, hn::IfThenElse(ax2, hn::Set(v, 2.0f), hn::Set(v, terra::consts::root3)));
   b = hn::IfThenZeroElse(ax2, b);
 
   return hn::BitCast(v, hn::Xor(hn::BitCast(d, hn::Add(a, b)), hn::ShiftRight<31>(hn::ShiftRight<3>(index))));
@@ -77,7 +77,7 @@ HWY_API auto gradientDot(I hash, V x, V y)
   auto a = hn::IfThenElse(bit4, y, x);
   auto b = hn::IfThenElse(bit4, x, y);
 
-  return hn::MulAdd(hn::Set(v, 1.0f + consts::root2), a, b);
+  return hn::MulAdd(hn::Set(v, 1.0f + terra::consts::root2), a, b);
 }
 
 // Vector builders
@@ -690,7 +690,7 @@ HWY_API auto FS_MaskedMul_i32(I a, I b, M m)
 template <typename I, typename M>
 HWY_API auto FS_MaskedIncrement_i32(I a, M m)
 {
-  return hn::Add(hn::IfThenElseZero(hn::RebindMask(hn::DFromV<I>(), m), hn::Set(hn::DFromV<I>, 1)), a);
+  return hn::Add(hn::IfThenElseZero(hn::RebindMask(hn::DFromV<I>(), m), hn::Set(hn::DFromV<I>{}, 1)), a);
 }
 /// <summary>
 /// return ( m ? (a - 1) : a )
@@ -701,7 +701,7 @@ HWY_API auto FS_MaskedIncrement_i32(I a, M m)
 template <typename I, typename M>
 HWY_API auto FS_MaskedDecrement_i32(I a, M m)
 {
-  return hn::Sub(a, hn::IfThenElseZero(hn::RebindMask(hn::DFromV<I>(), m), hn::Set(hn::DFromV<I>, 1)));
+  return hn::Sub(a, hn::IfThenElseZero(hn::RebindMask(hn::DFromV<I>(), m), hn::Set(hn::DFromV<I>{}, 1)));
 }
 // NMasked float
 

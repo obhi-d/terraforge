@@ -335,10 +335,10 @@ void GfxDevice43::syncFence(GfxFence::handle h)
 }
 GfxProgram::handle GfxDevice43::createProgram(ShaderOptions const& options, ShaderBuilder const& sources)
 {
-  std::string optionStr = std::format("#version {}\n", this->features.version);
+  std::string optionStr = fmt::format("#version {}\n", this->features.version);
   for (uint32_t i = 0; i < options.names.size(); ++i)
   {
-    std::format_to(std::back_inserter(optionStr), "#define {} {}\n", options.names[i],
+    fmt::format_to(std::back_inserter(optionStr), "#define {} {}\n", options.names[i],
                    (uint32_t)((options.bitMask & (1ull << i)) != 0));
   }
 

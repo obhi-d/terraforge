@@ -3,6 +3,8 @@
 #include <string_view>
 #if defined(_WIN32)
 #include <Windows.h>
+#elif defined(__unix__)
+#include <unistd.h>
 #endif
 #include <fstream>
 
@@ -26,7 +28,7 @@ std::filesystem::path const& getMediaPath()
 #elif defined(__unix__)
     {
       char8_t            result[1024] = {};
-      uint32             count        = (uint32)readlink("/proc/self/exe", (char*)result, 1024);
+      uint32_t           count        = (uint32_t)readlink("/proc/self/exe", (char*)result, 1024);
       std::u8string_view view{result, count};
       auto               last = view.find_last_of(u8'/');
       if (last != view.npos)

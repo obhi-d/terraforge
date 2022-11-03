@@ -49,7 +49,7 @@ bool CurveData::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_
   if (!getFromDataStream(dataStream, serialIdx, type))
     return false;
 
-  spline = tk::spline<>::spline(cx, cy, type, monotonic, left, leftValue, right, rightValue);
+  spline = tk::spline<>(cx, cy, type, monotonic, left, leftValue, right, rightValue);
   version = (self.index() << 16) | version++;
   return true;
 }

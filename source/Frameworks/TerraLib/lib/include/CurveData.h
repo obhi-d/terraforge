@@ -45,7 +45,7 @@ struct CurveData : public DataSource
     std::vector<float>        cx         = {0.0f, 0.5f, 1.0f};
     std::vector<float>        cy         = {0.0f, 0.5f, 1.0f};
 
-    spline = tk::spline<>::spline(cx, cy, type, monotonic, left, leftValue, right, rightValue);
+    spline = tk::spline<>(cx, cy, type, monotonic, left, leftValue, right, rightValue);
   }
   ~CurveData();
 
@@ -72,7 +72,7 @@ struct CurveData : public DataSource
   {
     if (edits.dirty)
     {
-      edits.spline = tk::spline<>::spline(edits.cx, edits.cy, edits.type, edits.monotonic, edits.left, edits.leftValue,
+      edits.spline = tk::spline<>(edits.cx, edits.cy, edits.type, edits.monotonic, edits.left, edits.leftValue,
                                           edits.right, edits.rightValue);
     }
     if ((edits.liveUpdate || apply) && edits.edited && edits.dirty)
