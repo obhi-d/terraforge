@@ -3,9 +3,9 @@
 #include <memory>
 #include <string>
 
-#include "MeshPreview.h"
 #include "ImguiBackend.h"
 #include "ImguiTheme.h"
+#include "MeshPreview.h"
 #include "NodeEditor.h"
 #include "imgui.h"
 #include <SDL.h>
@@ -18,7 +18,7 @@ class TerraMainApp;
 class ImguiTerraWindow
 {
 public:
-  
+  void drawSettings(TerraMainApp&);
   void init(TerraMainApp&);
   bool pollEvents();
   void draw(TerraMainApp&);
@@ -30,9 +30,14 @@ public:
     return mouseState;
   }
 
-  inline MouseState& getMouseState() 
+  inline MouseState& getMouseState()
   {
     return mouseState;
+  }
+
+  void setActor(TerraMainApp& app, dshandle actor)
+  {
+    meshPreview.regenerate(app, actor);
   }
 
 private:
@@ -43,6 +48,8 @@ private:
     glm::ivec2 mouse = glm::ivec2(0, 0);
   };
 
+  std::u8string_view settingName;
+
   MeshPreview   meshPreview;
   NodeEditor    nodeEditor;
   ImguiBackend  backend;
@@ -50,7 +57,7 @@ private:
   ImGuiContext* imguiContext = nullptr;
   uint32        windowID     = 0;
 
-  glm::ivec2 windowSize; 
+  glm::ivec2 windowSize;
   DragData   dragData;
   MouseState mouseState;
   bool       windowResizing = false;

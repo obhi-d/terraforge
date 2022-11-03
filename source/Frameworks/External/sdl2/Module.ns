@@ -23,5 +23,6 @@ fetch "https://github.com/libsdl-org/SDL.git"
     SDL_THREADS    : ON;
     SDL_STATIC     : ON;
     SDL_SHARED     : OFF;
+    SDL2_DISABLE_INSTALL : OFF;
   }
 }

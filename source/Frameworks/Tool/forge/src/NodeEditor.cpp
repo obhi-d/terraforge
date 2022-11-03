@@ -83,6 +83,12 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
     }
   }
   ImGui::End();
+    
+  if (nodeSelectionChanged)
+  {
+    app.setActor(drawableNodes[previewNode].getId());
+    nodeSelectionChanged = false;
+  }
 }
 
 void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
@@ -92,7 +98,7 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
   ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
-  if (ImGui::BeginPopup("new_node"))
+  if (ImGui::BeginPopup("new_node", ImGuiWindowFlags_AlwaysVerticalScrollbar))
   {
 
     ImGui::PushItemWidth(-1);
@@ -404,11 +410,17 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
     }
     imne::EndDelete();
   }
+
 }
 
 void NodeEditor::createNode(TerraMainApp& app, NodeMeta const& meta, ImVec2 pos)
 {
   drawableNodes.emplace_back(app, get().createNode(meta), pos);
+  if (drawableNodes.size() == 1)
+  {
+    previewNode = 0;
+    nodeSelectionChanged = true;
+  }
 }
 
 void NodeEditor::deleteNode(imne::NodeId node)

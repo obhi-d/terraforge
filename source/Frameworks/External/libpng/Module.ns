@@ -9,7 +9,6 @@ fetch "https://github.com/glennrp/libpng"
   package    : libpng;
   skip_namespace  : true;
   targets  : png_static;
-  fetch_content : true;
   args
   {
     PNG_STATIC : ON;

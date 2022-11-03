@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Buffer_hwy.h"
+#include "Common.h"
 #include "NodeMeta_hwy.h"
 #include "Pipeline.h"
 
@@ -29,6 +30,12 @@ class Pipeline_hwy : public Pipeline
 {
 
 public:
+  Pipeline_hwy()                                        = default;
+  Pipeline_hwy(Pipeline_hwy&&) noexcept                 = default;
+  Pipeline_hwy& operator=(Pipeline_hwy&&) noexcept      = default;
+  Pipeline_hwy(Pipeline_hwy const&) noexcept            = delete;
+  Pipeline_hwy& operator=(Pipeline_hwy const&) noexcept = delete;
+
   void        getResults(float*, float& min, float& max) final;
   std::size_t hasResults() final;
 
@@ -55,12 +62,18 @@ private:
 
     std::vector<hwyvb>     inputs;
     std::vector<hwybuffer> outputs;
+
+    ThreadData() = default;
+    ThreadData(ThreadData const& other) noexcept : params(other.params), width(other.width), height(other.height) {}
+    ThreadData(ThreadData&&) noexcept                 = default;
+    ThreadData& operator=(ThreadData const&) noexcept = delete;
+    ThreadData& operator=(ThreadData&&) noexcept      = default;
   };
 
   // tiles are subdivided into NxN blocks of vectors (M lanes)
-  static constexpr int32_t N        = 16;
-  std::atomic_int          finished = 0;
-  std::binary_semaphore    semaphore{1};
+  static constexpr int32_t N = 16;
+  std::atomic_int          finished{0};
+  Event                    event;
   std::vector<ThreadData>  threadDatas;
 };
 

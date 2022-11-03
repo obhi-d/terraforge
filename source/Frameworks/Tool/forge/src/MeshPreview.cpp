@@ -213,7 +213,7 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
   ImageSerializer       ser;
   {
     ImageData             data;
-    std::filesystem::path path = getMediaPath() / heightTexPath.get();
+    std::filesystem::path path = getMediaPath() / heightTexPath.get().path;
     if (ser.loadImage(data, path))
     {
       if (heightColors)
@@ -273,14 +273,14 @@ void MeshPreview::draw(glm::ivec2 viewportSize, TerraMainApp& app)
   data.height            = height;
   data.style             = meshStyle;
   data.frequency         = settings.frequency;
-  data.sun_dir           = sunRotation->toDir();
-  data.height_multiplier = settings.heightMultiplier;
-  data.sun_color         = sunColor;
-  data.tint              = meshTint;
+  data.sun_dir           = sunRotation.toDir();
+  data.height_multiplier = heightMultiplier;
+  data.sun_color         = glm::vec4(sunColor->r(), sunColor->g(), sunColor->b(), sunIntensity.get());
+  data.tint              = meshTint.get();
   data.vertexCount       = vertexCount;
   data.max               = max;
   data.min               = min;
-  data.crust             = min - (max - min) * .1f;
+  data.crust             = min - std::max(box.x, box.z) * .1f;
   app.getDevice()->unmapBuffer(ubo);
 
   if (descriptorsDirty)
@@ -306,8 +306,8 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
     float           x  = 0.5f * (float)ms.mouseDelta.x / (float)viewportSize.x;
     float           y  =-0.5f * (float)ms.mouseDelta.y / (float)viewportSize.y;
 
-    sunRotation->thetaAdd(170.f * y);
-    sunRotation->phiAdd(350.f * x);
+    sunRotation.thetaAdd(170.f * y);
+    sunRotation.phiAdd(350.f * x);
   }
 }
 

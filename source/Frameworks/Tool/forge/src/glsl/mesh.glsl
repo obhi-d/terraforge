@@ -55,7 +55,7 @@ void main()
     vec3 normal = normalize(cross(x,y));
     
     float sampleHeight = (world_pos.y - constants.min_height) / (constants.max_height - constants.min_height);
-    float sampleNormal = normal.y * 0.5 + 0.5;
+    float sampleNormal = clamp(normal.y, 0.0f, 1.0f); 
     vec4 light_y = texture(height_colors, vec2(sampleHeight, sampleNormal));
 
     if(!gl_FrontFacing) 

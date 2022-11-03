@@ -12,10 +12,12 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
   wait();
   cleanup();
 
-  reissued     = {};
-  actor        = h;
-  launchParams = params;
-  iteration    = 0;
+  this->reissued     = {};
+  this->actor        = h;
+  this->launchParams = params;
+  this->iteration    = 0;
+  this->start        = start;
+  this->size         = size;
 
   // how many tiles
   // top corner is (1, 1)
@@ -32,17 +34,20 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
     for (uint32_t j = 0; j < tileCount[1]; ++j)
     {
       EnvParams envParams;
-      envParams.tile[0] = i + tileStart[0];
-      envParams.tile[1] = i + tileStart[1];
-
-      envParams.tileOffset[0] = tileStart[0] + i * params.tileSize[0];
-      envParams.tileOffset[1] = tileStart[1] + i * params.tileSize[1];
-      envParams.tileSize      = params.tileSize;
-      envParams.offset[0]     = std::max(envParams.tileOffset[0], start[0]) - envParams.tileOffset[0];
-      envParams.offset[1]     = std::max(envParams.tileOffset[1], start[1]) - envParams.tileOffset[1];
-      envParams.size[0]       = params.tileSize[0] - envParams.offset[0];
-      envParams.size[1]       = params.tileSize[1] - envParams.offset[1];
-      if (envParams.size[0] > 0 && envParams.size[1] > 0)
+      envParams.tile[0]              = i + tileStart[0];
+      envParams.tile[1]              = j + tileStart[1];
+      envParams.tileSize             = params.tileSize;
+      envParams.outputSize           = size;
+      envParams.startxy[0]           = start[0] + i * params.tileSize[0];
+      envParams.startxy[1]           = start[1] + j * params.tileSize[1];
+      envParams.tileRegion.offset[0] = std::max(envParams.startxy[0], start[0]) - envParams.startxy[0];
+      envParams.tileRegion.offset[1] = std::max(envParams.startxy[1], start[1]) - envParams.startxy[1];
+      envParams.tileRegion.size[0]   = params.tileSize[0] - envParams.tileRegion.offset[0];
+      envParams.tileRegion.size[1]   = params.tileSize[1] - envParams.tileRegion.offset[1];
+      envParams.region.offset[0]     = envParams.startxy[0] - start[0];
+      envParams.region.offset[1]     = envParams.startxy[1] - start[1];
+      envParams.region.size          = envParams.tileRegion.size;
+      if (envParams.region.size[0] > 0 && envParams.region.size[1] > 0)
       {
         // envParams.textureOffset[0] = envParams.tileOffset[0] - start[0];
         // envParams.textureOffset[1] = envParams.tileOffset[1] - start[1];

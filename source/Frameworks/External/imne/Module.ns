@@ -8,7 +8,6 @@ fetch "https://github.com/obhi-d/imgui-node-editor.git"
   license    : "LICENSE";
   commit     : "f43bb4dece7d8cfae4ab4917a06164c0639c6136";
   package    : imne;
-  fetch_content : true;
   args
   {
   

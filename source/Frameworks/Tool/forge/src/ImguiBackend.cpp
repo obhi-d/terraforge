@@ -5,6 +5,7 @@
 #include "Logger.h"
 #include "ResourceUtils.h"
 #include "ImguiTerraWindow.h"
+#include "CustomFont.cpp"
 #include <SDL.h>
 
 namespace tmpl
@@ -107,6 +108,20 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     auto font = fileContentToBytes(theme.images[ImageName::eIconFont].path);
     io.Fonts->AddFontFromMemoryTTF(reinterpret_cast<char*>(font.data()), (int)font.size(),
                                    (float)theme.images[ImageName::eIconFont].size.y, &config, ranges);
+  }
+
+  {
+    ImFontConfig config;
+    config.FontDataOwnedByAtlas = false;
+    config.MergeMode            = true;
+    config.GlyphMinAdvanceX     = 15.0f;
+    config.OversampleH          = 4;
+    config.OversampleV          = 4;
+    config.PixelSnapH           = false;
+
+    static const ImWchar ranges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
+        
+    io.Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15.0f, &config, ranges);
   }
 
   ImageSerializer                 serializer;
@@ -540,19 +555,19 @@ WindowAction ImguiBackend::windowDecoration(ImguiTerraWindow& app, ImWith flags)
       name = WindowAction::eMinimize;
   }
   align(ImAlign::eLeft);
-  auto& locked = app.getMouseState().locked;
-  if (!io.WantCaptureMouse && locked == MouseLockedBy::eNone || locked == MouseLockedBy::eMainWndDecorations)
+  auto& ms = app.getMouseState();
+  if (!io.WantCaptureMouse && ms.locked == MouseLockedBy::eNone || ms.locked == MouseLockedBy::eMainWndDecorations)
   {
     if (isIntersecting())
     {
-      if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+      if (ms.leftDown && ms.dragging)
         name = WindowAction::eDrag;
       else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         name = WindowAction::eToggleSize;
     }
     if (name == WindowAction::eNone && isIntersecting())
     {
-      if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+      if (ms.leftDown && ms.dragging)
         name = WindowAction::eDrag;
       else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         name = WindowAction::eToggleSize;

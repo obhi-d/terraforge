@@ -63,12 +63,12 @@ protected:
     return launchParams;
   }
 
-  uvec2 const& launchSize() const
+  ivec2 const& launchSize() const
   {
     return size;
   }
 
-  uvec2 const& launchOffset() const
+  ivec2 const& launchOffset() const
   {
     return start;
   }
@@ -91,8 +91,8 @@ private:
   dshandle     actor;
   dshandle     reissued;
   LaunchParams launchParams;
-  uvec2        start;
-  uvec2        size;
+  ivec2        start;
+  ivec2        size;
   int32_t      iteration = 0;
   uint32_t     tile      = 0;
   uint32_t     nbTiles   = 0;

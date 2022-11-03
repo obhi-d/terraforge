@@ -11,7 +11,7 @@
 #include "ResourceUtils.h"
 #include "Terra.h"
 #include "GfxDevice45.h"
-#include "forgeEnums.hpp"
+#include "DrawHelpers.h"
 
 neo_registry(ThemeBuilder);
 neo_registry(StringBuilder);

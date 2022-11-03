@@ -6,6 +6,7 @@
 #include "hwy/Pipeline_hwy.h"
 
 #include "Terra.h"
+#include "Logger.h"
 
 #include <hwy/foreach_target.h>
 #include <hwy/highway.h>
@@ -118,7 +119,7 @@ void Pipeline_hwy::popOutput(uint32_t thread)
 hwyvb& Pipeline_hwy::getInput(uint32_t thread, uint32_t lanes, bool populated)
 {
   auto& threadData = threadDatas[thread];
-  if (threadData.outputs.empty())
+  if (threadData.inputs.empty())
     return pushInput(thread, lanes, populated);
 
   return threadData.inputs.back();
@@ -133,8 +134,8 @@ hwyvb& Pipeline_hwy::pushInput(uint32_t thread, uint32_t lanes, bool populated)
     auto& inp = threadData.inputs.back();
     auto  x   = inp.x.data();
     auto  y   = inp.y.data();
-    auto  xstart = threadData.params.tileOffset[0] + threadData.params.offset[0] - 1;
-    auto  ystart = threadData.params.tileOffset[1] + threadData.params.offset[1] - 1;
+    auto  xstart = threadData.params.startxy[0] - 1;
+    auto  ystart = threadData.params.startxy[1] - 1;
     for (int i = 0; i < threadData.height; ++i)
     {
       HWY_DYNAMIC_DISPATCH(writeInputLine)(frequency(), xstart, 
@@ -155,28 +156,39 @@ void Pipeline_hwy::popInput(uint32_t thread)
 void Pipeline_hwy::pushTileTask(EnvParams const& envParams) 
 {
   // auto div = N * lanes();
-  int32 nbWidth = (envParams.size[0] + (N - 1)) / N;
-  int32 nbHeight = (envParams.size[1] + (N - 1)) / N;
-  ThreadData threadData;
-  threadData.params = envParams;
+  int32      nbWidth  = (envParams.tileRegion.size[0] + (N - 1)) / N;
+  int32      nbHeight = (envParams.tileRegion.size[1] + (N - 1)) / N;
+  threadDatas.reserve(nbHeight * nbWidth);
   for (int32_t y = 0; y < nbHeight; ++y)
   {
     for (int32_t x = 0; x < nbWidth; ++x)
     {
-      threadData.params.offset[0] += x * N;
-      threadData.params.offset[1] += y * N;
-      int dx = (int)std::min<int>(threadData.params.offset[0] + N, envParams.offset[0] + envParams.size[0]) -
-               (int)threadData.params.offset[0];
-      int dy = (int)std::min<int>(threadData.params.offset[1] + N, envParams.offset[1] + envParams.size[1]) -
-               (int)threadData.params.offset[1];
+      auto nX           = x * N;
+      auto nY           = y * N;
+      threadDatas.emplace_back();
+      auto& threadData  = threadDatas.back();
+      threadData.params = envParams;
+      threadData.params.startxy[0] += nX;
+      threadData.params.startxy[1] += nY;
+      threadData.params.region.offset[0] += nX;
+      threadData.params.region.offset[1] += nY;
+      threadData.params.tileRegion.offset[0] += nX;
+      threadData.params.tileRegion.offset[1] += nY;
+
+      int dx = std::min<int>(threadData.params.tileRegion.offset[0] + N,
+                             envParams.tileRegion.offset[0] + envParams.tileRegion.size[0]) -
+               threadData.params.tileRegion.offset[0];
+      int dy = std::min<int>(threadData.params.tileRegion.offset[1] + N,
+                             envParams.tileRegion.offset[1] + envParams.tileRegion.size[1]) -
+               threadData.params.tileRegion.offset[1];
       if (dx > 0 && dy > 0)
       {
-        threadData.params.size[0] = dx;
-        threadData.params.size[1] = dy;
-        threadData.width          = dx + 2;
-        threadData.height         = dy + 2;
-
-        threadDatas.push_back(threadData);
+        threadData.params.tileRegion.size[0] = dx;
+        threadData.params.tileRegion.size[1] = dy;
+        threadData.params.region.size[0]     = dx;
+        threadData.params.region.size[1]     = dy;
+        threadData.width                     = dx + 2;
+        threadData.height                    = dy + 2;
       }
     }
   }
@@ -184,10 +196,11 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 
 void Pipeline_hwy::launch() 
 {
-  semaphore.acquire();
-  finished = (uint32_t)threadDatas.size();
+  finished = 0; 
+  event.reset();
   for (uint32_t id = 0; id < (uint32_t)threadDatas.size(); ++id)
   {
+        
     get().pool().add(
       [id, this]()
       {
@@ -198,8 +211,8 @@ void Pipeline_hwy::launch()
           threadDatas[id].minMax = HWY_DYNAMIC_DISPATCH(getMinMax)(back.data(), back.pitch(), back.width(), back.height());
         }
 
-        if(finished.fetch_sub(1) == 1)
-          semaphore.release();
+        if (++finished == (uint32_t)threadDatas.size())
+          event.set();
 
       });
   }
@@ -207,10 +220,10 @@ void Pipeline_hwy::launch()
 
 std::size_t Pipeline_hwy::hasResults() 
 {
-  if (finished.load() == 0)
+  if (finished.load() == (uint32_t)threadDatas.size())
   {
     auto const& ls = launchSize();
-    return ls[0] * ls[1];
+    return (size_t)ls[0] * (size_t)ls[1];
   }
   return 0;
 }
@@ -219,38 +232,41 @@ void Pipeline_hwy::getResults(float* ready, float& min, float& max)
 {
   min = std::numeric_limits<float>::max();
   max = std::numeric_limits<float>::min();
-  if (finished.load() == 0)
+  auto const& ls    = launchSize();
+  auto const& lo    = launchOffset();
+  // auto        ready = std::unique_ptr<float[]>(new float[ls[0] * ls[1]]);
+  if (finished.load() == (uint32_t)threadDatas.size())
   {
-    auto const& ls    = launchSize();
-    auto const& lo    = launchOffset();
-    // auto        ready = std::unique_ptr<float[]>(new float[ls[0] * ls[1]]);
+    event.waitAndSet();
     for (auto& td : threadDatas)
     {
       if (!td.outputs.empty())
       {
+        uint32 x = td.params.region.offset[0];
+        uint32 y = td.params.region.offset[1];
         auto& back = td.outputs.back();
-        for (uint32 i = 0; i < back.height(); ++i)
+        for (uint32 i = 1; i < back.height() - 1; ++i, ++y)
         {
-          uint32 x = td.params.tileOffset[0] + td.params.offset[0] - lo[0];
-          uint32 y = td.params.tileOffset[1] + td.params.offset[1] - lo[1];
           auto offset = ready + (y * ls[0]) + x;
-          std::memcpy(offset, back.data() + 1, td.params.size[0] * sizeof(float));
+          std::memcpy(offset, back.data() + i * back.pitch() + 1, td.params.region.size[0] * sizeof(float));
         }
 
         min = std::min(min, td.minMax[0]);
         max = std::max(max, td.minMax[1]);
       }
     }
-    finished = -1;
-    if (updateActor())
-      launch();
+    threadDatas.clear();
   }
+  finished = -1;
+  if (updateActor())
+    launch();
+  
 }
 
-void Pipeline_hwy::wait() 
+void Pipeline_hwy::wait()
 {
-  semaphore.acquire();
-  semaphore.release();
+  event.waitAndSet();
 }
+
 } // namespace terra
 #endif

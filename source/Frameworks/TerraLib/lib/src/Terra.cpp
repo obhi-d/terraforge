@@ -7,6 +7,7 @@
 
 #include <format>
 #include <fstream>
+#include <mimalloc-2.0/mimalloc-new-delete.h>
 
 neo_registry(NoiseBuilder);
 namespace terra
@@ -41,12 +42,6 @@ void Terra::destroy()
   threadPool.shutdown();
   // computeThread.shutdown();
  }
-
-void Terra::addMeta(std::string name, NodeMeta const& meta)
-{
-  metaMap[name] = (uint32_t)nodeMetaTable.size();
-  nodeMetaTable.push_back(meta);
-}
 
 
 dshandle Terra::getImage(std::filesystem::path path)

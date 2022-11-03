@@ -7,7 +7,6 @@ fetch "https://github.com/ocornut/imgui.git"
   license    : "LICENSE";
   commit     : "69beaa1d0b7fc8f4b448dcf1780b08cfc959da65";
   package    : imgui;
-  fetch_content : true;
   args
   {
   

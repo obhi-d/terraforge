@@ -5,7 +5,6 @@ fetch "https://github.com/google/highway.git"
   license    : "LICENSE";
   commit     : "22e3d7276f4157d4a47586ba9fd91dd6303f441a";
   package    : hwy;
-  fetch_content : true;
   args
   {
     BUILD_SHARED_LIBS : OFF;

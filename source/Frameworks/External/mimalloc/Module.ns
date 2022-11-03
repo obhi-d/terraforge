@@ -1,9 +1,9 @@
 type = extern;
 
-fetch "https://github.com/obhi-d/mimalloc.git"
+fetch "https://github.com/microsoft/mimalloc.git"
 {
   license    : "LICENSE";
-  commit     : "7ddf5283719bcdb01ee373a2197f0b109f0ff291";
+  commit     : "f2712f4a8f038a7fb4df2790f4c3b7e3ed9e219b";
   package    : mimalloc;
   targets    : mimalloc;
   skip_namespace : true;

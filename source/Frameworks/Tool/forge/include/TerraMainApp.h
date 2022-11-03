@@ -64,7 +64,17 @@ public:
     return theme;
   }
 
-  private:
+  void setActor(dshandle h)
+  {
+    viewer.setActor(*this, h);
+  }
+
+  AppSettings& getSettings() 
+  {
+    return settings;
+  }
+
+private:
   std::unordered_map<std::string, std::u8string> stringTable;
   std::shared_ptr<GfxDevice43>                   device;
   ImguiTerraWindow                               viewer;

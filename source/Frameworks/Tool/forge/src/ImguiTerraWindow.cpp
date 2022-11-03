@@ -1,6 +1,7 @@
 
 #include "GlGfx.h"
 #include "TerraMainApp.h"
+#include "DrawHelpers.h"
 #include <Common.h>
 #include <ImguiTerraWindow.h>
 #include <imgui.h>
@@ -23,7 +24,7 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   SDL_SetHint("SDL_BORDERLESS_WINDOWED_STYLE", "1");
   SDL_SetHint("SDL_BORDERLESS_RESIZABLE_STYLE", "1");
 
-  window = SDL_CreateWindow(settings.name.data(), position->x, position->y, size->x, size->y, flags);
+  window = SDL_CreateWindow(settings.name.data(), position.x, position.y, size.x, size.y, flags);
 
   if (!window)
     throw std::runtime_error("Could not create window!");
@@ -53,6 +54,7 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   nodeEditor.init(app);
   meshPreview.init(app);
   SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
+  settingName = app.getLocalizedString("@Settings");
 }
 
 void ImguiTerraWindow::setTheme(ImguiTheme const& theme)
@@ -201,6 +203,53 @@ void ImguiTerraWindow::drawWindowDecoration()
   }
 }
 
+void ImguiTerraWindow::drawSettings(TerraMainApp& app) 
+{
+  bool regenerate = false;
+  if (ImGui::Begin((char const*)settingName.data()))
+  {
+    auto& settings = app.getSettings();
+    // Settings
+    float item_height = ImGui::GetTextLineHeightWithSpacing();
+    if (ImGui::BeginChildFrame(ImGui::GetID("gen_settings"), ImVec2(-FLT_MIN, 6.25f * item_height)))
+    {
+      static std::u8string_view header = app.getLocalizedString("@genParams");
+      ImGui::Text((const char*)header.data());
+      ImGui::Separator();
+      regenerate |= drawProp(app, settings.frequency, 0, std::numeric_limits<float>::max(), 0.01f);
+      regenerate |= drawProp(app, settings.seed, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+      ImGui::EndChildFrame();
+    }
+    if (ImGui::BeginChildFrame(ImGui::GetID("export_settings"), ImVec2(-FLT_MIN, 6.25f * item_height)))
+    {
+      static std::u8string_view header = app.getLocalizedString("@exportParams");
+      ImGui::Text((const char*)header.data());
+      ImGui::Separator();
+      regenerate |= drawProp(app, settings.tileSize, 4, 8129);
+      regenerate |= drawProp(app, settings.tileOffset, 1, std::numeric_limits<int>::max());
+      regenerate |= drawProp(app, settings.nbPreviewTiles, 1, 8);
+      ImGui::EndChildFrame();
+    }
+    if (ImGui::BeginChildFrame(ImGui::GetID("preview_settings"), ImVec2(-FLT_MIN, 8.25f * item_height)))
+    {
+      static std::u8string_view header = app.getLocalizedString("@previewParams");
+      ImGui::Text((const char*)header.data());
+      ImGui::Separator();
+      drawProp(app, meshPreview.sunColor);
+      drawProp(app, meshPreview.sunIntensity, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), 0.05f);
+      drawProp(app, meshPreview.meshTint);
+      drawProp(app, meshPreview.heightMultiplier, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), 0.05f);
+      drawProp(app, meshPreview.heightTexPath);
+      drawProp(app, meshPreview.meshStyle, 1.0f, std::numeric_limits<float>::max(), 0.5f);
+      ImGui::EndChildFrame();
+    }
+    
+  }
+  ImGui::End();
+  if (regenerate)
+    meshPreview.regenerate(app);
+}
+
 void ImguiTerraWindow::draw(TerraMainApp& app)
 {
   SDL_GL_MakeCurrent(window, app.getGlContext());
@@ -220,6 +269,7 @@ void ImguiTerraWindow::draw(TerraMainApp& app)
   drawWindowDecoration();
   // drawResizeControl();
   nodeEditor.drawNodeEditor(app, backend);
+  drawSettings(app);
   // Rendering
   ImGui::Render();
 

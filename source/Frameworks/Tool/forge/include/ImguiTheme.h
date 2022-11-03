@@ -1,5 +1,7 @@
 
 #pragma once
+
+#include "Setup.h"
 #include "IconsFontAwesome6.h"
 #include "NeoHelper.h"
 #include "glm/glm.hpp"
@@ -29,68 +31,6 @@ struct ImagePack
 {
   std::string path;
   glm::uvec2  size = glm::uvec2(0, 0);
-};
-
-// Color is ABGR, because of imgui
-class Color
-{
-public:
-  inline Color() = default;
-  inline Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
-  {
-    color.r = r; // Extract the RR byte
-    color.g = g; // Extract the GG byte
-    color.b = b;  // Extract the GG byte
-    color.a = a;         // Extract the BB byte
-  }
-
-  inline Color(uint32_t hexValue)
-  {
-    color.a = uint8_t((hexValue >> 24) & 0xFF); // Extract the RR byte
-    color.b = uint8_t((hexValue >> 16) & 0xFF); // Extract the GG byte
-    color.g = uint8_t((hexValue >> 8) & 0xFF);  // Extract the GG byte
-    color.r = uint8_t((hexValue)&0xFF);         // Extract the BB byte
-  }
-
-  inline Color(ImVec4 f4)
-  {
-    color.r = (uint8_t)(f4.x * 255.f); // Extract the RR byte
-    color.g = (uint8_t)(f4.y * 255.f); // Extract the GG byte
-    color.b = (uint8_t)(f4.z * 255.f); // Extract the GG byte
-    color.a = (uint8_t)(f4.w * 255.f); // Extract the BB byte
-  }
-
-  inline Color(glm::vec4 f4)
-  {
-    color.r = (uint8_t)(f4.x * 255.f); // Extract the RR byte
-    color.g = (uint8_t)(f4.y * 255.f); // Extract the GG byte
-    color.b = (uint8_t)(f4.z * 255.f); // Extract the GG byte
-    color.a = (uint8_t)(f4.w * 255.f); // Extract the BB byte
-  }
-
-  inline operator uint32_t() const
-  {
-    return uint32_t{color.a} << 24 | uint32_t{color.b} << 16 | uint32_t{color.g} << 8 | uint32_t{color.r};
-  }
-
-  inline operator glm::vec4() const
-  {
-    return tovec4<glm::vec4>();
-  }
-
-  inline operator ImVec4() const
-  {
-    return tovec4<ImVec4>();
-  }
-
-private:
-  template <typename T>
-  T tovec4() const
-  {
-    return T{color.r / 255.f, color.g / 255.f, color.b / 255.f, color.a / 255.f};
-  }
-
-  glm::u8vec4 color = glm::u8vec4(255, 255, 255, 255);
 };
 
 struct ImThemeColors

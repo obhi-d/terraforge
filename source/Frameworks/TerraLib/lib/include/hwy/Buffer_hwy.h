@@ -84,6 +84,12 @@ public:
     data_ = (T*)hwy::AllocateAlignedBytes(size_ * sizeof(T), &allocate, nullptr);
   }
 
+  void randomize() 
+  {
+    for (uint32_t i = 0; i < size_; ++i)
+      data_[i] = (float)std::rand() / (float)RAND_MAX;
+  }
+
   uint32_t height() const
   {
     return height_;

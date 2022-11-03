@@ -1,5 +1,9 @@
 
+#include "TerraMainApp.h"
 #include "DrawHelpers.h"
+
+#include "ImGuiFileDialog.h"
+
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
@@ -242,4 +246,38 @@ void drawIcon(ImDrawList* drawList, const ImVec2& a, const ImVec2& b, IconType t
   }
 }
 
+bool drawProp(TerraMainApp& app, Property<glm::ivec2>& prop, int min, int max)
+{
+  return ImGui::DragInt2(prop.getDisplayName(app), &prop.get().x, 1.f, min, max);
+}
+bool drawProp(TerraMainApp& app, Property<int>& prop, int min, int max)
+{
+  return ImGui::DragInt(prop.getDisplayName(app), &prop.get(), 1.f, min, max);
+}
+bool drawProp(TerraMainApp& app, Property<float>& prop, float min, float max, float step)
+{
+  return ImGui::DragFloat(prop.getDisplayName(app), &prop.get(), step, min, max);
+}
+bool drawProp(TerraMainApp& app, Property<Color>& prop) 
+{
+  ImVec4 color = {prop->r(), prop->g(), prop->b(), prop->a()};
+  if (ImGui::ColorButton(prop.getDisplayName(app), color))
+  {
+    prop = Color(color);
+    return true;
+  }
+  return false;
+}
+bool drawProp(TerraMainApp& app, Property<TextureFile>& prop) 
+{
+  auto& file = prop.get();
+  if (file.image)
+  {    
+    if (ImGui::ImageButton((ImTextureID)(uintptr_t)file.image, ImVec2{ 40, 40 }))
+    {
+      return true;
+    }
+  }
+  return false;
+}
 }

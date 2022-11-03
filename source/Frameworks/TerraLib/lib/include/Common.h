@@ -8,10 +8,10 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <mimalloc-2.0/mimalloc-new-delete.h>
 #include <mimalloc-2.0/mimalloc.h>
 #include <optional>
 #include <stdexcept>
+#include <semaphore>
 
 #define ENUM_FLAGS(Enum)                                                                                               \
   inline Enum operator|(Enum a, Enum b)                                                                                \
@@ -288,27 +288,32 @@ struct LaunchParams
   int32_t seed;
 };
 
+struct Box
+{
+  ivec2 offset{};
+  ivec2 size{};
+};
+
 // Rendering is done 1 tile at a time
 struct EnvParams
 {
-  ivec2 tile;
-  // Current tile offset
-  ivec2 tileOffset;
+  ivec2 tile{};
+  // Current offset
+  ivec2 startxy{};
   // Current tile size
-  ivec2 tileSize;
-  // Offset within the tile
-  ivec2 offset;
-  // Size within the tile
-  ivec2 size; // writable size
-  // Derived : Reciprocal size
-  vec2 recipSize;
-  // Derived : Reciprocal tileSize
-  vec2 recipTileSize;
+  ivec2 tileSize{};
+  // size of the output buffer
+  ivec2 outputSize{};  
+  // The region of data this param represents
+  // relative to output
+  Box region;
+  // The region within the current tile
+  Box tileRegion;
 
-  float   frequency;
-  float   wavelength;
-  int32_t seed;
-  int32_t padding;
+  float   frequency{};
+  float   wavelength{};
+  int32_t seed{};
+  int32_t padding{};
 
   inline constexpr auto operator<=>(EnvParams const&) const noexcept = default;
 };
@@ -348,6 +353,48 @@ enum class PipelineType
 {
   eGPU,
   eCPU
+};
+
+
+struct Event
+{
+  template <bool S>
+  struct State
+  {
+    constexpr State() noexcept = default;
+  };
+
+  static inline constexpr auto iset   = State<true>();
+  static inline constexpr auto iunset = State<true>();
+
+  Event(State<true> = {}) {}
+  Event(State<false>)
+  {
+    sem.acquire();
+  }
+
+  inline void reset()
+  {
+    sem.acquire();
+  }
+
+  inline void set()
+  {
+    sem.release();
+  }
+
+  inline void wait()
+  {
+    sem.acquire();
+  }
+
+  inline void waitAndSet()
+  {
+    wait();
+    set();
+  }
+
+  std::binary_semaphore sem = std::binary_semaphore(1);
 };
 
 } // namespace terra

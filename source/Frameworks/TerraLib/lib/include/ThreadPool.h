@@ -10,46 +10,11 @@
 #include <queue>
 #include <thread>
 #include <type_traits>
-#include <semaphore>
 
 namespace terra
 {
 using Task = std::packaged_task<void()>;
 
-struct Event
-{
-  template <bool S>
-  struct State
-  {
-    constexpr State() noexcept = default;
-  };
-
-  static inline constexpr auto iset = State<true>();
-  static inline constexpr auto iunset = State<true>();
-
-  Event(State<true>) {}
-  Event(State<false>)
-  {
-    sem.acquire();
-  }
-
-  void reset() 
-  {
-    sem.acquire();
-  }
-
-  void set()
-  {
-    sem.release();
-  }
-
-  void wait()
-  {
-    sem.acquire();
-  }
-
-  std::binary_semaphore sem = std::binary_semaphore(1);
-};
 
 class ThreadPool
 {

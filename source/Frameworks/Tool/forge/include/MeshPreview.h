@@ -14,6 +14,10 @@ class MeshPreview
 {
 public:
   void init(TerraMainApp&);
+  void regenerate(TerraMainApp const& app)
+  {
+    regenerate(app, actor);
+  }
   void regenerate(TerraMainApp const&, dshandle);
 
   void update(glm::ivec2 viewportSize, MouseState& ms)
@@ -25,16 +29,20 @@ public:
 
   void createDeviceObjects(TerraMainApp const&, GfxDevice43&);
 
+
+  Property<Color>       sunColor         = Property<Color>("@sunColor", 112, 82, 111, 255);
+  Property<float>       sunIntensity     = Property<float>("@sunIntensity", 0.4f);
+  Property<Color>       meshTint         = Property<Color>("@meshTint", 111, 111, 111, 255);
+  Property<float>       heightMultiplier = Property<float>("@heightMultiplier", 1.0f);
+  Property<TextureFile> heightTexPath    = Property<TextureFile>("@heightTexture", "images/default_terrain.png");
+  Property<float>       meshStyle        = Property<float>("@meshStyle", 200.f);
+
+
 private:
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);
   void reloadTexture(TerraMainApp const&);
 
-  glm::vec4 sunColor = {0.45f, 0.64f, 0.22f, 1.1f};
-  glm::vec4 meshTint = {0.15f, 0.14f, 0.12f, 1.f};
-
-  Property<std::string> heightTexPath = "images/default_terrain.png";
-  Property<float>       meshStyle     = 200.f;
-  Property<Rotation>    sunRotation;
+  Rotation sunRotation;
 
   float                     max         = 1.0f;
   float                     min         = -1.0f;

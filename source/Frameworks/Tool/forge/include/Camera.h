@@ -17,10 +17,10 @@ public:
   }
 
 private:
-  Property<bool>  ortho          = false;
-  Property<float> fov            = 45.f;
-  Property<float> distanceFactor = 1.f;
-  Property<float> scrollSpeed    = 1.f;
+  Property<bool>  ortho          = Property<bool>("@ortho", false);
+  Property<float> fov            = Property<float>("@fov", 45.f);
+  Property<float> distanceFactor = Property<float>("@distanceFactor", 1.f );
+  Property<float> scrollSpeed    = Property<float>("@scrollSpeed", 1.f );
 
   float    objRadius      = 0.0f;
   float    radius         = 20.0f;

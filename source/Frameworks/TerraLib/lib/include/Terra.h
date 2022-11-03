@@ -18,8 +18,6 @@ struct ShaderBuilder;
 class Terra
 {
 public:
-
-
   using Localization = std::function<std::u8string_view(std::string_view)>;
   void init(Localization loc, std::shared_ptr<ComputeDevice> iDev);
 
@@ -27,7 +25,7 @@ public:
   {
     imageCodecs[ext] = codec;
   }
-  
+
   inline std::shared_ptr<ImageCodec> getImageCodeFor(std::u8string ext)
   {
     auto it = imageCodecs.find(ext);
@@ -35,7 +33,7 @@ public:
       return it->second;
     return {};
   }
-  
+
   template <typename As>
   inline As& get(dshandle at)
   {
@@ -51,7 +49,7 @@ public:
   inline bool isValid(dshandle at) const
   {
     return at && dataSources.contains(at) && dataSources.at(at) &&
-      get<DataSource>(at).getSelf() == DataSource::handle(at.reserved);
+           get<DataSource>(at).getSelf() == DataSource::handle(at.reserved);
   }
 
   inline void destroy(dshandle n)
@@ -69,14 +67,19 @@ public:
   dshandle createNode(NodeMeta const&);
   dshandle getImage(std::filesystem::path path);
 
-  void  addMeta(std::string name, NodeMeta const& meta);
+  template <typename Meta>
+  void addMeta(std::string name, Meta const& meta)
+  {
+    metaMap[name] = (uint32_t)nodeMetaTable.size();
+    nodeMetaTable.push_back(std::static_pointer_cast<NodeMeta>(std::make_shared<Meta>(meta)));
+  }
 
   inline NodeMeta* getNodeMeta(std::string const& name)
   {
     auto it = metaMap.find(name);
     if (it != metaMap.end())
     {
-      return &nodeMetaTable[it->second];
+      return nodeMetaTable[it->second].get();
     }
     return {};
   }
@@ -105,7 +108,7 @@ public:
   {
     // ordered traversal using map
     for (auto& m : metaMap)
-      l(m.first, m.second, nodeMetaTable[m.second]);
+      l(m.first, m.second, *nodeMetaTable[m.second].get());
   }
 
   template <typename L>
@@ -116,7 +119,7 @@ public:
       {
         if (ds->getType() == DataSource::Type::eNode)
         {
-          if(!l(*(Node*)ds.get()))
+          if (!l(*(Node*)ds.get()))
             return false;
         }
         return true;
@@ -141,12 +144,12 @@ private:
   std::vector<std::string> semantics;
 
   using NodeMetaMap = std::map<std::string, uint32_t>;
-  std::vector<NodeMeta>         nodeMetaTable;
-  NodeMetaMap                   metaMap;
-  neo::registry                 registry;
-  ImageCodecMap                 imageCodecs;
-  table<DataSourcePtr>          dataSources;
-  ThreadPool                    threadPool;
+  std::vector<std::shared_ptr<NodeMeta>> nodeMetaTable;
+  NodeMetaMap                            metaMap;
+  neo::registry                          registry;
+  ImageCodecMap                          imageCodecs;
+  table<DataSourcePtr>                   dataSources;
+  ThreadPool                             threadPool;
   // WorkerThread computeThread;
   std::shared_ptr<ComputeDevice> device;
   PipelineType                   pipelineType = PipelineType::eCPU;
@@ -157,9 +160,8 @@ inline Terra& get()
   return Terra::get();
 }
 
-inline std::u8string_view operator""_ls(const char* input, std::size_t len) 
+inline std::u8string_view operator""_ls(const char* input, std::size_t len)
 {
   return get().localizationProvider(std::string_view(input, len));
 }
 } // namespace terra
-

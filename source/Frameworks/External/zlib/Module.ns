@@ -9,7 +9,6 @@ fetch "https://github.com/madler/zlib.git"
   package        : zlib;
   skip_namespace : true;
   targets        : zlib;
-  fetch_content  : true;
   args
   {
     BUILD_STATIC            : ON;
