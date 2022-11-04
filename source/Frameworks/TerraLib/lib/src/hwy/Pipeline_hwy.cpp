@@ -219,7 +219,7 @@ std::size_t Pipeline_hwy::hasResults()
   return 0;
 }
 
-void Pipeline_hwy::getResults(float* ready, float& min, float& max)
+void Pipeline_hwy::getResults(float* ready, uint32_t size, float& min, float& max)
 {
   min = std::numeric_limits<float>::max();
   max = std::numeric_limits<float>::min();
@@ -236,6 +236,7 @@ void Pipeline_hwy::getResults(float* ready, float& min, float& max)
       for (uint32 i = 1; i < back.height() - 1; ++i, ++y)
       {
         auto offset = ready + (y * ls[0]) + x;
+        assert((y * ls[0]) + x + (td.params.region.size[0] * sizeof(float)) < size);
         std::memcpy(offset, back.data() + i * back.pitch() + 1, td.params.region.size[0] * sizeof(float));
       }
 

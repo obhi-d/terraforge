@@ -525,7 +525,8 @@ WindowAction ImguiBackend::windowDecoration(ImguiTerraWindow& app, ImWith flags)
   WindowAction name       = WindowAction::eNone;
   if (flags & ImWith::fLogo)
   {
-    drawIcon(ImageName::eLogo, glm::ivec2(0, 0), glm::ivec2(60, 60), theme->themeColors.logo);
+    drawIcon(ImageName::eLogo, glm::ivec2(0, 0),
+             glm::ivec2(ImguiTerraWindow::titlebarHeight, ImguiTerraWindow::titlebarHeight), theme->themeColors.logo);
   }
   auto const& color  = theme->themeColors;
   auto        iconSz = theme->images[ImageName::eFont].size.y - 4;

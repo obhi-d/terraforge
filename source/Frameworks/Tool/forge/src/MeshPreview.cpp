@@ -145,9 +145,6 @@ void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
     }
 
     app.getDevice()->unmapBuffer(index);
-    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
-    std::memset(vertices, 0, size);
-    app.getDevice()->unmapBuffer(vertex);
 
     drawCall.indexBuffer.handle      = index;
     drawCall.indexBufferStride       = 4;
@@ -168,9 +165,25 @@ void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
     pipeline = get().createPipeline();
   }
 
+  auto size = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y) * 4;
   if (actor)
+  {
+    
     pipeline->compute(actor, params, ivec2{settings.tileOffset->x, settings.tileOffset->y},
                       ivec2{tileSize.x * nbPreviewTiles.x, tileSize.y * nbPreviewTiles.y});
+    if (pipeline->hasResults())
+    {
+      auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
+      pipeline->getResults(vertices, size, min, max);
+      app.getDevice()->unmapBuffer(vertex);
+    }
+  }
+  else
+  {
+    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
+    std::memset(vertices, 0, size);
+    app.getDevice()->unmapBuffer(vertex);
+  }
 }
 
 void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
@@ -247,15 +260,7 @@ void MeshPreview::draw(glm::ivec2 viewportSize, TerraMainApp& app)
   // update buffer
   int width  = tileSize.x * nbPreviewTiles.x;
   int height = tileSize.y * nbPreviewTiles.y;
-  if (pipeline && pipeline->hasResults())
-  {
-    uint32_t size = width * height;
-    assert(pipeline->hasResults() == size);
-    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
-    pipeline->getResults(vertices, min, max);
-    app.getDevice()->unmapBuffer(vertex);
-  }
-
+  
   struct Data
   {
     glm::mat4 view_projection;
@@ -282,14 +287,14 @@ void MeshPreview::draw(glm::ivec2 viewportSize, TerraMainApp& app)
   data.height            = height;
   data.style             = meshStyle;
   data.frequency         = settings.frequency;
-  data.sun_dir           = sunRotation.toDir();
+  data.sun_dir           = sunRotation->toDir();
   data.height_multiplier = heightMultiplier;
   data.sun_color         = glm::vec4(sunColor->r(), sunColor->g(), sunColor->b(), sunIntensity.get());
   data.tint              = meshTint.get();
   data.vertexCount       = vertexCount;
   data.max               = max;
   data.min               = min;
-  data.crust             = min - std::max(box.x, box.z) * .1f;
+  data.crust             = min - (std::max(box.x, box.z) * .1f) / heightMultiplier;
   app.getDevice()->unmapBuffer(ubo);
 
   if (descriptorsDirty)
@@ -315,8 +320,8 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
     float           x  = 0.5f * (float)ms.mouseDelta.x / (float)viewportSize.x;
     float           y  =-0.5f * (float)ms.mouseDelta.y / (float)viewportSize.y;
 
-    sunRotation.thetaAdd(170.f * y);
-    sunRotation.phiAdd(350.f * x);
+    sunRotation->thetaAdd(170.f * y);
+    sunRotation->phiAdd(350.f * x);
   }
 }
 

@@ -37,13 +37,13 @@ public:
   Property<float>       heightMultiplier = Property<float>("@heightMultiplier", 1.0f);
   Property<TextureFile> heightTexPath    = Property<TextureFile>("@heightTexture", "images/default_terrain.png");
   Property<float>       meshStyle        = Property<float>("@meshStyle", 200.f);
-
+  Property<Rotation>    sunRotation      = Property<Rotation>("@sunRotation", 40.f);
 
 private:
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);
   void reloadTexture(TerraMainApp const&);
 
-  Rotation sunRotation;
+  
 
   float                     max         = 1.0f;
   float                     min         = -1.0f;

@@ -26,7 +26,7 @@ public:
   void compute(dshandle, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
 
   // this function is called once results are available
-  virtual void getResults(float*, float& min, float& max) = 0;
+  virtual void getResults(float*, uint32_t size, float& min, float& max) = 0;
   // returns the size of the results available, 0 if no results are available
   virtual std::size_t hasResults()       = 0;
 

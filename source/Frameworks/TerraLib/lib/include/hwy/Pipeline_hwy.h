@@ -36,7 +36,7 @@ public:
   Pipeline_hwy(Pipeline_hwy const&) noexcept            = delete;
   Pipeline_hwy& operator=(Pipeline_hwy const&) noexcept = delete;
 
-  void        getResults(float*, float& min, float& max) final;
+  void        getResults(float*, uint32_t size, float& min, float& max) final;
   std::size_t hasResults() final;
 
   hwybuffer& getOutput(uint32_t thread, uint32_t lanes);

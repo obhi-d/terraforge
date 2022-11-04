@@ -18,6 +18,8 @@ class TerraMainApp;
 class ImguiTerraWindow
 {
 public:
+  static inline constexpr uint32_t titlebarHeight = 60;
+
   void drawSettings(TerraMainApp&);
   void init(TerraMainApp&);
   bool pollEvents();

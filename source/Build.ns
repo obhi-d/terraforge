@@ -68,7 +68,7 @@ preset win-dbg
 
   config [msvc]
   {
-    compiler_flags  : [ "/std:c++20", "/Zc:__cplusplus", "/Zc:preprocessor", "/source-charset:utf-8", "/bigobj", "/fsanitize=address" , "/Zi" ];
+    compiler_flags  : [ "/std:c++20", "/Zc:__cplusplus", "/Zc:preprocessor", "/source-charset:utf-8", "/bigobj", "/Zi" ];
     linker_flags    : [ "/debug", "-incremental:no" ];
   }
   config [gcc]

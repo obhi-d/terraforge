@@ -269,6 +269,14 @@ void ImguiTerraWindow::draw(TerraMainApp& app)
   app.getDevice()->setState(state);
   app.getDevice()->clearBackbuffer(app.getTheme().themeColors.clear, true);
   drawWindowDecoration();
+  // draw main window
+  // ImGuiViewport* viewport = ImGui::GetMainViewport();
+  // ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + 1, viewport->WorkPos.y + (titlebarHeight + 1)));
+  // ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - 2, viewport->WorkSize.y - (titlebarHeight + 2)));
+  // ImGui::SetNextWindowViewport(viewport->ID);
+  // ImGui::Begin("main_viewer", nullptr,
+  //              ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize);
+  // ImGui::End();
   // drawResizeControl();
   nodeEditor.drawNodeEditor(app, backend);
   drawSettings(app);
