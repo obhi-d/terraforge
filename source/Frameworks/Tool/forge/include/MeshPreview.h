@@ -14,6 +14,7 @@ class MeshPreview
 {
 public:
   void init(TerraMainApp&);
+  void deinit(TerraMainApp&);
   void regenerate(TerraMainApp const& app)
   {
     regenerate(app, actor);
@@ -62,6 +63,7 @@ private:
   glm::ivec2                tileSize       = {0, 0};
   glm::ivec2                nbPreviewTiles = {0, 0};
   GfxMesh::Draw             drawCall;
+  uint64_t                  setActorEventListener = 0;
   bool                      descriptorsDirty = true;
   bool                      generated        = false;
 };

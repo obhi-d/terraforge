@@ -53,6 +53,11 @@ void NodeEditor::init(TerraMainApp& app)
   auto& style        = imne::GetStyle();
   style.NodeRounding = 4.0f;
   style.PinRounding  = 2.0f;
+
+}
+
+void NodeEditor::deinit(TerraMainApp& app)
+{
 }
 
 void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
@@ -86,9 +91,20 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
     
   if (nodeSelectionChanged)
   {
-    app.setActor(drawableNodes[previewNode].getId());
+    app.regenWithActor(drawableNodes[previewNode].getId());
     nodeSelectionChanged = false;
   }
+}
+
+bool NodeEditor::acceptsAction()
+{
+  return pendingAction.action == Action::eNone;
+}
+
+void NodeEditor::showTooltip(ax::NodeEditor::PinId pin)
+{
+  pendingAction.action = Action::eShowTooltip;
+  pendingAction.pin    = pin;
 }
 
 void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
@@ -100,7 +116,6 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
   ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
   if (ImGui::BeginPopup("new_node", ImGuiWindowFlags_AlwaysVerticalScrollbar))
   {
-
     ImGui::PushItemWidth(-1);
     if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0) && !frameCache.filterHasFocus)
     {
@@ -266,6 +281,10 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
     ImGui::PopStyleVar();
     break;
   }
+  case Action::eImportNode:
+  case Action::ePasteNode:
+  case Action::eNone:
+    break;
   }
   pendingAction.action = Action::eNone;
   pendingAction.pin    = {};
@@ -415,6 +434,10 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
 
 void NodeEditor::createNode(TerraMainApp& app, NodeMeta const& meta, ImVec2 pos)
 {
+  EventNodeCreate enc;
+  enc.meta = &meta;
+  enc.pos = pos;
+  app.dispatcher().enqueue(enc);
   drawableNodes.emplace_back(app, get().createNode(meta), pos);
   if (drawableNodes.size() == 1)
   {
@@ -422,6 +445,7 @@ void NodeEditor::createNode(TerraMainApp& app, NodeMeta const& meta, ImVec2 pos)
     nodeSelectionChanged = true;
   }
 }
+
 
 void NodeEditor::deleteNode(imne::NodeId node)
 {

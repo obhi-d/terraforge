@@ -35,7 +35,7 @@ ThreadPool::ThreadPool()
           }
 
           entry();
-          entry = nullptr;
+          entry.reset();
         }
 
         quit++;

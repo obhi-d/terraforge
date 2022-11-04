@@ -79,10 +79,10 @@ bool ImguiTerraWindow::pollEvents()
     switch (event.type)
     {
     case SDL_MOUSEMOTION:
+      mouseState.mouseDelta.x    += event.motion.x - mouseState.mousePosition.x;
+      mouseState.mouseDelta.y    += event.motion.y - mouseState.mousePosition.y;
       mouseState.mousePosition.x = event.motion.x;
       mouseState.mousePosition.y = event.motion.y;
-      mouseState.mouseDelta.x    = event.motion.xrel;
-      mouseState.mouseDelta.y    = event.motion.yrel;
       mouseState.dragging        = mouseState.leftDown || mouseState.rightDown;
       mouseState.mainWnd         = event.motion.windowID == this->windowID;
       break;
@@ -200,6 +200,8 @@ void ImguiTerraWindow::drawWindowDecoration()
       mouseState.locked = MouseLockedBy::eMainWndDecorations;
     }
     break;
+  case WindowAction::eNone:
+    break;
   }
 }
 
@@ -214,7 +216,7 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
     if (ImGui::BeginChildFrame(ImGui::GetID("gen_settings"), ImVec2(-FLT_MIN, 6.25f * item_height)))
     {
       static std::u8string_view header = app.getLocalizedString("@genParams");
-      ImGui::Text((const char*)header.data());
+      ImGui::Text("%s", (const char*)header.data());
       ImGui::Separator();
       regenerate |= drawProp(app, settings.frequency, 0, std::numeric_limits<float>::max(), 0.01f);
       regenerate |= drawProp(app, settings.seed, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
@@ -223,7 +225,7 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
     if (ImGui::BeginChildFrame(ImGui::GetID("export_settings"), ImVec2(-FLT_MIN, 6.25f * item_height)))
     {
       static std::u8string_view header = app.getLocalizedString("@exportParams");
-      ImGui::Text((const char*)header.data());
+      ImGui::Text("%s", (const char*)header.data());
       ImGui::Separator();
       regenerate |= drawProp(app, settings.tileSize, 4, 8129);
       regenerate |= drawProp(app, settings.tileOffset, 1, std::numeric_limits<int>::max());
@@ -233,7 +235,7 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
     if (ImGui::BeginChildFrame(ImGui::GetID("preview_settings"), ImVec2(-FLT_MIN, 8.25f * item_height)))
     {
       static std::u8string_view header = app.getLocalizedString("@previewParams");
-      ImGui::Text((const char*)header.data());
+      ImGui::Text("%s", (const char*)header.data());
       ImGui::Separator();
       drawProp(app, meshPreview.sunColor);
       drawProp(app, meshPreview.sunIntensity, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), 0.05f);
@@ -247,7 +249,7 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
   }
   ImGui::End();
   if (regenerate)
-    meshPreview.regenerate(app);
+    app.regenWithActor({});
 }
 
 void ImguiTerraWindow::draw(TerraMainApp& app)

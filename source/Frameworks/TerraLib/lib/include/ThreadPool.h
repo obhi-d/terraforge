@@ -10,6 +10,7 @@
 #include <queue>
 #include <thread>
 #include <type_traits>
+#include "Common.h"
 
 namespace terra
 {
@@ -30,46 +31,51 @@ public:
   template <typename Func>
   auto add(Func&& func) 
   {
+    std::future<void> f;
     {
       std::lock_guard<std::mutex> lockg{lock};
       container.emplace_back(std::move(func));
+      f = container.back().get_future();
     }
 
     // let a waiting thread know there is an available job
     notifier.notify_one();
+    return f;
   }
 
   template <typename Func, typename Iter>
-  auto for_each(Iter beg, Iter end, Func&& func)
+  auto for_each(Iter beg, Iter end, Func&& func, WaitList& waiters)
   {
     auto last = end - 1;
-    std::atomic_uint atom = (uint32_t)std::distance(beg, end);
-    auto             event = Event(Event::iunset);
-    for (auto i = beg; i != end; ++i)
+    auto nb = std::distance(beg, end);
+    if (nb > 0)
     {
-      if (i == last)
+      waiters.resize(nb - 1);
+      uint32_t task = 0;
+      for (auto i = beg; i != end; ++i, ++task)
       {
-        notifier.notify_all();
-        func(*i);
-        if (atom.fetch_sub(1) == 1)
-          event.set();
+        if (i == last)
+        {
+          notifier.notify_all();
+          func(*i);
+        }
+        else
+        {
+          std::lock_guard<std::mutex> lockg{lock};
+          auto* obj = &(*i);
+          container.emplace_back([obj, &func]() {
+                        func(*obj);
+                      });
+          waiters[task] = container.back().get_future();
+        }
       }
-      else
-      {
-        std::lock_guard<std::mutex> lockg{lock};
-        container.emplace_back([&]() {
-            func(*i);
-            if (atom.fetch_sub(1) == 1)
-              event.set();
-          });
-      }
+      for(auto& w : waiters)
+        w.wait();
     }
-
-    event.wait();
   }
 
 private:
-  using Entry = std::function<void()>;
+  using Entry = std::packaged_task<void()>;
 
   std::condition_variable  notifier;
   std::vector<std::thread> workers;

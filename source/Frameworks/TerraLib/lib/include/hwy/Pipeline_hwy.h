@@ -59,6 +59,7 @@ private:
     int32_t   width  = 0;
     int32_t   height = 0;
     vec2      minMax = {-1.0f, 1.0f};
+    uint32_t  thread = 0;
 
     std::vector<hwyvb>     inputs;
     std::vector<hwybuffer> outputs;
@@ -70,10 +71,10 @@ private:
     ThreadData& operator=(ThreadData&&) noexcept      = default;
   };
 
+  WaitList waiters;
+
   // tiles are subdivided into NxN blocks of vectors (M lanes)
   static constexpr int32_t N = 16;
-  std::atomic_int          finished{0};
-  Event                    event;
   std::vector<ThreadData>  threadDatas;
 };
 

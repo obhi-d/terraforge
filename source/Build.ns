@@ -47,10 +47,10 @@ preset linux-tsan
   config [gcc]
   {
     compiler_flags  : [
-      "-std=c++20", "-fsanitize=threads", "-march=native"
+      "-std=c++20", "-fsanitize=thread", "-march=native"
     ];
     linker_flags    : [
-      "-Wl,--no-undefined", "-fsanitize=threads"
+      "-Wl,--no-undefined", "-fsanitize=thread"
     ];
   }
 }

@@ -35,12 +35,13 @@ public:
     return mouseState;
   }
 
+private:
+
   void setActor(TerraMainApp& app, dshandle actor)
   {
     meshPreview.regenerate(app, actor);
   }
 
-private:
   struct DragData
   {
     glm::ivec2 startPosition;

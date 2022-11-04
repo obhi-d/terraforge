@@ -5,6 +5,7 @@
 #include <string>
 
 #include "ImguiTheme.h"
+#include "EventSystem.h"
 #include <ImguiTerraWindow.h>
 
 namespace terra
@@ -13,6 +14,12 @@ namespace terra
 class TerraMainApp
 {
 public:
+
+  struct EventRegen
+  {
+    dshandle actor;
+  };
+
   TerraMainApp();
   ~TerraMainApp();
 
@@ -64,9 +71,11 @@ public:
     return theme;
   }
 
-  void setActor(dshandle h)
+  void regenWithActor(dshandle h)
   {
-    viewer.setActor(*this, h);
+    EventRegen actor;
+    actor.actor = h;
+    dispatcher().enqueue(actor);
   }
 
   AppSettings& getSettings() 
@@ -74,7 +83,10 @@ public:
     return settings;
   }
 
+  EventSystem& dispatcher() { return events; }
+
 private:
+  EventSystem events;
   std::unordered_map<std::string, std::u8string> stringTable;
   std::shared_ptr<GfxDevice43>                   device;
   ImguiTerraWindow                               viewer;
@@ -85,4 +97,5 @@ private:
   ImguiTheme                                     theme;
   uint32_t                                       frame = 0;
 };
+
 } // namespace terra

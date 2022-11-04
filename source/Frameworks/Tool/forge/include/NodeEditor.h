@@ -9,19 +9,20 @@ class TerraMainApp;
 class NodeEditor
 {
 public:
+
+  struct EventNodeCreate
+  {
+    NodeMeta const* meta = nullptr;
+    ImVec2 pos;
+  };
+
   void init(TerraMainApp& app);
+  void deinit(TerraMainApp& app);
   void drawNodeEditor(TerraMainApp&, ImguiBackend&);
 
-  bool acceptsAction()
-  {
-    return pendingAction.action == Action::eNone;
-  }
+  bool acceptsAction();
 
-  void showTooltip(imne::PinId pin)
-  {
-    pendingAction.action = Action::eShowTooltip;
-    pendingAction.pin    = pin;
-  }
+  void showTooltip(imne::PinId pin);
 
   void showHelp(imne::PinId pin) 
   {
@@ -42,6 +43,7 @@ public:
   }
 
 private:
+
   void createLink(ImThemeColors const&, uintpair start, uintpair end);
   void deleteLink(imne::LinkId);
   void deleteNode(imne::NodeId);
@@ -102,6 +104,7 @@ private:
   FrameCache           frameCache;
   bool                 nodeSelectionChanged = false;
   imne::EditorContext* editorContext        = nullptr;
+
 };
 
 } // namespace terra

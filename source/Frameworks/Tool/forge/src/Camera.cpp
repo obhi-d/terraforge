@@ -1,5 +1,4 @@
 
-#include "Terra.h"
 #include "Camera.h"
 #include <glm/gtx/transform.hpp>
 

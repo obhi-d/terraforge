@@ -169,6 +169,7 @@ void TerraMainApp::run()
     if (!viewer.pollEvents())
       return;
     draw();
+    events.dispatch(*this);
   }
   while (true);
 }

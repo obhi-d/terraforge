@@ -17,6 +17,15 @@ static constexpr size_t UboSize = 2 * sizeof(glm::mat4) + sizeof(glm::vec4);
 void MeshPreview::init(TerraMainApp& app)
 {
   regenerate(app, actor);
+  setActorEventListener = app.dispatcher().listen([this](TerraMainApp& app, TerraMainApp::EventRegen const& ev)
+  {
+    regenerate(app, ev.actor ? ev.actor : actor);
+  });
+}
+
+void MeshPreview::deinit(TerraMainApp& app)
+{
+  app.dispatcher().remove(setActorEventListener);
 }
 
 void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)

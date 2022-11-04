@@ -12,6 +12,8 @@
 #include <optional>
 #include <stdexcept>
 #include <semaphore>
+#include <future>
+#include <vector>
 
 #define ENUM_FLAGS(Enum)                                                                                               \
   inline Enum operator|(Enum a, Enum b)                                                                                \
@@ -90,9 +92,7 @@ struct Content
   size_t                       size = 0;
 
   Content()                              = default;
-  Content(Content const&)                = default;
   Content(Content&&) noexcept            = default;
-  Content& operator=(Content const&)     = default;
   Content& operator=(Content&&) noexcept = default;
 };
 
@@ -292,6 +292,8 @@ struct Box
 {
   ivec2 offset{};
   ivec2 size{};
+
+  inline constexpr auto operator<=>(Box const&) const noexcept = default;
 };
 
 // Rendering is done 1 tile at a time
@@ -396,5 +398,7 @@ struct Event
 
   std::binary_semaphore sem = std::binary_semaphore(1);
 };
+
+using WaitList = std::vector<std::future<void>>;
 
 } // namespace terra
