@@ -1,6 +1,8 @@
+
 #include "Terra.h"
 #include "Logger.h"
 #include "ResourceUtils.h"
+#include "CurveData.h"
 
 #include "hwy/Pipeline_hwy.h"
 #include "gpu/Pipeline_gpu.h"
@@ -15,6 +17,7 @@ namespace terra
 
 void Operators_hwy();
 void Noise_hwy();
+void Basics_hwy();
 
 Terra Terra::instance;
 
@@ -32,6 +35,7 @@ void Terra::init(Localization l, std::shared_ptr<ComputeDevice> iDev)
   {
     Operators_hwy();
     Noise_hwy();
+    Basics_hwy();
   }
 }
 
@@ -48,8 +52,11 @@ dshandle Terra::getImage(std::filesystem::path path)
 {
   for (uint32_t i = 0; i < dataSources.size(); ++i)
     if (dataSources[i]->getType() == DataSource::Type::eImage)
-      return dataSources[i]->getSelf();
-
+    {
+      if (static_cast<Image const*>(dataSources[i].get())->source == path)
+        return dataSources[i]->getSelf();
+    }
+      
   auto ptr = std::make_shared<Image>(path);
   ptr->setSelf(dataSources.emplace(ptr));
   return ptr->getSelf();
@@ -57,7 +64,14 @@ dshandle Terra::getImage(std::filesystem::path path)
 
 dshandle Terra::createNode(NodeMeta const& meta)
 {  
-  auto ptr = meta.create(meta);
+  auto ptr = std::make_shared<Node>(meta);
+  ptr->setSelf(dataSources.emplace(ptr));
+  return ptr->getSelf();
+}
+
+dshandle Terra::createCurve()
+{
+  auto ptr = std::make_shared<CurveData>();
   ptr->setSelf(dataSources.emplace(ptr));
   return ptr->getSelf();
 }
@@ -85,6 +99,17 @@ std::shared_ptr<Pipeline> Terra::createPipeline() const
   {
     return std::make_shared<Pipeline_hwy>();
   }
+}
+
+void DisplayInfo::from(std::string_view iname) 
+{
+  name = get().localizationProvider(iname);
+  std::string tt{iname};
+  tt += ".help";
+  help = get().localizationProvider(tt);
+  tt = iname;
+  tt += ".tip";
+  tooltip = get().localizationProvider(tt);
 }
 
 } // namespace terra

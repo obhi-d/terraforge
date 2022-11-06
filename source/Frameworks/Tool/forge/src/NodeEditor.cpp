@@ -4,8 +4,9 @@
 #include "ImguiBackend.h"
 #include "ResourceUtils.h"
 #include "TerraMainApp.h"
-#include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
+#include "imgui.h"
+#include "DrawHelpers.h"
+#include "imgui_internal.h"
 #include "imgui_node_editor.h"
 #include "imgui_node_editor_internal.h"
 #include <filesystem>
@@ -46,6 +47,9 @@ void NodeEditor::init(TerraMainApp& app)
   tipLink            = app.getLocalizedString("@Editor.TipLink");
   tipCreateNode      = app.getLocalizedString("@Editor.TipCreateNode");
   actions            = app.getLocalizedString("@Editor.Actions");
+  dataNode           = app.getLocalizedString("@Editor.DataNode");
+  curveNode          = app.getLocalizedString("@curveData");
+  imageNode          = app.getLocalizedString("@imageData");
   imne::Config config;
   config.SettingsFile = "terra-nodes.json";
   editorContext       = imne::CreateEditor(&config);
@@ -62,6 +66,7 @@ void NodeEditor::deinit(TerraMainApp& app)
 
 void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
 {
+  ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f);
   imne::SetCurrentEditor(editorContext);
   if (ImGui::Begin((const char*)nodeEditor.data()))
   {
@@ -82,17 +87,40 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
 
         imne::Resume();
         doNodes(app, backend);
+        {
+          imne::NodeId id;
+          if (imne::GetSelectedNodes(&id, 1) > 0 && id)
+          {
+            dshandle nid          = (uint32_t)(size_t)id;
+            if (nid != previewNode)
+            {
+              nodeRegenRequired = true;
+              previewNode          = nid;
+            }
+          }
+        }
         imne::End();
         imne::SetCurrentEditor(nullptr);
       }
     }
   }
   ImGui::End();
-    
-  if (nodeSelectionChanged)
+  ImGui::PopStyleVar();
+
+  if (!nodeRegenRequired)
   {
-    app.regenWithActor(drawableNodes[previewNode].getId());
-    nodeSelectionChanged = false;
+    if (DataSource::isValid(previewNode) && previewNodeVersion != get().get<Node>(previewNode).getVersion())
+      nodeRegenRequired = true;
+  }
+
+  if (nodeRegenRequired)
+  {
+    if (DataSource::isValid(previewNode))
+      previewNodeVersion = get().get<Node>(previewNode).getVersion();
+    else
+      previewNodeVersion = 0;
+    app.regenWithActor(previewNode);
+    nodeRegenRequired = false;
   }
 }
 
@@ -114,17 +142,19 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
   ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
-  if (ImGui::BeginPopup("new_node", ImGuiWindowFlags_AlwaysVerticalScrollbar))
-  {
-    ImGui::PushItemWidth(-1);
+  ImGui::PushItemWidth(-1);
+  if (ImGui::BeginPopup("new_node", ImGuiWindowFlags_NoScrollbar))
+  {    
     if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0) && !frameCache.filterHasFocus)
     {
       ImGui::SetKeyboardFocusHere(0);
       frameCache.filterHasFocus = true;
     }
     if (ImGui::IsMouseClicked(1))
+    {
       ImGui::CloseCurrentPopup();
-    if (ImGui::InputText("##filter", frameCache.filterData.data(), frameCache.filterData.size(),
+    }
+    else if (ImGui::InputText("##filter", frameCache.filterData.data(), frameCache.filterData.size(),
                          ImGuiInputTextFlags_EnterReturnsTrue) &&
         frameCache.createSelected)
     {
@@ -134,75 +164,97 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
       pendingAction.linkTo   = frameCache.linkTo;
       ImGui::CloseCurrentPopup();
     }
-    ImGui::PopItemWidth();
-    std::u8string_view filter = (char8_t*)frameCache.filterData.data();
-    for (auto& c : cachedMetas)
-    {
-      if (!c.second.empty())
+    else
+    {      
+      if (ImGui::BeginChildFrame(ImGui::GetID("##items"), ImVec2(-1,200), ImGuiWindowFlags_NoBackground))
       {
-        ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
-        ImGui::TextUnformatted((const char*)c.first.data());
-        ImGui::PopStyleColor();
-        ImGui::Separator();
+        std::u8string_view filter = (char8_t*)frameCache.filterData.data();
+        for (auto& c : cachedMetas)
         {
-          for (auto const& cr : c.second)
+          if (!c.second.empty())
           {
-            auto const& entry = cr.get();
-
-            auto findStringIC = [](const std::u8string_view& strHaystack, const std::u8string_view& strNeedle) -> bool
+            ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
+            ImGui::TextUnformatted((const char*)c.first.data());
+            ImGui::PopStyleColor();
+            ImGui::Separator();
             {
-              auto it = std::search(strHaystack.begin(), strHaystack.end(), strNeedle.begin(), strNeedle.end(),
-                                    [](char8_t ch1, char8_t ch2)
-                                    {
-                                      return std::toupper(ch1) == std::toupper(ch2);
-                                    });
-              return (it != strHaystack.end());
-            };
+              for (auto const& cr : c.second)
+              {
+                auto const& entry = cr.get();
 
-            if (filter.empty() || findStringIC(entry.name, filter))
-            {
-              if (!filter.empty() && !frameCache.createSelected)
-                frameCache.createSelected = &entry;
-              if (frameCache.createSelected == &entry)
-                ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.highlight);
-              if (ImGui::MenuItemEx((const char*)entry.name.data(), (const char*)entry.icon.data()))
-              {
-                pendingAction.meta     = &entry;
-                pendingAction.action   = Action::eCreateNode;
-                pendingAction.position = openPopupPosition;
-                pendingAction.linkTo   = frameCache.linkTo;
+                auto findStringIC = [](const std::u8string_view& strHaystack,
+                                       const std::u8string_view& strNeedle) -> bool
+                {
+                  auto it = std::search(strHaystack.begin(), strHaystack.end(), strNeedle.begin(), strNeedle.end(),
+                                        [](char8_t ch1, char8_t ch2)
+                                        {
+                                          return std::toupper(ch1) == std::toupper(ch2);
+                                        });
+                  return (it != strHaystack.end());
+                };
+
+                if (filter.empty() || findStringIC(entry.displayInfo.name, filter))
+                {
+                  if (!filter.empty() && !frameCache.createSelected)
+                    frameCache.createSelected = &entry;
+                  if (frameCache.createSelected == &entry)
+                    ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.highlight);
+                  if (ImGui::MenuItemEx(entry.displayInfo.getName(), (const char*)entry.icon.data()))
+                  {
+                    pendingAction.meta     = &entry;
+                    pendingAction.action   = Action::eCreateNode;
+                    pendingAction.position = openPopupPosition;
+                    pendingAction.linkTo   = frameCache.linkTo;
+                    ImGui::CloseCurrentPopup();
+                  }
+                  doTooltip(entry.displayInfo);
+                  if (frameCache.createSelected == &entry)
+                    ImGui::PopStyleColor();
+                }
+                else if (frameCache.createSelected == &entry)
+                  frameCache.createSelected = nullptr;
               }
-              if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-              {
-                ImGui::BeginTooltip();
-                ImGui::TextUnformatted((const char*)entry.tooltip.data());
-                ImGui::EndTooltip();
-              }
-              if (frameCache.createSelected == &entry)
-                ImGui::PopStyleColor();
             }
-            else if (frameCache.createSelected == &entry)
-              frameCache.createSelected = nullptr;
           }
         }
+        ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
+        ImGui::TextUnformatted((const char*)dataNode.data());
+        ImGui::PopStyleColor();
+        ImGui::Separator();
+        if (ImGui::MenuItemEx((const char*)imageNode.data(), ICON_FA_FILE_IMAGE))
+        {
+          pendingAction.action = Action::eImageData;
+          pendingAction.position = openPopupPosition;
+          pendingAction.linkTo   = frameCache.linkTo;
+          ImGui::CloseCurrentPopup();
+        }
+        if (ImGui::MenuItemEx((const char*)curveNode.data(), ICON_FA_BEZIER_CURVE))
+        {
+          pendingAction.action = Action::eCurveData;
+          pendingAction.position = openPopupPosition;
+          pendingAction.linkTo   = frameCache.linkTo;
+          ImGui::CloseCurrentPopup();
+        }
+        ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
+        ImGui::TextUnformatted((const char*)actions.data());
+        ImGui::PopStyleColor();
+        ImGui::Separator();
+        if (ImGui::MenuItemEx((const char*)importNode.data(), ICON_FA_FILE_IMPORT))
+        {
+          pendingAction.action = Action::eImportNode;
+          ImGui::CloseCurrentPopup();
+        }
+
+        if (ImGui::MenuItemEx((const char*)pasteNode.data(), ICON_FA_PASTE))
+        {
+          pendingAction.action = Action::ePasteNode;
+          ImGui::CloseCurrentPopup();
+        }
       }
-    }
-
-    ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
-    ImGui::TextUnformatted((const char*)actions.data());
-    ImGui::PopStyleColor();
-
-    ImGui::Separator();
-    if (ImGui::MenuItemEx((const char*)importNode.data(), ICON_FA_FILE_IMPORT))
-    {
-      pendingAction.action = Action::eImportNode;
-    }
-
-    if (ImGui::MenuItemEx((const char*)pasteNode.data(), ICON_FA_PASTE))
-    {
-      pendingAction.action = Action::ePasteNode;
+      ImGui::EndChildFrame();
     }
     ImGui::EndPopup();
+    ImGui::PopItemWidth();
   }
   else
   {
@@ -216,11 +268,23 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
   ImGui::PopStyleVar();
 }
 
+void NodeEditor::createCurveEditor(TerraMainApp& app, ImVec2 pos) 
+{
+  drawableNodes.emplace_back(app, get().createCurve(), pos);
+}
+
 void NodeEditor::executePendingAction(TerraMainApp& app)
 {
   auto const& theme = app.getTheme();
   switch (pendingAction.action)
   {
+  case Action::eCurveData:
+    createCurveEditor(app, pendingAction.position);
+    if (pendingAction.linkTo)
+    {
+      setNextDataSource(theme.themeColors, drawableNodes.back().getId(), pendingAction.linkTo);
+    }
+    break;
   case Action::eCreateNode:
     createNode(app, *pendingAction.meta, pendingAction.position);
     if (pendingAction.linkTo)
@@ -236,7 +300,7 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
     if (pendingAction.node && get().isValid((uint32_t)(size_t)pendingAction.node))
     {
       auto const& node = get().get<Node>((uint32_t)(size_t)pendingAction.node);
-      ImGui::TextUnformatted((const char*)node.meta.tooltip.data());
+      ImGui::TextUnformatted(node.meta.displayInfo.getTooltip());
     }
     else if (pendingAction.pin)
     {
@@ -244,10 +308,13 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
       if (get().isValid(nodel))
       {
         auto const& node = get().get<Node>(nodel);
-        if (param == 0)
-          ImGui::TextUnformatted((const char*)node.meta.tooltip.data());
-        else
-          ImGui::TextUnformatted((const char*)node.meta.parameterDef[param - 1].tooltip.data());
+        if (!node.meta.displayInfo.tooltip.empty())
+        {
+          if (param == 0)
+            ImGui::TextUnformatted(node.meta.displayInfo.getTooltip());
+          else
+            ImGui::TextUnformatted(node.meta.parameterDef[param - 1].displayInfo.getTooltip());
+        }
       }
     }
     if (pendingAction.action == Action::eShowHelp)
@@ -255,8 +322,8 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
       if (pendingAction.node && get().isValid((uint32_t)(size_t)pendingAction.node))
       {
         auto const& node = get().get<Node>((uint32_t)(size_t)pendingAction.node);
-        if (!node.meta.help.empty())
-          ImGui::TextUnformatted((const char*)node.meta.help.data());
+        if (!node.meta.displayInfo.help.empty())
+          ImGui::TextUnformatted(node.meta.displayInfo.getHelp());
       }
       else if (pendingAction.pin)
       {
@@ -266,13 +333,13 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
           auto const& node = get().get<Node>(nodel);
           if (param == 0)
           {
-            if (!node.meta.help.empty())
-              ImGui::TextUnformatted((const char*)node.meta.help.data());
+            if (!node.meta.displayInfo.help.empty())
+              ImGui::TextUnformatted(node.meta.displayInfo.getHelp());
           }
           else
           {
-            if (!node.meta.parameterDef[param - 1].help.empty())
-              ImGui::TextUnformatted((const char*)node.meta.parameterDef[param - 1].help.data());
+            if (!node.meta.parameterDef[param - 1].displayInfo.help.empty())
+              ImGui::TextUnformatted(node.meta.parameterDef[param - 1].displayInfo.getHelp());
           }
         }
       }
@@ -300,12 +367,8 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
   {
     auto& dn = drawableNodes[n];
 
-    bool toggled = previewNode == n;
-    if (dn.begin(app, backend, *this, toggled))
-    {
-      previewNode          = n;
-      nodeSelectionChanged = true;
-    }
+    bool toggled = previewNode == dn.getId();
+    dn.begin(app, backend, *this, toggled);
     dn.end(app, backend, *this);
   }
 
@@ -341,10 +404,10 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
 
       auto getFormat = [](uintpair id) -> DataFormat 
       {
-        auto const& node = get().get<Node>(id.first);
-        if (!id.second)
+        auto const& node = get().get<DataSource>(id.first);
+        if (!id.second ||  node.getType() != DataSource::Type::eNode)
           return node.getFormat();
-        return node.meta.parameterDef[id.second - 1].format;
+        return static_cast<Node const&>(node).meta.parameterDef[id.second - 1].format;
       };
 
       imne::PinId startPinId = 0, endPinId = 0;
@@ -429,23 +492,18 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
     }
     imne::EndDelete();
   }
-
+  
 }
 
 void NodeEditor::createNode(TerraMainApp& app, NodeMeta const& meta, ImVec2 pos)
 {
-  EventNodeCreate enc;
-  enc.meta = &meta;
-  enc.pos = pos;
-  app.dispatcher().enqueue(enc);
   drawableNodes.emplace_back(app, get().createNode(meta), pos);
   if (drawableNodes.size() == 1)
   {
-    previewNode = 0;
-    nodeSelectionChanged = true;
+    previewNode          = drawableNodes.back().getId();
+    nodeRegenRequired = true;
   }
 }
-
 
 void NodeEditor::deleteNode(imne::NodeId node)
 {
@@ -462,21 +520,20 @@ void NodeEditor::deleteNode(imne::NodeId node)
 
 void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair end)
 {
-  auto&    src    = get().get<Node>(start.first);
   auto&    dst    = get().get<Node>(end.first);
   Color color  = col.dsLink;
   auto oldSrc = dst.param(end.second - 1, Source(dshandle(start.first), 0));
   if (std::holds_alternative<Source>(oldSrc))
   {
-    auto oldSrcHandle = DataSource::isValid(std::get<Source>(oldSrc).source);
-    uint32_t    del      = 0;
+    auto        oldSrcHandle = std::get<Source>(oldSrc).source;
+    uint32_t    del          = 0;
     imne::PinId pinStart     = pack(oldSrcHandle, 0);
-    imne::PinId pinEnd   = pack(end.first, end.second);
+    imne::PinId pinEnd       = pack(end.first, end.second);
 
     links.for_each(
       [&del, pinStart, pinEnd](auto const& l) -> bool
       {
-        if (l.start == pinStart && l.end == pinEnd)
+        if ((l.start == pinStart && l.end == pinEnd) || (l.end == pinStart && l.start == pinEnd))
         {
           del = (uint32_t)l.id.Get();
           return false;
@@ -501,7 +558,6 @@ void NodeEditor::deleteLink(imne::LinkId l)
   auto  start = unpack(lnk.start.Get());
   auto  end   = unpack(lnk.end.Get());
 
-  auto& src = get().get<Node>(start.first);
   auto& dst = get().get<Node>(end.first);
 
   dst.resetValue(end.second - 1);
@@ -513,9 +569,9 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, dshandle id, imne::
   auto&       node    = get().get<Node>(id);
   auto const& meta    = node.meta;
   auto        srcPin  = unpack(src.Get());
-  auto const& srcNode = get().get<Node>(srcPin.first);
+  auto const& srcNode = get().get<DataSource>(srcPin.first);
 
-  if (!srcPin.second)
+  if (!srcPin.second || srcNode.getType() != DataSource::Type::eNode)
   {
     uint32_t paramChoice = (uint32_t)meta.parameterDef.size();
     for (uint32_t i = 0; i < paramChoice; ++i)
@@ -543,7 +599,7 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, dshandle id, imne::
   }
   else
   {
-    if (node.getFormat() == srcNode.meta.parameterDef[srcPin.second].format)
+    if (node.getFormat() == static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second].format)
     {
       createLink(col, uintpair(id, 0), srcPin);
     }

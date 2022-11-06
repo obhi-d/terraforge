@@ -168,7 +168,8 @@ void TerraMainApp::run()
   {
     if (!viewer.pollEvents())
       return;
-    draw();
+    if (!draw())
+      return;
     events.dispatch(*this);
   }
   while (true);
@@ -177,24 +178,29 @@ void TerraMainApp::run()
 int TerraMainApp::Main(int argc, const char* argv[])
 {
   TerraMainApp app;
+  #ifdef NDEBUG
   try
+  #endif
   {
     app.run();
     get().destroy();
   }
+#ifdef NDEBUG
   catch (std::exception& ex)
   {
     logError(ex.what());
     std::cerr << ex.what();
     std::exit(-1);
   }
+#endif
   return 0;
 }
 
-void TerraMainApp::draw()
+bool TerraMainApp::draw()
 {
-  viewer.draw(*this);
+  bool r = viewer.draw(*this);
   frame++;
+  return r;
 }
 
 } // namespace terra

@@ -154,43 +154,64 @@ void Pipeline_hwy::popInput(uint32_t thread)
 void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 {
   // auto div = N * lanes();
-  int32      nbWidth  = (envParams.tileRegion.size[0] + (N - 1)) / N;
-  int32      nbHeight = (envParams.tileRegion.size[1] + (N - 1)) / N;
-  threadDatas.reserve(nbHeight * nbWidth);
-  for (int32_t y = 0; y < nbHeight; ++y)
+  constexpr bool SingleThreaded = false;
+  if constexpr (SingleThreaded)
   {
-    for (int32_t x = 0; x < nbWidth; ++x)
+    threadDatas.emplace_back();
+    auto& threadData  = threadDatas.back();
+    threadData.params = envParams;
+    threadData.width  = threadData.params.tileRegion.size[0] + 2;
+    threadData.height = threadData.params.tileRegion.size[1] + 2;
+    threadData.thread = (uint32_t)threadDatas.size() - 1;
+    threadData.uv.recipSize[0] = 1.f / (envParams.frequency * (float)envParams.tileSize[0]);
+    threadData.uv.recipSize[1] = 1.f / (envParams.frequency * (float)envParams.tileSize[1]);
+    threadData.uv.offset[0]    = envParams.startxy[0] * envParams.frequency;
+    threadData.uv.offset[1]    = envParams.startxy[1] * envParams.frequency;
+  }
+  else
+  {
+    int32 nbWidth  = (envParams.tileRegion.size[0] + (N - 1)) / N;
+    int32 nbHeight = (envParams.tileRegion.size[1] + (N - 1)) / N;
+    threadDatas.reserve(nbHeight * nbWidth);
+    for (int32_t y = 0; y < nbHeight; ++y)
     {
-      auto nX           = x * N;
-      auto nY           = y * N;
-      threadDatas.emplace_back();
-      auto& threadData  = threadDatas.back();
-      threadData.params = envParams;
-      threadData.params.startxy[0] += nX;
-      threadData.params.startxy[1] += nY;
-      threadData.params.region.offset[0] += nX;
-      threadData.params.region.offset[1] += nY;
-      threadData.params.tileRegion.offset[0] += nX;
-      threadData.params.tileRegion.offset[1] += nY;
-
-      int dx = std::min<int>(threadData.params.tileRegion.offset[0] + N,
-                             envParams.tileRegion.offset[0] + envParams.tileRegion.size[0]) -
-               threadData.params.tileRegion.offset[0];
-      int dy = std::min<int>(threadData.params.tileRegion.offset[1] + N,
-                             envParams.tileRegion.offset[1] + envParams.tileRegion.size[1]) -
-               threadData.params.tileRegion.offset[1];
-      if (dx > 0 && dy > 0)
+      for (int32_t x = 0; x < nbWidth; ++x)
       {
-        threadData.params.tileRegion.size[0] = dx;
-        threadData.params.tileRegion.size[1] = dy;
-        threadData.params.region.size[0]     = dx;
-        threadData.params.region.size[1]     = dy;
-        threadData.width                     = dx + 2;
-        threadData.height                    = dy + 2;
-        threadData.thread                    = (uint32_t)threadDatas.size() - 1;
+        auto nX = x * N;
+        auto nY = y * N;
+        threadDatas.emplace_back();
+        auto& threadData  = threadDatas.back();
+        threadData.params = envParams;
+        threadData.params.startxy[0] += nX;
+        threadData.params.startxy[1] += nY;
+        threadData.params.region.offset[0] += nX;
+        threadData.params.region.offset[1] += nY;
+        threadData.params.tileRegion.offset[0] += nX;
+        threadData.params.tileRegion.offset[1] += nY;
+
+        int dx = std::min<int>(threadData.params.tileRegion.offset[0] + N,
+                               envParams.tileRegion.offset[0] + envParams.tileRegion.size[0]) -
+                 threadData.params.tileRegion.offset[0];
+        int dy = std::min<int>(threadData.params.tileRegion.offset[1] + N,
+                               envParams.tileRegion.offset[1] + envParams.tileRegion.size[1]) -
+                 threadData.params.tileRegion.offset[1];
+        if (dx > 0 && dy > 0)
+        {
+          threadData.params.tileRegion.size[0] = dx;
+          threadData.params.tileRegion.size[1] = dy;
+          threadData.params.region.size[0]     = dx;
+          threadData.params.region.size[1]     = dy;
+          threadData.width                     = dx + 2;
+          threadData.height                    = dy + 2;
+          threadData.thread                    = (uint32_t)threadDatas.size() - 1;
+          threadData.uv.recipSize[0]           = 1.f / (envParams.frequency * (float)envParams.tileSize[0]);
+          threadData.uv.recipSize[1]           = 1.f / (envParams.frequency * (float)envParams.tileSize[1]);
+          threadData.uv.offset[0]              = threadData.params.startxy[0] * envParams.frequency;
+          threadData.uv.offset[1]              = threadData.params.startxy[1] * envParams.frequency;
+        }
+        else
+          threadDatas.pop_back();
       }
-      else
-        threadDatas.pop_back();
     }
   }
 }

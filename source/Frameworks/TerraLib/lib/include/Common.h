@@ -48,6 +48,7 @@ static constexpr int32_t Z     = 1720413743;
 static constexpr int32_t W     = 1066037191;
 static constexpr float   root2 = 1.4142135623730950488f;
 static constexpr float   root3 = 1.7320508075688772935f;
+static constexpr float   pi    = 3.141592653589793238462643383279502884f;
 } // namespace consts
 
 using uint32 = std::uint32_t;
@@ -78,6 +79,7 @@ union ScalarValue
   int   ivalue;
   bool  bvalue;
 
+  inline ScalarValue(int a, int b) : ivalue2{a, b} {}
   inline ScalarValue(ivec2 v) : ivalue2(v) {}
   inline ScalarValue() {}
   inline ScalarValue(vec2 v) : value2(v) {}
@@ -399,6 +401,35 @@ struct Event
   std::binary_semaphore sem = std::binary_semaphore(1);
 };
 
+struct DisplayInfo
+{
+  std::u8string_view name;
+  std::u8string_view help;
+  std::u8string_view tooltip;
+
+  const char* getName() const
+  {
+    return (const char*)name.data();
+  }
+
+  const char* getHelp() const
+  {
+    return (const char*)help.data();
+  }
+
+  const char* getTooltip() const
+  {
+    return (const char*)tooltip.data();
+  }
+  void from(std::string_view);
+};
+
 using WaitList = std::vector<std::future<void>>;
+
+struct UVMeter
+{
+  vec2 offset{};
+  vec2 recipSize{};
+};
 
 } // namespace terra

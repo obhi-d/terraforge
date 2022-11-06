@@ -18,6 +18,7 @@ public:
 references: [
   "Tool.gl",
   "Tool.imne",
-  "Tool.imgfd"
+  "Tool.imgfd",
+  "Tool.imgui"
 ];
 

@@ -3,7 +3,7 @@
 
 #include "ComputeDevice.h"
 #include "ImageCodec.h"
-#include "NodeMeta.h"
+#include "Node.h"
 #include "Table.h"
 
 #include <ThreadPool.h>
@@ -66,15 +66,17 @@ public:
 
   dshandle createNode(NodeMeta const&);
   dshandle getImage(std::filesystem::path path);
+  dshandle createCurve();
 
   template <typename Meta>
-  void addMeta(std::string name, Meta const& meta)
+  void addMeta(std::string_view name, Meta const& meta)
   {
     metaMap[name] = (uint32_t)nodeMetaTable.size();
     nodeMetaTable.push_back(std::static_pointer_cast<NodeMeta>(std::make_shared<Meta>(meta)));
+    nodeMetaTable.back()->displayInfo.from(name);
   }
 
-  inline NodeMeta* getNodeMeta(std::string const& name)
+  inline NodeMeta* getNodeMeta(std::string_view name)
   {
     auto it = metaMap.find(name);
     if (it != metaMap.end())
@@ -143,7 +145,7 @@ private:
   uint32_t                 frame = 0;
   std::vector<std::string> semantics;
 
-  using NodeMetaMap = std::map<std::string, uint32_t>;
+  using NodeMetaMap = std::map<std::string_view, uint32_t>;
   std::vector<std::shared_ptr<NodeMeta>> nodeMetaTable;
   NodeMetaMap                            metaMap;
   neo::registry                          registry;
@@ -163,5 +165,10 @@ inline Terra& get()
 inline std::u8string_view operator""_ls(const char* input, std::size_t len)
 {
   return get().localizationProvider(std::string_view(input, len));
+}
+
+inline const char* operator""_lsc(const char* input, std::size_t len)
+{
+  return (const char*)get().localizationProvider(std::string_view(input, len)).data();
 }
 } // namespace terra

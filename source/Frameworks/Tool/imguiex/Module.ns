@@ -5,11 +5,15 @@ public:
   dependencies: [ 
     "External.zlib",
     "External.sdl2",
-    "External.imgui",
-
+    
     "External.libpng",
     "External.glm"
 
   ];
 
 }
+
+references: [
+  "Tool.imgui"
+];
+

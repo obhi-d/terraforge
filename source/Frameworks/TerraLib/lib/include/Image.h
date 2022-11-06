@@ -44,6 +44,64 @@ struct Image : public DataSource
     return std::make_pair<dshandle, bool>({}, false);
   }
 
+  template <typename T>
+  T& get(int i, int j)
+  {
+    return *(T*)(data.get() + ((static_cast<uint32_t>(j) * width + static_cast<uint32_t>(i)) * sizeof(T)));
+  }
+
+  template <typename T>
+  T get(int i, int j) const
+  {
+    return *(T const*)(data.get() + ((static_cast<uint32_t>(j) * width + static_cast<uint32_t>(i)) * sizeof(T)));
+  }
+
+  inline float sample_val(int x, int y) const {
+    switch (format)
+    {
+    case ImageFormat::eFloat:
+      return (float)get<float>(x, y);
+    case ImageFormat::eUnorm8:
+      return (float)get<std::uint8_t>(x, y) / 255.f;
+    case ImageFormat::eSnorm16:
+    case ImageFormat::eUnorm16:
+      return (float)((float)get<std::uint16_t>(x, y) / (float)std::numeric_limits<std::uint16_t>::max());
+    case ImageFormat::eRgba8:
+    case ImageFormat::eSrgb8Alpha8:
+      return (float)((double)get<std::uint32_t>(x, y) / (double)std::numeric_limits<std::uint32_t>::max());
+    }
+    return 0.f;
+  }
+
+  inline float sample(float u, float v) const
+  {
+    auto x = std::max<int>(0, std::min<int>((int)(u * ((float)width - 0.5f)), width - 1));
+    auto y = std::max<int>(0, std::min<int>((int)(v * ((float)height - 0.5f)), height - 1));
+    return sample_val(x, y);
+  }
+
+  template <int N>
+  inline float sampleN(float u, float v) const
+  {
+    auto            cx    = (int)(u * ((float)width - 0.5f));
+    auto            cy    = (int)(v * ((float)height - 0.5f));
+    float           value = 0;
+    constexpr float recip = 1.f / (N * N * 4.f);
+
+    for (int sy = -N; sy < N; ++sy)
+    {
+      for (int sx = -N; sx < N; ++sx)
+      {
+        auto x = std::max<int>(0, std::min<int>(cx + sx, width - 1));
+        auto y = std::max<int>(0, std::min<int>(cy + sy, height - 1));
+        value += sample_val(x, y);
+      }
+    }
+
+    value *= recip;
+    return value;
+  }
+
   inline void accept(dshandle source, Event) final {}
   void        unload();
   bool        load();

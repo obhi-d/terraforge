@@ -3,7 +3,7 @@
 
 #include "Common.h"
 #include "GpuBuffer.h"
-#include "NodeMeta.h"
+#include "Node.h"
 #include <variant>
 
 namespace terra

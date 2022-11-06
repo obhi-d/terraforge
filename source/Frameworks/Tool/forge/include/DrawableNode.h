@@ -4,7 +4,7 @@
 #include "Terra.h"
 #include "ImguiTheme.h"
 #include "imgui_node_editor.h"
-#include "imgui/imgui.h"
+#include "imgui.h"
 
 namespace imne = ax::NodeEditor;
 
@@ -61,9 +61,9 @@ private:
   float    headerMaxY = 0.0f;
 
   dshandle    id;
-  uint32_t style;
+  uint32_t style = 0;
 
-  ImVec2   pos;
+  ImVec2 pos{};
  
   bool     firstDraw = true;
 };

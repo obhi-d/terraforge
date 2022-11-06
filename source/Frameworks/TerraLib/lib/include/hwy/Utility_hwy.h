@@ -16,7 +16,7 @@ using M_t = hn::ScalableTag<uint32_t>;
 using V_t = hn::ScalableTag<float>;
 using I_t = hn::ScalableTag<int>;
 
-HWY_API auto int32v(int32_t i) 
+HWY_API auto int32v(int32_t i)
 {
   I_t const itag{};
   return hn::Set(itag, i);
@@ -34,8 +34,8 @@ HWY_API auto hashPrimes(I seed, I x, I y)
   const hn::ScalableTag<int32_t> d;
 
   auto hash = hn::Xor(seed, x);
-  hash = hn::Xor(hash, y);
-  hash = hn::Mul(hash, hn::Set(d, 0x27d4eb2d));
+  hash      = hn::Xor(hash, y);
+  hash      = hn::Mul(hash, hn::Set(d, 0x27d4eb2d));
   return hn::Xor(hn::ShiftRight<15>(hash), hash);
 }
 
@@ -43,7 +43,7 @@ template <typename I, typename V>
 HWY_API auto gradientDotFancy(I hash, V x, V y)
 {
   const hn::ScalableTag<int32_t> d;
-  const hn::ScalableTag<float>    v;
+  const hn::ScalableTag<float>   v;
 
   auto index =
     hn::ConvertTo(d, hn::Mul(hn::ConvertTo(v, hn::And(hash, hn::Set(d, 0x3FFFFF))), hn::Set(v, 1.3333333333333333f)));
@@ -66,7 +66,7 @@ HWY_API auto gradientDot(I hash, V x, V y)
 {
   const hn::DFromV<I>          d;
   const hn::ScalableTag<float> v;
-    
+
   auto bit1 = hn::ShiftLeft<31>(hash);
   auto bit2 = hn::ShiftLeft<31>(hn::ShiftRight<1>(hash));
   auto bit4 = hn::RebindMask(v, hn::ShiftLeft<29>(hash) != hn::Set(hn::DFromV<I>(), 0));
@@ -126,7 +126,7 @@ HWY_API auto FS_Extract0_i32(V v)
 /// float FS_Extract_f32( float32v f, size_t idx )
 /// </code>
 template <typename V>
-HWY_API auto FS_Extract_f32(V v, size_t l) 
+HWY_API auto FS_Extract_f32(V v, size_t l)
 {
   return hn::ExtractLane(v, l);
 }
@@ -183,7 +183,7 @@ HWY_API auto FS_Castf32_i32(V v)
 /// float32v FS_Converti32_f32( int32v i )
 /// </code>
 template <typename V>
-HWY_API auto FS_Converti32_f32(V v) 
+HWY_API auto FS_Converti32_f32(V v)
 {
   const hn::ScalableTag<float> D;
   return hn::ConvertTo(D, v);
@@ -201,7 +201,6 @@ HWY_API auto FS_Convertf32_i32(V v)
   const hn::ScalableTag<int32_t> D;
   return hn::ConvertTo(D, v);
 }
-
 
 // Select
 
@@ -287,10 +286,10 @@ HWY_API auto FS_Max_i32(V a, V b)
 /// <code>
 /// float32v FS_BitwiseAndNot_f32( float32v a, float32v b )
 /// </code>
-template <typename T> 
+template <typename T>
 HWY_API auto FS_BitwiseAndNot_f32(T a, T b)
 {
-  const hn::ScalableTag<float> V;
+  const hn::ScalableTag<float>   V;
   const hn::ScalableTag<int32_t> D;
   return hn::BitCast(V, hn::AndNot(hn::BitCast(D, b), hn::BitCast(D, a)));
 }
@@ -314,11 +313,10 @@ HWY_API auto FS_BitwiseAndNot_i32(T a, T b)
 /// mask32v FS_BitwiseAndNot_m32( mask32v a, mask32v b )
 /// </code>
 template <typename M>
-HWY_API auto FS_BitwiseAndNot_m32(M a, M b) 
+HWY_API auto FS_BitwiseAndNot_m32(M a, M b)
 {
   return hn::AndNot(b, a);
 }
-
 
 /// <summary>
 /// return ZeroExtend( a >> b )
@@ -329,7 +327,7 @@ HWY_API auto FS_BitwiseAndNot_m32(M a, M b)
 template <int32_t b, typename V>
 HWY_API auto FS_BitwiseShiftRightZX_f32(V a)
 {
-  const hn::ScalableTag<float> D;
+  const hn::ScalableTag<float>   D;
   const hn::ScalableTag<int32_t> I;
   return hn::BitCast(D, hn::ShiftRight<b>(hn::BitCast(I, a)));
 }
@@ -485,7 +483,6 @@ HWY_API auto FS_Sin_f32(V a)
 
 // Math
 
-
 /// <summary>
 /// return log( a )
 /// </summary>
@@ -496,7 +493,7 @@ HWY_API auto FS_Sin_f32(V a)
 /// float32v FS_Log_f32( float32v a )
 /// </code>
 template <typename V>
-HWY_API auto FS_Log_f32(V a) 
+HWY_API auto FS_Log_f32(V a)
 {
   return hn::Log(a);
 }
@@ -549,11 +546,10 @@ HWY_API auto FS_Mask_f32(V a, M m)
 /// int32v FS_NMask_i32( int32v a, mask32v m )
 /// </code>
 template <typename I, typename M>
-HWY_API auto FS_NMask_i32(I a, M m) 
+HWY_API auto FS_NMask_i32(I a, M m)
 {
   return hn::IfThenZeroElse(m, a);
 }
-
 
 /// <summary>
 /// return ( m ? 0 : a )
@@ -791,6 +787,37 @@ template <typename V>
 HWY_API auto FS_Pow_f32(V value, V pow)
 {
   return FS_Exp_f32(hn::Mul(pow, FS_Log_f32(value)));
+}
+
+template <typename V>
+HWY_API auto FS_SubMul(V value, V offset, V rsize)
+{
+  return hn::Mul(hn::Sub(value, offset), rsize);
+}
+
+enum DistanceFunc
+{
+  eEucledian,
+  eEucledianSq,
+  eManhattan,
+  eHybrid,
+  eMaxAxis
+};
+
+template <int DistTy, typename V>
+HWY_API auto Distance(V dx, V dy)
+{
+  constexpr DistanceFunc DistanceTy = (DistanceFunc)DistTy;
+  if constexpr (DistanceTy == DistanceFunc::eEucledianSq)
+    return hn::MulAdd(dx, dx, hn::Mul(dy, dy));
+  else if constexpr (DistanceTy == DistanceFunc::eManhattan)
+    return hn::Add(hn::Abs(dx), hn::Abs(dy));
+  else if constexpr (DistanceTy == DistanceFunc::eHybrid)
+    return hn::Add(hn::MulAdd(dx, dx, hn::Abs(dx)), hn::MulAdd(dy, dy, hn::Abs(dy)));
+  else if constexpr (DistanceTy == DistanceFunc::eMaxAxis)
+    return hn::Max(dx, dy);
+  else
+    return hn::Sqrt(hn::MulAdd(dx, dx, hn::Mul(dy, dy)));
 }
 
 } // namespace terra::HWY_NAMESPACE

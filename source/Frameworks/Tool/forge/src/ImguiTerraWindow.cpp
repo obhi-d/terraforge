@@ -36,7 +36,7 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   ImGui::SetCurrentContext(imguiContext);
 
   ImGuiIO& io = ImGui::GetIO();
-  (void)io;
+  io.ConfigWindowsMoveFromTitleBarOnly = true;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
   io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;   // Enable Multi-Viewport / Platform Windows
@@ -55,6 +55,8 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   meshPreview.init(app);
   SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
   settingName = app.getLocalizedString("@Settings");
+  mainWindowName        = app.getLocalizedString("@Forge");
+  meshDrawData.instance = &app;
 }
 
 void ImguiTerraWindow::setTheme(ImguiTheme const& theme)
@@ -125,95 +127,22 @@ bool ImguiTerraWindow::pollEvents()
     break;
     }
   }
-
+  glm::ivec2 mouseLatest;
+  SDL_GetGlobalMouseState(&mouseLatest.x, &mouseLatest.y);
+  if (mouseLatest.x != mouseState.mousePosition.x || mouseLatest.y != mouseState.mousePosition.y)
+    io.AddMousePosEvent((float)mouseLatest.x, (float)mouseLatest.y);
   return true;
-}
-
-void ImguiTerraWindow::drawWindowDecoration()
-{
-  auto& io    = ImGui::GetIO();
-  auto  flags = ImWith::fClose | ImWith::fMenu | ImWith::fMinimize | ImWith::fLogo | ImWith::fResizeCtrl;
-
-  if (SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED)
-    flags = flags | ImWith::fRestore;
-  else
-    flags = flags | ImWith::fMaximize;
-
-  glm::ivec2 start, size;
-  SDL_GetWindowPosition(window, &start.x, &start.y);
-  size.x = (int)io.DisplaySize.x;
-  size.y = (int)io.DisplaySize.y;
-  backend.setRegion(start, size);
-  switch (backend.windowDecoration(*this, flags))
-  {
-  case WindowAction::eClose:
-  {
-    SDL_Event quit;
-    quit.type = SDL_QUIT;
-    SDL_PushEvent(&quit);
-  }
-  case WindowAction::eMaximize:
-  {
-    SDL_MaximizeWindow(window);
-    SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
-  }
-  break;
-  case WindowAction::eRestore:
-  {
-    SDL_RestoreWindow(window);
-    SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
-  }
-  break;
-  case WindowAction::eMinimize:
-  {
-    SDL_MinimizeWindow(window);
-  }
-  break;
-  case WindowAction::eDrag:
-  {
-    if (!windowDragging)
-    {
-      SDL_GetWindowSize(window, &dragData.startSize.x, &dragData.startSize.y);
-      SDL_GetWindowPosition(window, &dragData.startPosition.x, &dragData.startPosition.y);
-      SDL_GetGlobalMouseState(&dragData.mouse.x, &dragData.mouse.y);
-      windowDragging    = true;
-      mouseState.locked = MouseLockedBy::eMainWndDecorations;
-    }
-  }
-  break;
-  case WindowAction::eToggleSize:
-  {
-    if (SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED)
-      SDL_RestoreWindow(window);
-    else
-      SDL_MaximizeWindow(window);
-  }
-  break;
-  case WindowAction::eResize:
-    if (!windowResizing)
-    {
-      SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
-      dragData.startSize = windowSize;
-      SDL_GetWindowPosition(window, &dragData.startPosition.x, &dragData.startPosition.y);
-      SDL_GetGlobalMouseState(&dragData.mouse.x, &dragData.mouse.y);
-      windowResizing    = true;
-      mouseState.locked = MouseLockedBy::eMainWndDecorations;
-    }
-    break;
-  case WindowAction::eNone:
-    break;
-  }
 }
 
 void ImguiTerraWindow::drawSettings(TerraMainApp& app) 
 {
+  auto& settings   = app.getSettings();
   bool regenerate = false;
   if (ImGui::Begin((char const*)settingName.data()))
-  {
-    auto& settings = app.getSettings();
+  {    
     // Settings
     float item_height = ImGui::GetTextLineHeightWithSpacing();
-    if (ImGui::BeginChildFrame(ImGui::GetID("gen_settings"), ImVec2(-FLT_MIN, 6.25f * item_height)))
+    if (ImGui::BeginChildFrame(ImGui::GetID("gen_settings"), ImVec2(-FLT_MIN, 6.25f * item_height), ImGuiWindowFlags_NoBackground))
     {
       static std::u8string_view header = app.getLocalizedString("@genParams");
       ImGui::Text("%s", (const char*)header.data());
@@ -222,7 +151,8 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
       regenerate |= drawProp(app, settings.seed, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
       ImGui::EndChildFrame();
     }
-    if (ImGui::BeginChildFrame(ImGui::GetID("export_settings"), ImVec2(-FLT_MIN, 6.25f * item_height)))
+    if (ImGui::BeginChildFrame(ImGui::GetID("export_settings"), ImVec2(-FLT_MIN, 6.25f * item_height),
+                               ImGuiWindowFlags_NoBackground))
     {
       static std::u8string_view header = app.getLocalizedString("@exportParams");
       ImGui::Text("%s", (const char*)header.data());
@@ -232,7 +162,8 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
       regenerate |= drawProp(app, settings.nbPreviewTiles, 1, 8);
       ImGui::EndChildFrame();
     }
-    if (ImGui::BeginChildFrame(ImGui::GetID("preview_settings"), ImVec2(-FLT_MIN, 8.25f * item_height)))
+    if (ImGui::BeginChildFrame(ImGui::GetID("preview_settings"), ImVec2(-FLT_MIN, 12 * item_height),
+                               ImGuiWindowFlags_NoBackground))
     {
       static std::u8string_view header = app.getLocalizedString("@previewParams");
       ImGui::Text("%s", (const char*)header.data());
@@ -249,63 +180,69 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
   }
   ImGui::End();
   if (regenerate)
+  {
+    // validate settings
+    settings.tileSize.get().x = std::clamp(settings.tileSize.get().x, 2, 8129);
+    settings.tileSize.get().y = std::clamp(settings.tileSize.get().y, 2, 8129);
     app.regenWithActor({});
+  }
 }
 
-void ImguiTerraWindow::draw(TerraMainApp& app)
+bool ImguiTerraWindow::draw(TerraMainApp& app)
 {
-  SDL_GL_MakeCurrent(window, app.getGlContext());
+  static bool firstFrame = true;
+  if (!firstFrame)
+    SDL_HideWindow(window);
+
+  firstFrame = false;
+  // SDL_GL_MakeCurrent(window, app.getGlContext());
 
   auto& io = ImGui::GetIO();
   assert(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable);
   ImGui_ImplSDL2_NewFrame();
   ImGui::NewFrame();
-  if (io.WantCaptureMouse)
-    mouseState.mainWnd = false;
   app.getDevice()->flushStates();
-  GlGfxState state;
-  state.viewport.offset = glm::ivec2(0, 0);
-  state.viewport.size   = windowSize;
-  app.getDevice()->setState(state);
-  app.getDevice()->clearBackbuffer(app.getTheme().themeColors.clear, true);
-  drawWindowDecoration();
-  // draw main window
-  // ImGuiViewport* viewport = ImGui::GetMainViewport();
-  // ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + 1, viewport->WorkPos.y + (titlebarHeight + 1)));
-  // ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - 2, viewport->WorkSize.y - (titlebarHeight + 2)));
-  // ImGui::SetNextWindowViewport(viewport->ID);
-  // ImGui::Begin("main_viewer", nullptr,
-  //              ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoResize);
-  // ImGui::End();
-  // drawResizeControl();
+
+  ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize(ImVec2(1024, 768), ImGuiCond_FirstUseEver);
+  
+  if (!ImGui::Begin((const char*)mainWindowName.data(), &open, 0))
+  {
+    ImGui::End();
+    SDL_DestroyWindow(window);
+    return false;
+  }
+
+  if (!open)
+  {
+    SDL_DestroyWindow(window);
+    return false;
+  }
+
+  ImGui::GetWindowDrawList()->AddCallback([](const ImDrawList* parent_list, const ImDrawCmd* cmd) 
+    {
+      auto& cbk  = *(ImguiBackend::CallbackData*)cmd->UserCallbackData;
+      auto& app  = *(TerraMainApp*)cbk.instance;
+      auto& self = (ImguiTerraWindow&)app.getWindow();
+
+      self.meshPreview.update(cbk.scissor.size, self.mouseState);
+      self.meshPreview.draw(cbk.viewport, cbk.scissor, app);
+    },
+    &meshDrawData);
+  
+  ImGui::InvisibleButton("main_viewer_trap", ImGui::GetContentRegionAvail());
+  mouseState.mainWnd = ImGui::IsItemHovered();
+  ImGui::End();
+  ImGui::SetNextWindowPos(ImVec2(400, 40), ImGuiCond_FirstUseEver);
+  ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
   nodeEditor.drawNodeEditor(app, backend);
   drawSettings(app);
   // Rendering
   ImGui::Render();
-
-  meshPreview.update(windowSize, mouseState);
-  meshPreview.draw(windowSize, app);
+  
   backend.draw();
   SDL_GL_SwapWindow(window);
   backend.drawOtherWindows();
-  // pending evvents
-
-  if (windowDragging)
-  {
-    glm::ivec2 mouseLatest;
-    SDL_GetGlobalMouseState(&mouseLatest.x, &mouseLatest.y);
-    auto delta = mouseLatest - dragData.mouse;
-    SDL_SetWindowPosition(window, (int)(dragData.startPosition.x + delta.x), (int)(dragData.startPosition.y + delta.y));
-    windowDragging = mouseState.leftDown && mouseState.dragging;
-  }
-  else if (windowResizing)
-  {
-    glm::ivec2 mouseLatest;
-    SDL_GetGlobalMouseState(&mouseLatest.x, &mouseLatest.y);
-    auto delta = mouseLatest - dragData.mouse;
-    windowSize = glm::ivec2{dragData.startSize.x + delta.x, dragData.startSize.y + delta.y};
-    SDL_SetWindowSize(window, windowSize.x, windowSize.y);
-    windowResizing = mouseState.leftDown && mouseState.dragging;
-  }
+  return true;
 }
 } // namespace terra

@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Setup.h"
 #include "RenderResource.h"
 #include <glbinding/Binding.h>
 #include <glbinding/gl/gl.h>
@@ -30,14 +31,7 @@ enum class CullMode
   eCullNone
 };
 
-struct GlRect
-{
-  glm::ivec2 offset = glm::vec2(0, 0);
-  glm::ivec2 size   = glm::vec2(1, 1);
- 
-  inline bool operator==(GlRect const&) const noexcept        = default;
-  inline bool operator!=(GlRect const&) const noexcept = default;
-};
+using GlRect = Rect;
 
 struct GlGfxState
 {

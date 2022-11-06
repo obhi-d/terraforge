@@ -6,9 +6,10 @@
 namespace terra
 {
 
-void NodeMeta_hwy::fill(float value, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes)
+inline void NodeMeta_hwy::fill(float value, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes)
 {
-  pipe.getOutput(threadGroupId, lanes);
+  auto& out_a = pipe.getOutput(threadGroupId, lanes);
+  out_a.fill(value);
 }
 
 void NodeMeta_hwy::write(Parameter const& param, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes)

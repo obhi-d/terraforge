@@ -4,13 +4,11 @@
 
 #include <hwy/foreach_target.h>
 
-#include "NodeMeta.h"
+#include "Node.h"
 #include "Terra.h"
 
 #include "hwy/NodeMeta_hwy.h"
 #include "hwy/Pipeline_hwy.h"
-
-#include "metas/Operators.h"
 
 #include <hwy/contrib/math/math-inl.h>
 #include <hwy/highway.h>
@@ -22,18 +20,17 @@ namespace terra::HWY_NAMESPACE
 namespace hn = hwy::HWY_NAMESPACE;
 using T      = float;
 
-void add(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void add(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  auto&                    node  = (NodeBiop&)inode;
-
-  NodeMeta_hwy::write(node.opA, pipe, threadGroupId, lanes);
+  
+  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.opB, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -48,18 +45,17 @@ void add(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
-void sub(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void sub(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  auto&                    node  = (NodeBiop&)inode;
-
-  NodeMeta_hwy::write(node.opA, pipe, threadGroupId, lanes);
+  
+  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.opB, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -74,18 +70,17 @@ void sub(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
-void mul(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void mul(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  auto&                    node  = (NodeBiop&)inode;
-
-  NodeMeta_hwy::write(node.opA, pipe, threadGroupId, lanes);
+  
+  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.opB, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -100,18 +95,17 @@ void mul(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
-void div(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void div(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  auto&                    node  = (NodeBiop&)inode;
-
-  NodeMeta_hwy::write(node.opA, pipe, threadGroupId, lanes);
+  
+  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.opB, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -126,19 +120,18 @@ void div(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
-void madd(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void madd(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  auto&                    node  = (NodeTriop&)inode;
 
-  NodeMeta_hwy::write(node.opA, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.opB, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
   auto& out_c = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.opC, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -156,18 +149,17 @@ void madd(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
-void pow(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void pow(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  auto&                    node  = (NodeBiop&)inode;
 
-  NodeMeta_hwy::write(node.opA, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.opB, pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -201,84 +193,44 @@ void Operators_hwy()
   // Common
   NodeMeta_hwy meta;
   meta.category = "@Operators"_ls;
-  meta.style    = "Operators";
+  meta.style    = "operators";
 
   // Binary
-  meta.parameterDef.emplace_back(MemberPtr<&NodeBiop::opA>{}, FmtVal<DataType::eBuffer>(), "@OpA"_ls, "@OpAHelp"_ls,
-                                 "@OpATooltip"_ls);
-
-  meta.parameterDef.emplace_back(MemberPtr<&NodeBiop::opB>{}, FmtVal<DataType::eBuffer>(), "@OpB"_ls, "@OpBHelp"_ls,
-                                 "@OpBTooltip"_ls);
-  meta.create = [](NodeMeta const& meta) -> std::shared_ptr<Node>
-  {
-    return std::make_shared<NodeBiop>(meta);
-  };
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpA");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpB");
 
   // Add
   meta.icon    = "\xef\x81\x95";
-  meta.name    = "@Add"_ls;
-  meta.tooltip = "@AddTooltip"_ls;
-  meta.help    = "@AddHelp"_ls;
   meta.fn      = HWY_DYNAMIC_DISPATCH(add);
-  get().addMeta("add", meta);
+  get().addMeta("@add", meta);
 
   // Sub
   meta.icon     = "\xef\x81\x96";
-  meta.name     = "@Sub"_ls;
-  meta.category = "@Operators"_ls;
-  meta.tooltip  = "@SubTooltip"_ls;
-  meta.help     = "@SubHelp"_ls;
   meta.fn       = HWY_DYNAMIC_DISPATCH(sub);
-  get().addMeta("sub", meta);
+  get().addMeta("@sub", meta);
 
   // Mul
   meta.icon     = "\xef\x81\x97";
-  meta.name     = "@Mul"_ls;
-  meta.category = "@Operators"_ls;
-  meta.tooltip  = "@MulTooltip"_ls;
-  meta.help     = "@MulHelp"_ls;
   meta.fn       = HWY_DYNAMIC_DISPATCH(mul);
-  get().addMeta("mul", meta);
+  get().addMeta("@mul", meta);
 
   // Divide
   meta.icon     = "\xef\x94\xa9";
-  meta.name     = "@Div"_ls;
-  meta.category = "@Operators"_ls;
-  meta.tooltip  = "@DivTooltip"_ls;
-  meta.help     = "@DivHelp"_ls;
   meta.fn       = HWY_DYNAMIC_DISPATCH(div);
-  get().addMeta("div", meta);
+  get().addMeta("@div", meta);
 
   // Pow
   meta.icon     = "\xef\x84\xab";
-  meta.name     = "@Pow"_ls;
-  meta.category = "@Operators"_ls;
-  meta.tooltip  = "@PowTooltip"_ls;
-  meta.help     = "@PowHelp"_ls;
   meta.fn       = HWY_DYNAMIC_DISPATCH(pow);
-  get().addMeta("pow", meta);
+  get().addMeta("@pow", meta);
 
   // Tartiary
-  meta.parameterDef.clear();
-  meta.parameterDef.emplace_back(MemberPtr<&NodeTriop::opA>{}, FmtVal<DataType::eBuffer>(), "@OpA"_ls, "@OpAHelp"_ls,
-                                 "@OpATooltip"_ls);
-  meta.parameterDef.emplace_back(MemberPtr<&NodeTriop::opB>{}, FmtVal<DataType::eBuffer>(), "@OpB"_ls, "@OpBHelp"_ls,
-                                 "@OpBTooltip"_ls);
-  meta.parameterDef.emplace_back(MemberPtr<&NodeTriop::opC>{}, FmtVal<DataType::eBuffer>(), "@OpC"_ls, "@OpCHelp"_ls,
-                                 "@OpCTooltip"_ls);
-  meta.create = [](NodeMeta const& meta) -> std::shared_ptr<Node>
-  {
-    return std::make_shared<NodeTriop>(meta);
-  };
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpC");
 
   // MAdd
   meta.icon     = "\xef\x81\x97";
-  meta.name     = "@Madd"_ls;
-  meta.category = "@Operators"_ls;
-  meta.tooltip  = "@MaddTooltip"_ls;
-  meta.help     = "@MaddHelp"_ls;
   meta.fn       = HWY_DYNAMIC_DISPATCH(madd);
-  get().addMeta("madd", meta);
+  get().addMeta("@madd", meta);
 }
 
 } // namespace terra

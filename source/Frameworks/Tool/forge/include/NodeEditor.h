@@ -9,11 +9,10 @@ class TerraMainApp;
 class NodeEditor
 {
 public:
-
   struct EventNodeCreate
   {
     NodeMeta const* meta = nullptr;
-    ImVec2 pos;
+    ImVec2          pos;
   };
 
   void init(TerraMainApp& app);
@@ -24,7 +23,7 @@ public:
 
   void showTooltip(imne::PinId pin);
 
-  void showHelp(imne::PinId pin) 
+  void showHelp(imne::PinId pin)
   {
     pendingAction.action = Action::eShowHelp;
     pendingAction.pin    = pin;
@@ -33,7 +32,7 @@ public:
   void showTooltip(imne::NodeId pin)
   {
     pendingAction.action = Action::eShowTooltip;
-    pendingAction.node  = pin;
+    pendingAction.node   = pin;
   }
 
   void showHelp(imne::NodeId pin)
@@ -43,13 +42,13 @@ public:
   }
 
 private:
-
   void createLink(ImThemeColors const&, uintpair start, uintpair end);
   void deleteLink(imne::LinkId);
   void deleteNode(imne::NodeId);
   void doContextMenu(TerraMainApp&, ImVec2 pos);
   void doNodes(TerraMainApp&, ImguiBackend&);
   void createNode(TerraMainApp&, NodeMeta const& meta, ImVec2);
+  void createCurveEditor(TerraMainApp&, ImVec2);
   void executePendingAction(TerraMainApp&);
   void setNextDataSource(ImThemeColors const& col, dshandle node, imne::PinId src);
 
@@ -57,6 +56,8 @@ private:
   {
     eCreateNode,
     eImportNode,
+    eImageData,
+    eCurveData,
     ePasteNode,
     eShowTooltip,
     eShowHelp,
@@ -65,46 +66,51 @@ private:
 
   struct ActionData
   {
-    Action action = Action::eNone;
+    Action          action = Action::eNone;
     ImVec2          position;
-    NodeMeta const*    meta = nullptr;
-    imne::PinId     linkTo; 
-    imne::PinId pin;
-    imne::NodeId node;
+    NodeMeta const* meta = nullptr;
+    imne::PinId     linkTo;
+    imne::PinId     pin;
+    imne::NodeId    node;
   };
 
   ActionData pendingAction;
 
-  uint32_t previewNode = 0;
+  dshandle previewNode;
+  uint32_t previewNodeVersion = 0;
 
   using CategoryMap = std::vector<std::pair<std::u8string_view, std::vector<std::reference_wrapper<NodeMeta const>>>>;
   CategoryMap               cachedMetas;
   std::vector<DrawableNode> drawableNodes;
-  table<Link>         links;
+  table<Link>               links;
 
   std::u8string_view tipIncompatFormat;
   std::u8string_view tipIncompatType;
   std::u8string_view tipLink;
   std::u8string_view tipCreateNode;
 
-  std::u8string_view        actions;
-  std::u8string_view        importNode;
-  std::u8string_view        nodeEditor;
-  std::u8string_view        pasteNode;
-  std::u8string_view        toggleSelectedNode;
+  std::u8string_view actions;
+  std::u8string_view dataNode;
+  std::u8string_view importNode;
+  std::u8string_view nodeEditor;
+  std::u8string_view pasteNode;
+  std::u8string_view toggleSelectedNode;
+
+  // data nodes
+  std::u8string_view curveNode;
+  std::u8string_view imageNode;
 
   struct FrameCache
   {
-    std::array<char, 64> filterData = {};
+    std::array<char, 64> filterData     = {};
     bool                 filterHasFocus = false;
     NodeMeta const*      createSelected = nullptr;
     imne::PinId          linkTo;
   };
 
   FrameCache           frameCache;
-  bool                 nodeSelectionChanged = false;
-  imne::EditorContext* editorContext        = nullptr;
-
+  imne::EditorContext* editorContext     = nullptr;
+  bool                 nodeRegenRequired = false;
 };
 
 } // namespace terra

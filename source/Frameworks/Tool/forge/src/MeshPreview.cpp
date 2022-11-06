@@ -14,6 +14,11 @@ namespace terra
 
 static constexpr size_t UboSize = 2 * sizeof(glm::mat4) + sizeof(glm::vec4);
 
+MeshPreview::MeshPreview() 
+{
+  heightTexPath->path = (getMediaPath() / heightTexPath->path).string();
+}
+
 void MeshPreview::init(TerraMainApp& app)
 {
   regenerate(app, actor);
@@ -21,6 +26,7 @@ void MeshPreview::init(TerraMainApp& app)
   {
     regenerate(app, ev.actor ? ev.actor : actor);
   });
+  
 }
 
 void MeshPreview::deinit(TerraMainApp& app)
@@ -232,30 +238,21 @@ void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
 
 void MeshPreview::reloadTexture(TerraMainApp const& app)
 {
-  ImageSerializer       ser;
-  {
-    ImageData             data;
-    std::filesystem::path path = getMediaPath() / heightTexPath.get().path;
-    if (ser.loadImage(data, path))
-    {
-      if (heightColors)
-        app.getDevice()->destroy(heightColors);
-      heightColors = app.getDevice()->createImage(GfxStorageClass::eStaticDeviceReadonly, data.width, data.height,
-                                                  data.format, data.data.get());
-    }
-  }
+  heightTexPath->reload(app);
 }
 
-void MeshPreview::draw(glm::ivec2 viewportSize, TerraMainApp& app)
+void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
 {
   GlGfxState state;
   
   state.blend           = BlendMode::eDisabled;
   state.depthTest       = DepthTestMode::eLessEq;
-  state.scissorsEnabled = false;
-  state.viewport.offset = glm::ivec2(0, 0);
-  state.viewport.size   = viewportSize;
+  state.scissorsEnabled = true;
+  state.viewport        = scissor;
+  state.scissor         = scissor;
+
   app.getDevice()->setState(state);
+  app.getDevice()->clearBackbuffer(glm::vec4(app.getTheme().themeColors.clear), true);
   AppSettings const& settings = app.getSettings();
   // update buffer
   int width  = tileSize.x * nbPreviewTiles.x;
@@ -294,14 +291,14 @@ void MeshPreview::draw(glm::ivec2 viewportSize, TerraMainApp& app)
   data.vertexCount       = vertexCount;
   data.max               = max;
   data.min               = min;
-  data.crust             = min - (std::max(box.x, box.z) * .1f) / heightMultiplier;
+  data.crust             = min - (std::max(box.x, box.z) * .1f);
   app.getDevice()->unmapBuffer(ubo);
 
   if (descriptorsDirty)
   {
     std::array<GfxDescriptorSet::rhandle, 2> descriptors;
     descriptors[0].first  = ubo;
-    descriptors[1].first  = heightColors;
+    descriptors[1].first  = heightTexPath->image;
     descriptors[1].second = sampler;
     app.getDevice()->updateDescriptorSet(material.descriptorSet, descriptors);
   }

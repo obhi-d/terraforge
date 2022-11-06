@@ -28,7 +28,7 @@ void ImguiBackend::init(std::shared_ptr<GfxDevice43> renderer)
     auto self = (ImguiBackend*)backend;
     self->renderer->flushStates();
     if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
-      self->renderer->clearBackbuffer(self->clearColor);
+      self->renderer->clearBackbuffer(self->clearColor, true);
     self->draw(glm::vec2(viewport->Size.x, viewport->Size.y), viewport->DrawData);
   };
   createDeviceObjects();
@@ -259,29 +259,46 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
     const ImDrawList* cmd_list = data->CmdLists[n];
     for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
     {
+      
       const ImDrawCmd& pcmd = cmd_list->CmdBuffer[cmd_i];
       ImVec2 clipMin((pcmd.ClipRect.x - clipOff.x) * clipScale.x, (pcmd.ClipRect.y - clipOff.y) * clipScale.y);
       ImVec2 clipMax((pcmd.ClipRect.z - clipOff.x) * clipScale.x, (pcmd.ClipRect.w - clipOff.y) * clipScale.y);
       if (clipMax.x <= clipMin.x || clipMax.y <= clipMin.y)
         continue;
-      state.scissorsEnabled  = true;
-      state.scissor.offset.x = (int)clipMin.x;
-      state.scissor.offset.y = (fbHeight - (int)clipMax.y);
-      state.scissor.size.x   = (int)(clipMax.x - clipMin.x);
-      state.scissor.size.y   = (int)(clipMax.y - clipMin.y);
-      renderer->setState(state);
-      auto id = (uint32_t)(uintptr_t)pcmd.GetTexID();
-      if (id == 0)
-        descriptors[1].first = font;
-      else
-        descriptors[1].first = id;
-      descriptors[1].second = sampler;
-      renderer->updateDescriptorSet(descriptorSet, descriptors);
-      draw.baseVertex              = pcmd.VtxOffset;
-      draw.vertexBuffers[0].offset = vertexDataOffset;
-      draw.indexBuffer.offset      = indexDataOffset + (pcmd.IdxOffset * sizeof(ImDrawIdx));
-      draw.indexCount              = pcmd.ElemCount;
-      renderer->draw(draw, material);
+
+      if (pcmd.UserCallback)
+      {
+        auto data = (ImguiBackend::CallbackData*)pcmd.UserCallbackData;
+        data->viewport = state.viewport;
+        data->scissor.offset.x = (int)clipMin.x;
+        data->scissor.offset.y = (fbHeight - (int)clipMax.y);
+        data->scissor.size.x   = (int)(clipMax.x - clipMin.x);
+        data->scissor.size.y   = (int)(clipMax.y - clipMin.y);
+        pcmd.UserCallback(cmd_list, &pcmd);
+        renderer->setState(state);
+      }
+
+      if (pcmd.ElemCount > 0)
+      {
+        state.scissorsEnabled  = true;
+        state.scissor.offset.x = (int)clipMin.x;
+        state.scissor.offset.y = (fbHeight - (int)clipMax.y);
+        state.scissor.size.x   = (int)(clipMax.x - clipMin.x);
+        state.scissor.size.y   = (int)(clipMax.y - clipMin.y);
+        renderer->setState(state);
+        auto id = (uint32_t)(uintptr_t)pcmd.GetTexID();
+        if (id == 0)
+          descriptors[1].first = font;
+        else
+          descriptors[1].first = id;
+        descriptors[1].second = sampler;
+        renderer->updateDescriptorSet(descriptorSet, descriptors);
+        draw.baseVertex              = pcmd.VtxOffset;
+        draw.vertexBuffers[0].offset = vertexDataOffset;
+        draw.indexBuffer.offset      = indexDataOffset + (pcmd.IdxOffset * sizeof(ImDrawIdx));
+        draw.indexCount              = pcmd.ElemCount;
+        renderer->draw(draw, material);
+      }
     }
 
     vertexDataOffset += cmd_list->VtxBuffer.Size * (int)sizeof(ImDrawVert);
@@ -613,7 +630,7 @@ bool ImguiBackend::toggleButton(std::string_view name, bool& toggled, ImVec2 siz
   if (ImGui::InvisibleButton(nameAlt.c_str(), size))
     clicked = true;
 
-  if (ImGui::IsItemHovered())
+  if (ImGui::IsItemHovered() && !tip.empty())
   {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.f, 4.f));
     ImGui::BeginTooltip();

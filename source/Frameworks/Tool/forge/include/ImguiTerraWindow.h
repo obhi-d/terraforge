@@ -23,10 +23,9 @@ public:
   void drawSettings(TerraMainApp&);
   void init(TerraMainApp&);
   bool pollEvents();
-  void draw(TerraMainApp&);
+  bool draw(TerraMainApp&);
   void setTheme(ImguiTheme const&);
-  void drawWindowDecoration();
-
+  
   inline MouseState const& getMouseState() const
   {
     return mouseState;
@@ -38,7 +37,6 @@ public:
   }
 
 private:
-
   void setActor(TerraMainApp& app, dshandle actor)
   {
     meshPreview.regenerate(app, actor);
@@ -51,6 +49,9 @@ private:
     glm::ivec2 mouse = glm::ivec2(0, 0);
   };
 
+  ImguiBackend::CallbackData meshDrawData;
+
+  std::u8string_view mainWindowName;
   std::u8string_view settingName;
 
   MeshPreview   meshPreview;
@@ -63,7 +64,6 @@ private:
   glm::ivec2 windowSize;
   DragData   dragData;
   MouseState mouseState;
-  bool       windowResizing = false;
-  bool       windowDragging = false;
+  bool       open = true;
 };
 } // namespace terra

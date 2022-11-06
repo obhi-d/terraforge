@@ -35,10 +35,10 @@ void main()
   {
    xy.x = gl_VertexID % constants.width;
    xy.y = gl_VertexID / constants.width;
-   height = heights;
+   height = heights * constants.height_multiplier;
   }
   world_pos = vec3(float(xy.x) - float(constants.width - 1) * 0.5, height, float(xy.y) - float(constants.height - 1) * 0.5);
-  gl_Position = constants.view_projection * vec4(world_pos.x, world_pos.y * constants.height_multiplier, world_pos.z, 1.0);
+  gl_Position = constants.view_projection * vec4(world_pos, 1.0);
 }
 )_";
 
@@ -54,20 +54,15 @@ void main()
       
     vec3 normal = normalize(cross(x,y));
     
-    float sampleHeight = (world_pos.y - constants.min_height) / (constants.max_height - constants.min_height);
+    float sampleHeight = ((world_pos.y / constants.height_multiplier)  - constants.min_height) / (constants.max_height - constants.min_height);
     float sampleNormal = clamp(normal.y, 0.0f, 1.0f); 
-    vec4 light_y = texture(height_colors, vec2(sampleHeight, sampleNormal));
+    vec4 color = texture(height_colors, vec2(sampleHeight, sampleNormal));
 
-    if(!gl_FrontFacing) 
-    { 
-        light_y = (1.0 - light_y) * 0.08;
-    }
-
-    vec4 color = vec4(constants.sun_color.xyz, 1.0);
+    vec4 sun = vec4(constants.sun_color.xyz, 1.0);
     float intensity = constants.sun_color.w;
 
     float factor = floor(clamp(dot(normal, constants.sun_dir), 0.0, 1.0) * float(constants.style)) / float(constants.style);
-    fragment_color = mix(color, light_y, 0.1) * factor * intensity;
+    fragment_color = mix(color, sun, 0.1) * factor * intensity;
 }
 
 )_";

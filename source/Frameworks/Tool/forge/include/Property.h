@@ -1,5 +1,7 @@
 #pragma once
 #include <string_view>
+#include <optional>
+#include "Common.h"
 
 namespace terra
 {
@@ -67,17 +69,25 @@ public:
     return value == other;
   }
 
-  template <typename Ter>
-  const char* getDisplayName(Ter& app)
+
+  DisplayInfo const& getDisplayInfo()
   {
-    if (displayName.empty())
-      displayName = app.getLocalizedString(name);
-    return (const char*)displayName.data();
+    if (!displayInfo.has_value())
+    {
+      displayInfo = DisplayInfo();
+      displayInfo.value().from(name);
+    }
+    return displayInfo.value();
+  }
+
+  auto getDisplayName()
+  {
+    return (const char*)getDisplayInfo().name.data();
   }
 
 private:
   std::string_view name;
-  std::u8string_view displayName;
+  std::optional<DisplayInfo> displayInfo;
 
   T value = {};
 };

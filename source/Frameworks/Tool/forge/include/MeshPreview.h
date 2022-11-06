@@ -13,6 +13,8 @@ class GfxDevice43;
 class MeshPreview
 {
 public:
+  MeshPreview();
+
   void init(TerraMainApp&);
   void deinit(TerraMainApp&);
   void regenerate(TerraMainApp const& app)
@@ -26,7 +28,7 @@ public:
     updateSunDir(viewportSize, ms);
     camera.update(viewportSize, box, ms);
   }
-  void draw(glm::ivec2 viewportSize, TerraMainApp&);
+  void draw(Rect const& viewport, Rect const& scissor, TerraMainApp&);
 
   void createDeviceObjects(TerraMainApp const&, GfxDevice43&);
 
@@ -53,7 +55,6 @@ private:
   LaunchParams              params;
   std::shared_ptr<Pipeline> pipeline;
   dshandle                  actor;
-  GfxImage2D::handle        heightColors;
   GfxBuffer::handle         vertex;
   GfxBuffer::handle         index;
   GfxBuffer::handle         ubo;

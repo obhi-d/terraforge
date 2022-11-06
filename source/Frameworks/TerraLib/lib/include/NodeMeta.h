@@ -27,8 +27,8 @@ enum class Result
   eAbort
 };
 
-using ParamSetter = void (*)(Node&, Parameter&&);
-using ParamGetter = Parameter const& (*)(Node const&);
+//using ParamSetter = void (*)(Node&, Parameter&&);
+//using ParamGetter = Parameter const& (*)(Node const&);
 
 template <DataType Type, DataType Scalar = DataType::eFloat>
 struct FmtVal
@@ -91,16 +91,14 @@ struct ParameterMeta
   DataFormat format;
   DrawHint   drawHint = DrawHint::eDefault;
 
-  Semantic           semantic = Semantic::eNone;
-  std::u8string_view name;
-  std::u8string_view help;
-  std::u8string_view tooltip;
+  Semantic    semantic = Semantic::eNone;
+  DisplayInfo displayInfo;
 
   DataValue                       values[ValueType::eCount] = {};
   std::vector<std::u8string_view> enumValues                = {};
 
-  ParamSetter setter = nullptr;
-  ParamGetter getter = nullptr;
+  //ParamSetter setter = nullptr;
+  //ParamGetter getter = nullptr;
 
   ParameterMeta()                                         = default;
   ParameterMeta(ParameterMeta const&)                     = default;
@@ -108,27 +106,11 @@ struct ParameterMeta
   ParameterMeta& operator=(ParameterMeta const&) noexcept = default;
   ParameterMeta& operator=(ParameterMeta&&) noexcept      = default;
 
-  template <typename MembPtr, typename Fmt>
-  ParameterMeta(MembPtr, Fmt format, std::u8string_view iname, std::u8string_view ihelp, std::u8string_view itooltip,
-                Semantic semantic = Semantic::eNone, DrawHint idrawhint = DrawHint::eDefault)
-      : format(Fmt::get()), name(iname), help(ihelp), tooltip(itooltip), drawHint(idrawhint),
-        setter(
-          [](Node& node, Parameter&& param)
-          {
-            using T               = typename MembPtr::class_t;
-            Parameter T::*pmember = MembPtr::pmem;
-            auto&         cnode   = static_cast<T&>(node);
-            cnode.*pmember        = std::move(param);
-          }),
-        getter(
-          [](Node const& node) -> Parameter const&
-          {
-            using T               = typename MembPtr::class_t;
-            Parameter T::*pmember = MembPtr::pmem;
-            auto&         cnode   = static_cast<T const&>(node);
-            return cnode.*pmember;
-          })
+  template <typename Fmt>
+  ParameterMeta(Fmt format, std::string_view iname, Semantic semantic = Semantic::eNone, DrawHint idrawhint = DrawHint::eDefault)
+      : format(Fmt::get()), drawHint(idrawhint)
   {
+    displayInfo.from(iname);
     values[ValueType::eDefault] = format.defaultVal;
     if constexpr (Fmt::is_enum)
     {
@@ -151,7 +133,7 @@ struct ParameterMeta
   bool canBeScalar() const;
 
   ScalarValue getDefault() const;
-
+    
   void setTypeFromString(std::string_view);
   void setValueFromString(ValueType, std::string_view);
 };
@@ -169,10 +151,8 @@ public:
   };
 
   std::string_view           icon;
-  std::u8string_view         name;
+  DisplayInfo                displayInfo;
   std::u8string_view         category;
-  std::u8string_view         tooltip;
-  std::u8string_view         help;
   std::string_view           style;
   std::vector<ParameterMeta> parameterDef;
   uint32_t                   outputUpscale   = 1; // multiplier
@@ -182,11 +162,6 @@ public:
   // derived
   uint32_t id;
   bool     cacheResults = false;
-
-  using Create = std::shared_ptr<Node> (*)(NodeMeta const&);
-
-  // override run
-  Create create = nullptr;
 
   // attributes
   bool attribTileConstrained = false;
@@ -198,51 +173,6 @@ public:
   NodeMeta(NodeMeta&&) noexcept                 = default;
   NodeMeta& operator=(NodeMeta const&) noexcept = default;
   NodeMeta& operator=(NodeMeta&&) noexcept      = default;
-};
-
-class Node : public DataSource
-{
-public:
-  std::u8string   name;
-  NodeMeta const& meta;
-
-  Node(NodeMeta const& m) : meta(m), name(m.name) {}
-
-  uint32 getNumParams() const
-  {
-    return (uint32)meta.parameterDef.size();
-  }
-
-  Parameter const& param(uint32_t i) const
-  {
-    return meta.parameterDef[i].getter(*this);
-  }
-
-  Parameter param(uint32_t i, Parameter&& sv)
-  {
-    auto old = meta.parameterDef[i].getter(*this);
-    meta.parameterDef[i].setter(*this, std::move(sv));
-    return old;
-  }
-
-  Parameter resetValue(uint32_t i)
-  {
-    auto old = meta.parameterDef[i].getter(*this);
-    meta.parameterDef[i].setter(*this, meta.parameterDef[i].getDefault());
-    return old;
-  }
-
-  virtual Type getType() const
-  {
-    return Type::eNode;
-  }
-
-  virtual DataFormat getFormat() const
-  {
-    return DataFormat(DataType::eBuffer);
-  }
-
-  void accept(dshandle source, Event) {}
 };
 
 } // namespace terra

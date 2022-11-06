@@ -3,7 +3,7 @@ type = extern;
 fetch "https://github.com/obhi-d/acl.git"
 {
   license    : "LICENSE";
-  commit     : "37d3c3243d7e3437fa990a4c086e160b118b9851";
+  commit     : "77d7676f6510673b14f5834382966ad73d08c9ee";
   package    : acl;
   args
   {

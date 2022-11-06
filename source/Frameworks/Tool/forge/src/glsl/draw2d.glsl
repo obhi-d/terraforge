@@ -16,7 +16,7 @@ void main()
 {
   v_uv = uv;
   v_color = color * params.tint;
-  gl_Position = params.projection * vec4(position, 0, 1);
+  gl_Position = params.projection * vec4(position, 1, 1);
 }
 
 )_";

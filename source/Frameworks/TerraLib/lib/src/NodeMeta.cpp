@@ -1,5 +1,5 @@
 
-#include "NodeMeta.h"
+#include "Node.h"
 #include "Logger.h"
 #include "Pipeline.h"
 #include "ShaderBuilder.h"
@@ -104,13 +104,14 @@ ScalarValue ParameterMeta::getDefault() const
   if (DataType::eBool == format.type)
     return ScalarValue((bool)(values[ValueType::eDefault].ival != 0));
   else if(DataType::eEnum == format.type) 
-    return ScalarValue(values[ValueType::eDefault].ival);
+    return ScalarValue(values[ValueType::eDefault].ival, 0);
   switch (format.scalarSubType)
   {
   case DataType::eFloat:
     return ScalarValue(values[ValueType::eDefault].fval);
   case DataType::eFloat2:
     return vec2{values[ValueType::eDefault].fval, values[ValueType::eDefault].fval};
+  case DataType::eBool:
   case DataType::eInt:
     return ScalarValue(values[ValueType::eDefault].ival);
   case DataType::eInt2:
@@ -789,10 +790,6 @@ Result Node::run( Pipeline& pipeline)
   return (task.iteration < maxIteration) ? Result::eContinue : Result::eFinished;
 }
 
-void Node::accept(dshandle source, Event)
-{
-  markValueChanged();
-}
 */
 
 } // namespace terra

@@ -22,6 +22,9 @@ struct CurveData : public DataSource
     float                     leftValue  = 0;
     float                     rightValue = 1.0f;
     int                       dragged    = -1;
+    bool                      popupType  = false;
+    bool                      popupLeftBound = false;
+    bool                      popupRightBound = false;
     bool                      monotonic  = true;
     bool                      edited     = false;
     bool                      dirty      = false;
@@ -30,6 +33,7 @@ struct CurveData : public DataSource
     tk::spline<>              spline;
   };
 
+  std::u8string name = u8"CurveData";
   tk::spline<> spline;
   Edit         edits;
   uint32       version = 0;

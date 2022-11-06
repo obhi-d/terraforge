@@ -10,6 +10,7 @@
 
 namespace terra
 {
+class TerraMainApp;
 struct AppSettings
 {
   std::string name;
@@ -20,15 +21,15 @@ struct AppSettings
   Property<bool>        verbose  = Property<bool>("@verbose", true);
 
   // Export
-  Property<glm::ivec2> tileSize       = Property<glm::ivec2>("@tileSize", 32, 32);
+  Property<glm::ivec2> tileSize       = Property<glm::ivec2>("@tileSize", 257, 257);
   Property<glm::ivec2> tileOffset     = Property<glm::ivec2>("@tileOffset", 1, 1);
-  Property<glm::ivec2> nbPreviewTiles = Property<glm::ivec2>("@nbPreviewTiles", 2, 2);
+  Property<glm::ivec2> nbPreviewTiles = Property<glm::ivec2>("@nbPreviewTiles", 1, 1);
 
   // Generation
   Property<float> frequency = Property<float>("@frequency", 0.1f);
   Property<int>   seed      = Property<int>("@seed", 1337);
 
-  glm::ivec2 viewerSize = glm::ivec2(1024, 768);
+  glm::ivec2 viewerSize = glm::ivec2(32, 32);
   glm::ivec2 viewerPos  = glm::ivec2(20, 20);
 
   int  glslVersion     = 130;
@@ -94,6 +95,8 @@ struct TextureFile
   std::string path;
   glm::ivec2  size{};
   uint32_t    image = 0;
+
+  bool reload(TerraMainApp const&);
 };
 
 // Color is ABGR, because of imgui
@@ -177,5 +180,16 @@ private:
 
   glm::u8vec4 color = glm::u8vec4(255, 255, 255, 255);
 };
+
+
+struct Rect
+{
+  glm::ivec2 offset = glm::vec2(0, 0);
+  glm::ivec2 size   = glm::vec2(1, 1);
+
+  inline bool operator==(Rect const&) const noexcept   = default;
+  inline bool operator!=(Rect const&) const noexcept = default;
+};
+
 
 } // namespace terra

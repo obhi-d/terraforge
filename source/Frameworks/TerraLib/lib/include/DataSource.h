@@ -16,7 +16,6 @@ public:
   enum class Type
   {
     eImage,
-    eImageSource,
     eCurve,
     eNode,
   };
@@ -48,7 +47,7 @@ public:
   virtual DataFormat getFormat() const = 0;
 
   // Accept the change event from a source, for a data source that is dependent
-  virtual void accept(dshandle source, Event) = 0;
+  virtual void accept(dshandle source, Event);
 
   virtual bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
   {
@@ -74,6 +73,11 @@ public:
     return self;
   }
 
+  auto getVersion() const
+  {
+    return version;
+  }
+
   void propagate(Event);
   void onParamChange(dshandle oldValue, dshandle newValue);
   bool setParamSource(uint32_t paramIdx, Source);
@@ -90,6 +94,12 @@ public:
             (tileConstraintOffset[1] >= tile[1] && tile[1] < (tileConstraintOffset[1] + tileConstraintSize[1])));
   }
 
+  inline void updateVersion()
+  {
+    ++version;
+    propagate(Event::eValueModified);
+  }
+
 protected:
   inline virtual bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
   {
@@ -102,6 +112,7 @@ protected:
   }
 
   dshandle self;
+  uint32_t version = 0;
 };
 
 } // namespace terra

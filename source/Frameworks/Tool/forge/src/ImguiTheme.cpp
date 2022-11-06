@@ -59,6 +59,24 @@ ThemeCmdHandler(pack, theme, state, cmd)
   return neo::retcode::e_success;
 }
 
+ThemeCmdHandler(node, theme, state, cmd)
+{
+  auto value = terra::getIdxParam(cmd, 0);
+  terra::NodeStyle style;
+  style.name = value;
+  theme.nodeStyles.emplace_back(style);
+  return neo::retcode::e_success;
+}
+
+ThemeCmdHandler(color, theme, state, cmd)
+{
+  auto             value = terra::getIdxParam(cmd, 0);
+  uint32_t idx   = 0;
+  std::from_chars(value.data(), value.data() + value.size(), idx, 16);
+  theme.nodeStyles.back().nodeColor = terra::Color(idx);
+  return neo::retcode::e_success;
+}
+
 ThemeRegistry(ThemeBuilder)
 {
   neo_handle_text(notxt);
@@ -66,6 +84,10 @@ ThemeRegistry(ThemeBuilder)
   ThemeCmd(pack);
   ThemeCmd(tint);
   ThemeCmd(clear);
+  ThemeScopeDef(node) 
+  {
+    ThemeCmd(color);
+  }
 }
 
 namespace terra

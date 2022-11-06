@@ -9,9 +9,8 @@ template <typename T>
 class Buffer_hwy
 {
 public:
-  Buffer_hwy() = default;
-  Buffer_hwy(uint32_t width, uint32_t height, uint32_t lanes)
-      : lanes_(lanes), width_(width), height_(height)
+  constexpr Buffer_hwy() = default;
+  Buffer_hwy(uint32_t width, uint32_t height, uint32_t lanes) : lanes_(lanes), width_(width), height_(height)
   {
     size_ = pitch() * height_;
   }
@@ -23,7 +22,7 @@ public:
   {
     if (data_)
       hwy::FreeAlignedBytes(data_, &deallocate, nullptr);
-        
+
     width_  = other.width_;
     height_ = other.height_;
     lanes_  = other.lanes_;
@@ -74,7 +73,7 @@ public:
     return size_;
   }
 
-  uint32_t pitch() const 
+  uint32_t pitch() const
   {
     return ((width_ + (lanes_ - 1)) / lanes_) * lanes_;
   }
@@ -84,10 +83,15 @@ public:
     data_ = (T*)hwy::AllocateAlignedBytes(size_ * sizeof(T), &allocate, nullptr);
   }
 
-  void randomize() 
+  void randomize()
   {
     for (uint32_t i = 0; i < size_; ++i)
       data_[i] = (float)std::rand() / (float)RAND_MAX;
+  }
+
+  void fill(float value) 
+  {
+    std::fill(data(), data() + size_, value);
   }
 
   uint32_t height() const
@@ -95,13 +99,13 @@ public:
     return height_;
   }
 
-  uint32_t width() const 
+  uint32_t width() const
   {
     return width_;
   }
 
 private:
-  static void* allocate(void* , size_t size)
+  static void* allocate(void*, size_t size)
   {
     return mi_malloc(size);
   }
@@ -111,10 +115,10 @@ private:
     mi_free(memory);
   }
 
-  T*                    data_      = nullptr;
-  uint32_t              size_   = 0;
-  uint32_t              width_  = 0;
-  uint32_t              height_    = 0;
-  uint32_t              lanes_  = 0;
+  T*       data_   = nullptr;
+  uint32_t size_   = 0;
+  uint32_t width_  = 0;
+  uint32_t height_ = 0;
+  uint32_t lanes_  = 0;
 };
 } // namespace terra

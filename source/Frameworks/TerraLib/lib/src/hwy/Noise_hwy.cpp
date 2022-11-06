@@ -4,14 +4,13 @@
 
 #include <hwy/foreach_target.h>
 #include "Common.h"
-#include "NodeMeta.h"
+#include "Node.h"
 
 #include "hwy/NodeMeta_hwy.h"
 #include "hwy/Utility_hwy.h"
 #include "hwy/Pipeline_hwy.h"
 
 #include "Terra.h"
-#include "metas/Noise.h"
 
 
 HWY_BEFORE_NAMESPACE();
@@ -167,27 +166,16 @@ void Noise_hwy()
   // Common
   NodeMeta_hwy meta;
   meta.category = "@Noise"_ls;
-  meta.style    = "Noise";
+  meta.style    = "noise";
 
   // openSimplex
-  meta.create = [](NodeMeta const& meta) -> std::shared_ptr<Node>
-  {
-    return std::make_shared<Noise>(meta);
-  };
-
   meta.icon    = "\xef\x87\xbe";
-  meta.name    = "@OpenSimplex"_ls;
-  meta.tooltip = "@OpenSimplexTooltip"_ls;
-  meta.help    = "@OpenSimplexHelp"_ls;
   meta.fn      = HWY_DYNAMIC_DISPATCH(openSimplex);
-  get().addMeta("openSimplex", meta);
+  get().addMeta("@openSimplex", meta);
 
   meta.icon    = "\xef\x87\xbe";
-  meta.name    = "@Simplex"_ls;
-  meta.tooltip = "@SimplexTooltip"_ls;
-  meta.help    = "@SimplexHelp"_ls;
   meta.fn      = HWY_DYNAMIC_DISPATCH(simplex);
-  get().addMeta("simplex", meta);
+  get().addMeta("@simplex", meta);
 }
 
 } // namespace terra

@@ -1,6 +1,6 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
-#include "imgui/imgui_internal.h"
+#include "imgui_internal.h"
 
 #include "DrawHelpers.h"
 #include "DrawableNode.h"
@@ -14,26 +14,41 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
 {
   this->id         = id;
   this->pos        = pos;
-  auto&       node = get().get<Node>(id);
-  auto const& meta = node.meta;
-  style            = app.getTheme().getNodeStyle(meta.style);
-
-  // imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+  // for nodes
+  auto&       source = get().get<DataSource>(id);
+  
   output.id    = pack(id.um_index(), 0);
   output.flags = PinStateFlags::fOutput;
   imne::SetPinFlags(output.id, imne::PinKind::Output, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
 
-  parameters.resize(meta.parameterDef.size());
-  for (uint32 i = 0; i < (uint32)parameters.size(); ++i)
+  switch (source.getType())
   {
-    auto& p = parameters[i];
-    auto const& d = meta.parameterDef[i];
-    p.id    = pack(id.um_index(), i + 1);
-    if (d.format.type == DataType::eBuffer || d.format.type == DataType::eImage)
+  case DataSource::Type::eImage:
+  case DataSource::Type::eCurve:
+    style = app.getTheme().getNodeStyle("data");
+    break;
+  case DataSource::Type::eNode:
+  {
+    auto&       node = get().get<Node>(id);
+    auto const& meta = node.meta;
+    style            = app.getTheme().getNodeStyle(meta.style);
+
+    // imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+    parameters.resize(meta.parameterDef.size());
+    for (uint32 i = 0; i < (uint32)parameters.size(); ++i)
     {
-      p.flags = PinStateFlags::fInputPin;
-      imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+      auto&       p = parameters[i];
+      auto const& d = meta.parameterDef[i];
+      p.id          = pack(id.um_index(), i + 1);
+      if (d.format.type == DataType::eBuffer || d.format.type == DataType::eImage ||
+          d.format.type == DataType::eCurveData)
+      {
+        p.flags = PinStateFlags::fInputPin;
+        imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+      }
     }
+  }
+  break;
   }
   imne::SetNodePosition(id.reserved, pos);
 }
@@ -118,7 +133,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
   case DataType::eInt2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt2((const char*)def.name.data(), v.ivalue2.data(), 1.0f, def.values[ParameterMeta::eMin].ival,
+    if (ImGui::DragInt2(def.displayInfo.getName(), v.ivalue2.data(), 1.0f, def.values[ParameterMeta::eMin].ival,
                         def.values[ParameterMeta::eMax].ival))
       return true;
   }
@@ -126,7 +141,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
   case DataType::eInt:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragInt((const char*)def.name.data(), &v.ivalue, 1.0f, def.values[ParameterMeta::eMin].ival,
+    if (ImGui::DragInt(def.displayInfo.getName(), &v.ivalue, 1.0f, def.values[ParameterMeta::eMin].ival,
                        def.values[ParameterMeta::eMax].ival))
       return true;
   }
@@ -134,7 +149,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
   case DataType::eFloat2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat2((const char*)def.name.data(), v.value2.data(), def.values[ParameterMeta::eStep].fval,
+    if (ImGui::DragFloat2(def.displayInfo.getName(), v.value2.data(), def.values[ParameterMeta::eStep].fval,
                           def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
       return true;
   }
@@ -142,7 +157,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
   case DataType::eFloat:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragFloat((const char*)def.name.data(), &v.value, def.values[ParameterMeta::eStep].fval,
+    if (ImGui::DragFloat(def.displayInfo.getName(), &v.value, def.values[ParameterMeta::eStep].fval,
                          def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
       return true;
   }
@@ -150,7 +165,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
   case DataType::eBool:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::Checkbox((const char*)def.name.data(), &v.bvalue))
+    if (ImGui::Checkbox(def.displayInfo.getName(), &v.bvalue))
       return true;
   }
   }
@@ -177,15 +192,23 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     break;
   case DataType::eEnum:
     // draw combo
-    assert(false);
+    {
+      ScalarValue value = std::get<ScalarValue>(param);
+      if (drawNodeEditorCombo(def.displayInfo.name, def.enumValues, value.ivalue2[0], value.ivalue2[1]))
+        node.param(i, value);
+      else
+        node.state(i, value);
+    }
     break;
   case DataType::eCurveData:
-    assert(false);
+    ImGui::TextUnformatted(ICON_FA_BEZIER_CURVE);
+    ImGui::SameLine();
+    ImGui::TextUnformatted(def.displayInfo.getName());
     break;
   case DataType::eBuffer:
     if (std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source))
     {
-      ImGui::TextUnformatted((const char*)def.name.data());
+      ImGui::TextUnformatted(def.displayInfo.getName());
     }
     else
     {
@@ -197,7 +220,9 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     break;
   case DataType::eImage:
   {
-    assert(false);
+    ImGui::TextUnformatted(ICON_FA_FILE_IMAGE);
+    ImGui::SameLine();
+    ImGui::TextUnformatted(def.displayInfo.getName());
     break;
   }
   break;
@@ -213,67 +238,62 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
 
 bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, bool& previewNode)
 {
-  bool        changed = false;
-  auto&       node    = get().get<Node>(id);
-  auto const& meta    = node.meta;
+  auto&       source    = get().get<DataSource>(id);
   auto const& style   = app.getTheme().getNodeStyle(this->style);
 
+  ImGui::PushID(id);
+  imne::PushStyleColor(imne::StyleColor_NodeBg, style.nodeColor);
   imne::BeginNode(id.reserved);
 
   ImGui::BeginGroup();
-  if (backend.toggleButton(previewNode ? ICON_FA_CIRCLE_CHECK : ICON_FA_CIRCLE_STOP, previewNode, ImVec2(20, 20),
-                           u8"") &&
-      previewNode)
-  {
-    changed = true;
-  }
-
-  ImGui::PushID(id.reserved);
-
-  ImGui::SameLine();
-
+  output.xy.y = ImGui::GetCursorPosY();
+  
   // Output/Header
 
-  // auto pos = ImGui::GetCursorPos();
-  output.xy.y = ImGui::GetCursorPosY();
-  ImGui::TextUnformatted((const char*)node.name.c_str());
-
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-    ne.showHelp(imne::NodeId(id.reserved));
-  else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-    ne.showTooltip(imne::NodeId(id.reserved));
-
-  ImGui::SameLine();
-  ImGui::Dummy(ImVec2(style.pinSize * 1.5f, 0));
-  // auto endPos = ImGui::GetCursorPos();
-  // ImGui::SetCursorPos(pos);
-  // ImGui::InvisibleButton("#hc", endPos - pos);
-  // auto flags = imne::ImneObjFlags::ImneObjFlags_None;
-  // if (ImGui::IsItemActive())
-  //   flags |= imne::ImneObjFlags::ImneObjFlags_IsActive;
-  // if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem))
-  //{
-  //   if (ImGui::IsMouseDoubleClicked(1))
-  //     flags |= imne::ImneObjFlags::ImneObjFlags_IsDoubleClicked;
-  //   else if (ImGui::IsItemClicked())
-  //     flags |= imne::ImneObjFlags::ImneObjFlags_IsClicked;
-  //   flags |= imne::ImneObjFlags::ImneObjFlags_IsHovered;
-  // }
-  //
-  // imne::SetNodeInteraction(flags);
-
-  headerMaxY = ImGui::GetCursorPosY();
-
-  // Parameters
-  for (uint32_t i = 0; i < node.getNumParams(); ++i)
+  switch (source.getType())
   {
-    parameters[i].xy.y = ImGui::GetCursorPosY();
-    ImGui::Dummy(ImVec2(style.pinSize * 1.5f, 0));
-    ImGui::SameLine();
-    drawParameter(ne, style, node, i);
-  }
+  case DataSource::Type::eCurve:
+    // todo Editable text
+    ImGui::TextUnformatted((const char*)static_cast<CurveData&>(source).name.c_str());
+    headerMaxY = ImGui::GetCursorPosY();
+    if (drawCurveEditor(app, static_cast<CurveData&>(source)))
+    {
+      source.propagate(DataSource::Event::eValueModified);
+    }
+    break;
+  case DataSource::Type::eImage:
+    break;
+  case DataSource::Type::eNode:
+  {
+    auto&       node = static_cast<Node&>(source);
+    auto const& meta = node.meta;
+    // todo Editable text
+    ImGui::TextUnformatted((const char*)node.name.c_str());
+    auto lastY = ImGui::GetItemRectSize().y;
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+      ne.showHelp(imne::NodeId(id.reserved));
+    else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+      ne.showTooltip(imne::NodeId(id.reserved));
 
-  return changed;
+    ImGui::SameLine();
+    auto padding = imne::GetStyle().NodePadding.y;
+    ImGui::Dummy(ImVec2(style.pinSize * 1.5f, lastY + padding));
+
+    headerMaxY = ImGui::GetCursorPosY();
+
+    // Parameters
+    for (uint32_t i = 0; i < node.getNumParams(); ++i)
+    {
+      parameters[i].xy.y = ImGui::GetCursorPosY();
+      ImGui::Dummy(ImVec2(style.pinSize * 1.5f, 0));
+      ImGui::SameLine();
+      drawParameter(ne, style, node, i);
+    }
+  }
+  break;
+  }
+    
+  return false;
 }
 
 void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
@@ -285,23 +305,29 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
   auto&       node  = get().get<Node>(id);
   auto const& meta  = node.meta;
   auto const& style = app.getTheme().getNodeStyle(this->style);
-
+  auto&       source = get().get<DataSource>(id);
   // Output
-  output.xy.x = max.x;
+  output.xy.x = max.x - style.pinSize;
   drawPinIcon(ne, style, output, node.meta.format, !node.isDetached());
-
-  // Parameters
-  for (uint32_t i = 0; i < node.getNumParams(); ++i)
+  switch (source.getType())
   {
-    if (parameters[i].flags & PinStateFlags::fInputPin)
+  case DataSource::Type::eNode:
+  {
+    auto& node = static_cast<Node&>(source);
+    // Parameters
+    for (uint32_t i = 0; i < node.getNumParams(); ++i)
     {
-      parameters[i].xy.x = min.x;
-      drawPinIcon(ne, style, parameters[i], meta.parameterDef[i].format,
-                  parameters[i].flags & PinStateFlags::fIsFilled);
+      if (parameters[i].flags & PinStateFlags::fInputPin)
+      {
+        parameters[i].xy.x = min.x;
+        drawPinIcon(ne, style, parameters[i], meta.parameterDef[i].format,
+                    parameters[i].flags & PinStateFlags::fIsFilled);
+      }
     }
   }
-
+  }
   imne::EndNode();
+  imne::PopStyleColor();
   auto padding = imne::GetStyle().NodePadding.y * 0.5f;
   min          = imne::GetLastNodeDrawMin();
   max          = imne::GetLastNodeDrawMax();
@@ -324,18 +350,12 @@ void DrawableNode::drawHeader(NodeEditor& ne, NodeStyle const& style, ImVec2 hea
 
     const auto halfBorderWidth = imne::GetStyle().NodeBorderWidth * 0.5f;
 
-    auto headerColor = style.title;
     if ((headerMax.x > headerMin.x) && (headerMax.y > headerMin.y))
-    {
-
-      drawList->AddRectFilled(headerMin - ImVec2(8 - halfBorderWidth, 4 - halfBorderWidth),
-                              headerMax + ImVec2(8 - halfBorderWidth, 0), headerColor, imne::GetStyle().NodeRounding,
-                              ImDrawFlags_RoundCornersTop);
-
+    {            
       auto headerSeparatorMin = ImVec2(headerMin.x, headerMax.y);
-      auto headerSeparatorMax = ImVec2(headerMax.x, headerMin.y);
+      auto headerSeparatorMax = ImVec2(headerMax.x, headerMax.y);
 
-      if ((headerSeparatorMax.x > headerSeparatorMin.x) && (headerSeparatorMax.y > headerSeparatorMin.y))
+      if ((headerSeparatorMax.x > headerSeparatorMin.x))
       {
         drawList->AddLine(headerSeparatorMin + ImVec2(-(8 - halfBorderWidth), -0.5f),
                           headerSeparatorMax + ImVec2((8 - halfBorderWidth), -0.5f),

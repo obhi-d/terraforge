@@ -4,7 +4,7 @@
 #include "Setup.h"
 #include <GfxDevice43.h>
 #include <GlGfx.h>
-#include <imgui/imgui.h>
+#include <imgui.h>
 #include <tuple>
 
 namespace terra
@@ -44,6 +44,13 @@ class ImguiTerraWindow;
 class ImguiBackend
 {
 public:
+  struct CallbackData
+  {
+    void* instance;
+    Rect viewport;
+    Rect scissor;
+  };
+
   void init(std::shared_ptr<GfxDevice43>);
   void destroy();
   void draw();
