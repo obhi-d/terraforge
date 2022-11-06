@@ -77,13 +77,15 @@ public:
   {
     return version;
   }
+    
+  virtual HelpInfo getHelpInfo(HelpType, int param = -1) const = 0;
 
   void propagate(Event);
   void onParamChange(dshandle oldValue, dshandle newValue);
   bool setParamSource(uint32_t paramIdx, Source);
 
   static bool isValid(dshandle);
-
+  static bool isNode(dshandle);
   using exchange = std::pair<dshandle, bool>;
 
   static inline bool isWithinTile(uvec2 tile, uvec2 tileConstraintOffset, uvec2 tileConstraintSize)

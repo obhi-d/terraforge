@@ -300,11 +300,11 @@ bool drawProp(TerraMainApp& app, Property<Color>& prop)
   return result;
 }
 
-bool loadImage(std::string& lastPath)
+bool loadImage(const char* name, std::string& lastPath)
 {
   bool accept = false;
 
-  if (ImGuiFileDialog::Instance()->Display("ImageFileDlgKey", 32, ImVec2{600, 400}))
+  if (ImGuiFileDialog::Instance()->Display(name, 32, ImVec2{600, 400}))
   {
     if (ImGuiFileDialog::Instance()->IsOk())
     {
@@ -324,9 +324,9 @@ bool drawProp(TerraMainApp& app, Property<TextureFile>& prop)
   if (file.image)
   {
     if (ImGui::ImageButton((ImTextureID)(uintptr_t)file.image, ImVec2{40, 40}))
-      ImGuiFileDialog::Instance()->OpenDialog("ImageFileDlgKey", "Images", ".png", prop.get().path);
+      ImGuiFileDialog::Instance()->OpenDialog("propImage", "Images", ".png", prop.get().path);
 
-    if (loadImage(prop.get().path))
+    if (loadImage("propImage", prop.get().path))
     {
       result = prop.get().reload(app);
     }
@@ -403,7 +403,7 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
 {
   ImGuiContext& g = *GImGui;
 
-  constexpr float ItemWidth  = 80;
+  constexpr float ItemWidth  = 36;
   constexpr float Spacing    = 4;
   constexpr float Canvas     = 240;
   constexpr float Smoothing  = (Canvas * 2) / 3;
@@ -441,8 +441,6 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
   }
   float fixedX = ImGui::GetCursorPosX();
   float firstY = ImGui::GetCursorPosY() + 2;
-  ImGui::SetNextItemWidth(ItemWidth);
-  ImGui::SetCursorPosY(firstY);
   ImGui::PushID("#type");
   static std::array<std::u8string_view const, 3> curveTypes = {"@linearCurve"_ls, "@cubicCurve"_ls, "@hermiteCurve"_ls};
   static std::u8string_view                      typeName   = "@type"_ls;
@@ -452,17 +450,11 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
   }
   ImGui::PopID();
   ImGui::SameLine();
-  // ImGui::Dummy(ImVec2(Spacing, 0));
-  ImGui::SetNextItemWidth(ItemWidth);
-  ImGui::SetCursorPosX(fixedX + ItemWidth + ControlSpc);
-  ImGui::SetCursorPosY(firstY);
   static const char* monotonic = "@monotonic"_lsc;
   if (ImGui::Checkbox(monotonic, &edits.monotonic))
   {
     edits.dirty = true;
   }
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-  ImGui::SetNextItemWidth(ItemWidth);
   ImGui::PushID("#left");
   static std::array<std::u8string_view const, 3> derivType = {"@first"_ls, "@second"_ls, "@notAKnot"_ls};
   static std::u8string_view                      derivName = "@leftDerivative"_ls;
@@ -470,32 +462,25 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
   {
     edits.dirty = true;
   }
-
   ImGui::SameLine();
-  ImGui::SetCursorPosX(fixedX + ItemWidth + ControlSpc);
-  ImGui::SetNextItemWidth(ItemWidth);
   ImGui::PushID("#value");
-  if (ImGui::DragFloat("", &edits.leftValue, 0.01f, 0, 1))
+  ImGui::SetNextItemWidth(ItemWidth);
+  if (ImGui::DragFloat("", &edits.leftValue, 0.01f, 0, 1, "%.2f"))
     edits.dirty = true;
   ImGui::PopID();
   ImGui::PopID();
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-  ImGui::SetNextItemWidth(ItemWidth);
   ImGui::PushID("#right");
   if (drawNodeEditorCombo(derivName, derivType, rightBound, rightBoundState))
   {
     edits.dirty = true;
   }
   ImGui::SameLine();
-  ImGui::SetCursorPosX(fixedX + ItemWidth + ControlSpc);
-  ImGui::SetNextItemWidth(ItemWidth);
   ImGui::PushID("#value");
-  if (ImGui::DragFloat("", &edits.rightValue, 0.01f, 0, 1))
+  ImGui::SetNextItemWidth(ItemWidth);
+  if (ImGui::DragFloat("", &edits.rightValue, 0.01f, 0, 1, "%.2f"))
     edits.dirty = true;
   ImGui::PopID();
   ImGui::PopID();
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2);
-  ImGui::SetNextItemWidth(ItemWidth);
   static const char* liveUpdate = "@liveUpdate"_lsc;
   if (ImGui::Checkbox(liveUpdate, &edits.liveUpdate))
   {

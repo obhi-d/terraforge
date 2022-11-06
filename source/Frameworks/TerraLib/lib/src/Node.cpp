@@ -27,4 +27,19 @@ void Node::accept(dshandle source, Event ev)
   }
   DataSource::accept(source, ev);
 }
+
+HelpInfo Node::getHelpInfo(HelpType type, int param) const
+{
+  switch (type)
+  {
+  case HelpType::eOutput:
+  case HelpType::eDataSource:
+    return meta.displayInfo;
+  case HelpType::eParameter:
+    if (param < (int)meta.parameterDef.size() && param >= 0)
+      return meta.parameterDef[param].displayInfo;
+  }
+  return {};
+}
+
 }

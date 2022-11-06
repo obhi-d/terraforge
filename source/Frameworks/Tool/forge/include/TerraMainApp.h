@@ -73,6 +73,7 @@ public:
   void regenWithActor(dshandle h)
   {
     EventRegen actor;
+    assert(!h || DataSource::isNode(h));
     actor.actor = h;
     dispatcher().enqueue(actor);
   }
@@ -104,5 +105,7 @@ private:
   ImguiTheme                                     theme;
   uint32_t                                       frame = 0;
 };
+
+TerraMainApp& app();
 
 } // namespace terra

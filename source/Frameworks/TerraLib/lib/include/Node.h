@@ -60,6 +60,7 @@ public:
   }
 
   void accept(dshandle source, Event) override;
+  HelpInfo getHelpInfo(HelpType type, int param = -1) const final;
 };
 
 }

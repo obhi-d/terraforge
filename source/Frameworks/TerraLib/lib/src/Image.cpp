@@ -10,23 +10,31 @@ namespace terra
 void Image::unload()
 {
   auto& main = Terra::get();
-
   data = {};
+  updateVersion();
 }
 
+/*
 void Image::remove(dshandle node)
 {
   Dependency::remove(node);
   if (isDetached())
     unload();
 }
+*/
 
 bool Image::load()
 {
   if (this->data)
     return true;
   auto& main  = Terra::get();
-  auto  codec = main.getImageCodeFor(source.extension().u8string());
+  auto  ext   = source.extension().string();
+  std::transform(ext.begin(), ext.end(), ext.begin(),
+                 [](unsigned char c)
+                 {
+                   return std::tolower(c);
+                 });
+  auto  codec = main.getImageCodeFor(ext);
   if (!codec)
     return false;
 
@@ -38,7 +46,12 @@ bool Image::load()
   this->height = data.height;
   this->format = data.format;
   this->data   = std::move(data.data);
-  return this->data != nullptr;
+  if (this->data != nullptr)
+  {
+    updateVersion();
+    return true;
+  }
+  return false;
 }
 
 bool Image::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
@@ -55,6 +68,21 @@ void Image::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
   std::u8string path = this->source.u8string();
   addToDataStream(dataStream, path);
 }
+
+HelpInfo Image::getHelpInfo(HelpType type, int param) const
+{
+  static HelpInfo output = {.help = "@imageOut.help"_ls, .tooltip = "@imageOut.tip"_ls};
+  static HelpInfo main   = {.help = "@image.help"_ls, .tooltip = "@image.tip"_ls};
+  switch (type)
+  {
+  case HelpType::eDataSource:
+    return main;
+  case HelpType::eOutput:
+    return output;
+  }
+  return {};
+}
+
 /*
 bool ImageSource::fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
 {

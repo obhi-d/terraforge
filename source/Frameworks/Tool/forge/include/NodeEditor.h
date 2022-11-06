@@ -1,5 +1,6 @@
 #pragma once
 #include "DrawableNode.h"
+#include <acl/sparse_vector.hpp>
 
 namespace terra
 {
@@ -9,6 +10,18 @@ class TerraMainApp;
 class NodeEditor
 {
 public:
+  struct traits
+  {
+    using size_type                              = std::uint32_t;
+    static constexpr std::uint32_t pool_size     = 32;
+    static constexpr std::uint32_t idx_pool_size = 32;
+    static constexpr bool          assume_pod_v  = false;
+    // null
+    // static constexpr T null_v = {};
+    // using offset
+    // using offset = acl::offset<&selfref::self>;
+  };
+
   struct EventNodeCreate
   {
     NodeMeta const* meta = nullptr;
@@ -41,6 +54,8 @@ public:
     pendingAction.node   = pin;
   }
 
+  void changeImage(dshandle id);
+
 private:
   void createLink(ImThemeColors const&, uintpair start, uintpair end);
   void deleteLink(imne::LinkId);
@@ -49,14 +64,17 @@ private:
   void doNodes(TerraMainApp&, ImguiBackend&);
   void createNode(TerraMainApp&, NodeMeta const& meta, ImVec2);
   void createCurveEditor(TerraMainApp&, ImVec2);
+  void createImageNode(TerraMainApp&, std::filesystem::path, ImVec2);
   void executePendingAction(TerraMainApp&);
   void setNextDataSource(ImThemeColors const& col, dshandle node, imne::PinId src);
+  void openImage(TerraMainApp& app);
 
   enum class Action
   {
     eCreateNode,
     eImportNode,
     eImageData,
+    eChangeImage,
     eCurveData,
     ePasteNode,
     eShowTooltip,
@@ -74,16 +92,28 @@ private:
     imne::NodeId    node;
   };
 
+  struct FileOpen
+  {
+    Action      action;
+    ImVec2      position;
+    dshandle    node;
+    imne::PinId linkTo;
+  };
+
+  FileOpen   fileOpenData;
   ActionData pendingAction;
 
   dshandle previewNode;
   uint32_t previewNodeVersion = 0;
+  uint32_t previewNodeStyle   = 0;
 
   using CategoryMap = std::vector<std::pair<std::u8string_view, std::vector<std::reference_wrapper<NodeMeta const>>>>;
-  CategoryMap               cachedMetas;
-  std::vector<DrawableNode> drawableNodes;
-  table<Link>               links;
+  using NodeList = std::vector<std::unique_ptr<DrawableNode>>;
 
+  CategoryMap               cachedMetas;
+  NodeList                  drawableNodes;
+  table<Link>               links;
+  std::string               lastImagePath;
   std::u8string_view tipIncompatFormat;
   std::u8string_view tipIncompatType;
   std::u8string_view tipLink;

@@ -109,6 +109,20 @@ bool CurveData::getBuffer(ComputeDevice& dev, uint32& bufferVer, GfxBuffer::hand
   return false;
 }
 
+HelpInfo CurveData::getHelpInfo(HelpType type, int param) const 
+{
+  static HelpInfo output = {.help = "@curveOut.help"_ls, .tooltip = "@curveOut.tip"_ls };
+  static HelpInfo main = {.help = "@curve.help"_ls, .tooltip = "@curve.tip"_ls};
+  switch (type)
+  {
+  case HelpType::eDataSource:
+    return main;
+  case HelpType::eOutput:
+    return output;
+  }
+  return {};
+}
+
 CurveData::~CurveData() 
 {
 }

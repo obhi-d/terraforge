@@ -21,12 +21,12 @@ public:
   using Localization = std::function<std::u8string_view(std::string_view)>;
   void init(Localization loc, std::shared_ptr<ComputeDevice> iDev);
 
-  inline void addImageCodec(std::u8string ext, std::shared_ptr<ImageCodec> codec)
+  inline void addImageCodec(std::string ext, std::shared_ptr<ImageCodec> codec)
   {
     imageCodecs[ext] = codec;
   }
 
-  inline std::shared_ptr<ImageCodec> getImageCodeFor(std::u8string ext)
+  inline std::shared_ptr<ImageCodec> getImageCodeFor(std::string ext)
   {
     auto it = imageCodecs.find(ext);
     if (it != imageCodecs.end())
@@ -140,7 +140,7 @@ public:
 private:
   static Terra instance;
 
-  using ImageCodecMap = std::unordered_map<std::u8string, std::shared_ptr<ImageCodec>>;
+  using ImageCodecMap = std::unordered_map<std::string, std::shared_ptr<ImageCodec>>;
 
   uint32_t                 frame = 0;
   std::vector<std::string> semantics;

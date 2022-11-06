@@ -25,6 +25,12 @@ node data
 {
   color = ff382545;
 }
+
+node selected
+{
+  color = ff38c3cc;
+}
+
 /*
 node generator
 {

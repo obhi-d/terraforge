@@ -80,17 +80,20 @@ void curve(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
         {
           const auto x = hn::Load(vtag, xy[0] + ii);
           auto       u = FS_SubMul(x, xoffset, xrsize);
+          hn::Vec<V_t> storeV = hn::Set(vtag, 0);
           for (uint32_t l = 0; l < lanes; ++l)
-            store = hn::InsertLane(store, l, cd.spline(hn::ExtractLane(u, l)));
-          store = hn::Mul(store, xstrength);
+            storeV = hn::InsertLane(storeV, l, cd.spline(hn::ExtractLane(u, l)));
+          store = hn::Mul(storeV, xstrength);
         }
         if constexpr (applyY)
         {
           const auto y = hn::Load(vtag, xy[1] + ii);
           auto       u = FS_SubMul(y, yoffset, yrsize);
+          auto       storeX = hn::Set(vtag, 0);
+          hn::Vec<V_t> storeV = hn::Set(vtag, 0);
           for (uint32_t l = 0; l < lanes; ++l)
-            store = hn::InsertLane(store, l, cd.spline(hn::ExtractLane(u, l)));
-          store += hn::Mul(store, ystrength);
+            storeV = hn::InsertLane(storeV, l, cd.spline(hn::ExtractLane(u, l)));
+          store += hn::Mul(storeV, ystrength);
         }
 
         hn::Store(store, vtag, out_data + ii);
@@ -342,7 +345,7 @@ void Basics_hwy()
   meta.parameterDef.emplace_back(FmtVal<DataType::eBool>(), "@applyY");
   meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(), "@strength");
   meta.icon                  = "\xef\x87\xbe";
-  meta.fn                    = HWY_DYNAMIC_DISPATCH(imageMask);
+  meta.fn                    = HWY_DYNAMIC_DISPATCH(curve);
   meta.attribTileConstrained = true;
   get().addMeta("@curve", meta);
   meta.parameterDef.clear();

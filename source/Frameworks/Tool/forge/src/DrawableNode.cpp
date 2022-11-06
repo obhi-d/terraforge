@@ -1,7 +1,6 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include "imgui_internal.h"
-
 #include "DrawHelpers.h"
 #include "DrawableNode.h"
 #include "NodeEditor.h"
@@ -53,6 +52,11 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
   imne::SetNodePosition(id.reserved, pos);
 }
 
+DrawableNode::~DrawableNode() 
+{
+  app().getDevice()->destroy(thumbnail);
+}
+
 void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData const& pin, DataFormat format,
                                bool filled)
 {
@@ -64,6 +68,9 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
   IconType icon = IconType::Circle;
   switch (format.type)
   {
+  case DataType::eCurveData:
+    icon = IconType::Grid;
+    break;
   case DataType::eImage:
     icon = IconType::Circle;
     break;
@@ -236,10 +243,39 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
   }
 }
 
-bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, bool& previewNode)
+void DrawableNode::updateThumbnailFromImage(Image& image) 
+{
+  app().getDevice()->destroy(thumbnail);
+  thumbnail = 0;
+  if (!image.isLoaded())
+    image.load();
+  if (!image.isLoaded())
+    return;
+  //
+  float du = 1.f / ThumbnailSize;
+  
+  float v  = 0;
+  std::unique_ptr<std::uint8_t[]> sampled = std::make_unique<std::uint8_t[]>((int)ThumbnailSize * (int)ThumbnailSize);
+  for (int y = 0; y < (int)ThumbnailSize; y++, v+=du)
+  {
+    float u = 0;
+    for (int x = 0; x < (int)ThumbnailSize; x++, u += du)
+    {
+      // nearest sampler
+      sampled[x + y * (int)ThumbnailSize] = static_cast<std::uint8_t>(image.sample(u, v) * 255.f);
+    }
+  }
+  thumbnail = app().getDevice()->createImage(GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize,
+                                                    (uint32_t)ThumbnailSize, ImageFormat::eUnorm8,
+    (std::byte const*)sampled.get(),
+    GfxImage2D::Swizzle{GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eOne});
+  thumbnailVersion = image.getVersion();
+}
+
+bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, uint32_t selectedStyle)
 {
   auto&       source    = get().get<DataSource>(id);
-  auto const& style   = app.getTheme().getNodeStyle(this->style);
+  auto const& style  = app.getTheme().getNodeStyle(selectedStyle ? selectedStyle - 1 : this->style);
 
   ImGui::PushID(id);
   imne::PushStyleColor(imne::StyleColor_NodeBg, style.nodeColor);
@@ -255,14 +291,25 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
   case DataSource::Type::eCurve:
     // todo Editable text
     ImGui::TextUnformatted((const char*)static_cast<CurveData&>(source).name.c_str());
-    headerMaxY = ImGui::GetCursorPosY();
+    headerMaxY = ImGui::GetCursorPosY() + 2;
     if (drawCurveEditor(app, static_cast<CurveData&>(source)))
     {
-      source.propagate(DataSource::Event::eValueModified);
+      source.updateVersion();
     }
     break;
   case DataSource::Type::eImage:
+  {
+    // static const char* browseImage = "@browseImage"_lsc;
+    auto name = static_cast<Image&>(source).source.filename().string();
+    if (ImGui::Button(name.empty() ? ICON_FA_FILE_IMAGE : name.c_str()))
+    {
+      ne.changeImage(id);
+    }
+    headerMaxY = ImGui::GetCursorPosY() + 2;
+    if (thumbnailVersion != source.getVersion())
+      updateThumbnailFromImage(static_cast<Image&>(source));
     break;
+  }
   case DataSource::Type::eNode:
   {
     auto&       node = static_cast<Node&>(source);
@@ -292,28 +339,32 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
   }
   break;
   }
-    
+
+  if (thumbnail)
+  {
+    ImGui::Image((ImTextureID)(std::uintptr_t)thumbnail.reserved, ImVec2{ThumbnailSize, ThumbnailSize});
+  }
+  
   return false;
 }
 
-void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne)
+void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, uint32_t selectedStyle)
 {
   ImGui::EndGroup();
   auto min = ImGui::GetItemRectMin();
   auto max = ImGui::GetItemRectMax();
 
-  auto&       node  = get().get<Node>(id);
-  auto const& meta  = node.meta;
-  auto const& style = app.getTheme().getNodeStyle(this->style);
+  auto const& style  = app.getTheme().getNodeStyle(selectedStyle ? selectedStyle - 1 : this->style);
   auto&       source = get().get<DataSource>(id);
   // Output
   output.xy.x = max.x - style.pinSize;
-  drawPinIcon(ne, style, output, node.meta.format, !node.isDetached());
+  drawPinIcon(ne, style, output, source.getFormat(), !source.isDetached());
   switch (source.getType())
   {
   case DataSource::Type::eNode:
   {
     auto& node = static_cast<Node&>(source);
+    auto const& meta = node.meta;
     // Parameters
     for (uint32_t i = 0; i < node.getNumParams(); ++i)
     {

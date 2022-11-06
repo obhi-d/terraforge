@@ -32,7 +32,6 @@ void DataSource::onParamChange(dshandle oldValue, dshandle newValue)
     newData.add(self);
   }
   updateVersion();
-  propagate(Event::eValueModified);
 }
 
 bool DataSource::setParamSource(uint32_t paramIdx, Source value)
@@ -49,6 +48,11 @@ bool DataSource::setParamSource(uint32_t paramIdx, Source value)
 bool DataSource::isValid(dshandle ds) 
 {
   return get().isValid(ds);
+}
+
+bool DataSource::isNode(dshandle ds)
+{
+  return isValid(ds) && get().get<DataSource>(ds).getType() == Type::eNode;
 }
 
 void DataSource::accept(dshandle source, Event ev) 

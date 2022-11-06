@@ -122,6 +122,7 @@ struct CurveData : public DataSource
 
   bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
   void toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
+  HelpInfo getHelpInfo(HelpType, int param = -1) const final;
 };
 
 using CurveDataPtr = std::shared_ptr<CurveData>;

@@ -401,16 +401,17 @@ struct Event
   std::binary_semaphore sem = std::binary_semaphore(1);
 };
 
-struct DisplayInfo
+enum class HelpType
 {
-  std::u8string_view name;
+  eDataSource,
+  eOutput,
+  eParameter
+};
+
+struct HelpInfo
+{
   std::u8string_view help;
   std::u8string_view tooltip;
-
-  const char* getName() const
-  {
-    return (const char*)name.data();
-  }
 
   const char* getHelp() const
   {
@@ -421,6 +422,17 @@ struct DisplayInfo
   {
     return (const char*)tooltip.data();
   }
+};
+
+struct DisplayInfo : HelpInfo
+{
+  std::u8string_view name;
+
+  const char* getName() const
+  {
+    return (const char*)name.data();
+  }
+
   void from(std::string_view);
 };
 

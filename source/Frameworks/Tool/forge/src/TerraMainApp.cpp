@@ -12,14 +12,18 @@
 #include "Terra.h"
 #include "GfxDevice45.h"
 #include "DrawHelpers.h"
+#include "ImageSerializer.h"
 
 neo_registry(ThemeBuilder);
 neo_registry(StringBuilder);
 
 namespace terra
 {
+std::unique_ptr<TerraMainApp> g_app;
+
 TerraMainApp::TerraMainApp()
 {
+  get().addImageCodec(".png", std::make_shared<ImageSerializer>());
   readSettings();
   if (settings.verbose)
     Logger::get().open(Logger::Debug);
@@ -29,6 +33,7 @@ TerraMainApp::TerraMainApp()
 
 TerraMainApp::~TerraMainApp()
 {
+  get().destroy();
   SDL_Quit();
 }
 
@@ -177,12 +182,12 @@ void TerraMainApp::run()
 
 int TerraMainApp::Main(int argc, const char* argv[])
 {
-  TerraMainApp app;
+  g_app.reset(new TerraMainApp());
   #ifdef NDEBUG
   try
   #endif
   {
-    app.run();
+    g_app->run();
     get().destroy();
   }
 #ifdef NDEBUG
@@ -193,6 +198,7 @@ int TerraMainApp::Main(int argc, const char* argv[])
     std::exit(-1);
   }
 #endif
+  g_app = nullptr;
   return 0;
 }
 
@@ -201,6 +207,11 @@ bool TerraMainApp::draw()
   bool r = viewer.draw(*this);
   frame++;
   return r;
+}
+
+TerraMainApp& app()
+{
+  return *g_app.get();
 }
 
 } // namespace terra

@@ -18,8 +18,19 @@ struct Image : public DataSource
   uint32_t                     height = 0;
   ImageFormat                  format = ImageFormat::eFloat;
 
+  struct rgba
+  {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+  };
+
   Image() = default;
-  Image(std::filesystem::path path) : source(std::move(path)) {}
+  Image(std::filesystem::path path) : source(std::move(path))
+  {
+    load();
+  }
   Image(Image const&)            = default;
   Image(Image&&)                 = default;
   Image& operator=(Image const&) = default;
@@ -56,7 +67,8 @@ struct Image : public DataSource
     return *(T const*)(data.get() + ((static_cast<uint32_t>(j) * width + static_cast<uint32_t>(i)) * sizeof(T)));
   }
 
-  inline float sample_val(int x, int y) const {
+  inline float sample_val(int x, int y) const
+  {
     switch (format)
     {
     case ImageFormat::eFloat:
@@ -68,7 +80,11 @@ struct Image : public DataSource
       return (float)((float)get<std::uint16_t>(x, y) / (float)std::numeric_limits<std::uint16_t>::max());
     case ImageFormat::eRgba8:
     case ImageFormat::eSrgb8Alpha8:
-      return (float)((double)get<std::uint32_t>(x, y) / (double)std::numeric_limits<std::uint32_t>::max());
+    {
+      auto rgb = get<rgba>(x, y);
+      return (float)(.299f * ((float)rgb.r / 255.f) + .587f * ((float)rgb.g / 255.f) + .114f * ((float)rgb.b / 255.f));
+    }
+      
     }
     return 0.f;
   }
@@ -102,14 +118,24 @@ struct Image : public DataSource
     return value;
   }
 
-  inline void accept(dshandle source, Event) final {}
+  inline bool isLoaded() const
+  {
+    return data != nullptr;
+  }
+
   void        unload();
   bool        load();
+  void        reload()
+  {
+    unload();
+    load();
+  }
   // bool        isEnabled(Pipeline const&) const final;
   // bool        ensure(Pipeline&) final;
-  void        remove(dshandle node) final;
-  bool        fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
-  void        toDataStreamImpl(std::vector<uint8_t>& dataStream) const;
+  // void     remove(dshandle node) final;
+  bool     fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
+  void     toDataStreamImpl(std::vector<uint8_t>& dataStream) const;
+  HelpInfo getHelpInfo(HelpType type, int param = -1) const final;
 };
 
 using ImagePtr = std::shared_ptr<Image>;

@@ -9,6 +9,7 @@
 #include "imgui_internal.h"
 #include "imgui_node_editor.h"
 #include "imgui_node_editor_internal.h"
+#include "ImGuiFileDialog.h"
 #include <filesystem>
 
 namespace terra
@@ -57,7 +58,7 @@ void NodeEditor::init(TerraMainApp& app)
   auto& style        = imne::GetStyle();
   style.NodeRounding = 4.0f;
   style.PinRounding  = 2.0f;
-
+  previewNodeStyle   = app.getTheme().getNodeStyle("selected") + 1;
 }
 
 void NodeEditor::deinit(TerraMainApp& app)
@@ -84,6 +85,7 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
 
         doContextMenu(app, openPopupPosition);
         executePendingAction(app);
+        openImage(app);
 
         imne::Resume();
         doNodes(app, backend);
@@ -92,7 +94,7 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
           if (imne::GetSelectedNodes(&id, 1) > 0 && id)
           {
             dshandle nid          = (uint32_t)(size_t)id;
-            if (nid != previewNode)
+            if (nid != previewNode && DataSource::isNode(nid))
             {
               nodeRegenRequired = true;
               previewNode          = nid;
@@ -268,9 +270,31 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
   ImGui::PopStyleVar();
 }
 
-void NodeEditor::createCurveEditor(TerraMainApp& app, ImVec2 pos) 
+void NodeEditor::openImage(TerraMainApp& app)
 {
-  drawableNodes.emplace_back(app, get().createCurve(), pos);
+  auto const& theme = app.getTheme();
+  if (loadImage("nodeImage", lastImagePath))
+  {
+    if (fileOpenData.action == Action::eChangeImage)
+    {
+      if (DataSource::isValid(fileOpenData.node))
+      {
+        get().get<Image>(fileOpenData.node).source = lastImagePath;
+        get().get<Image>(fileOpenData.node).reload();
+      }
+    }
+    else if (fileOpenData.action == Action::eImageData)
+    {
+      createImageNode(app, lastImagePath, fileOpenData.position);
+      if (fileOpenData.linkTo)
+      {
+        setNextDataSource(theme.themeColors, drawableNodes.back()->getId(), pendingAction.linkTo);
+      }
+    }
+    fileOpenData.action = Action::eNone;
+    fileOpenData.node   = {};
+    fileOpenData.linkTo = {};
+  }
 }
 
 void NodeEditor::executePendingAction(TerraMainApp& app)
@@ -278,18 +302,26 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
   auto const& theme = app.getTheme();
   switch (pendingAction.action)
   {
+  case Action::eChangeImage:
+  case Action::eImageData:
+    fileOpenData.action = pendingAction.action;
+    fileOpenData.linkTo = pendingAction.linkTo;
+    fileOpenData.node   = (uint32_t)pendingAction.node.Get();
+    fileOpenData.position = pendingAction.position;
+    ImGuiFileDialog::Instance()->OpenDialog("nodeImage", "Images", ".png", lastImagePath);
+    break;
   case Action::eCurveData:
     createCurveEditor(app, pendingAction.position);
     if (pendingAction.linkTo)
     {
-      setNextDataSource(theme.themeColors, drawableNodes.back().getId(), pendingAction.linkTo);
+      setNextDataSource(theme.themeColors, drawableNodes.back()->getId(), pendingAction.linkTo);
     }
     break;
   case Action::eCreateNode:
     createNode(app, *pendingAction.meta, pendingAction.position);
     if (pendingAction.linkTo)
     {
-      setNextDataSource(theme.themeColors, drawableNodes.back().getId(), pendingAction.linkTo);
+      setNextDataSource(theme.themeColors, drawableNodes.back()->getId(), pendingAction.linkTo);
     }
     break;
   case Action::eShowTooltip:
@@ -297,52 +329,26 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
   {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
     ImGui::BeginTooltip();
+    HelpInfo info;
     if (pendingAction.node && get().isValid((uint32_t)(size_t)pendingAction.node))
     {
-      auto const& node = get().get<Node>((uint32_t)(size_t)pendingAction.node);
-      ImGui::TextUnformatted(node.meta.displayInfo.getTooltip());
+      auto const& node = get().get<DataSource>((uint32_t)(size_t)pendingAction.node);
+      info             = node.getHelpInfo(HelpType::eDataSource);
     }
     else if (pendingAction.pin)
     {
       auto [nodel, param] = unpack((size_t)pendingAction.pin);
       if (get().isValid(nodel))
       {
-        auto const& node = get().get<Node>(nodel);
-        if (!node.meta.displayInfo.tooltip.empty())
-        {
-          if (param == 0)
-            ImGui::TextUnformatted(node.meta.displayInfo.getTooltip());
-          else
-            ImGui::TextUnformatted(node.meta.parameterDef[param - 1].displayInfo.getTooltip());
-        }
+        auto const& node = get().get<DataSource>(nodel);
+        info = node.getHelpInfo((param == 0)  ? HelpType::eOutput : HelpType::eParameter, param-1);
       }
     }
-    if (pendingAction.action == Action::eShowHelp)
+    if (!info.tooltip.empty())
+      ImGui::TextUnformatted(info.getTooltip(), (const char*)info.tooltip.data() + info.tooltip.length());
+    if (pendingAction.action == Action::eShowHelp && !info.help.empty())
     {
-      if (pendingAction.node && get().isValid((uint32_t)(size_t)pendingAction.node))
-      {
-        auto const& node = get().get<Node>((uint32_t)(size_t)pendingAction.node);
-        if (!node.meta.displayInfo.help.empty())
-          ImGui::TextUnformatted(node.meta.displayInfo.getHelp());
-      }
-      else if (pendingAction.pin)
-      {
-        auto [nodel, param] = unpack((size_t)pendingAction.pin);
-        if (get().isValid(nodel))
-        {
-          auto const& node = get().get<Node>(nodel);
-          if (param == 0)
-          {
-            if (!node.meta.displayInfo.help.empty())
-              ImGui::TextUnformatted(node.meta.displayInfo.getHelp());
-          }
-          else
-          {
-            if (!node.meta.parameterDef[param - 1].displayInfo.help.empty())
-              ImGui::TextUnformatted(node.meta.parameterDef[param - 1].displayInfo.getHelp());
-          }
-        }
-      }
+      ImGui::TextUnformatted(info.getHelp(), (const char*)info.help.data() + info.tooltip.length());
     }
     ImGui::EndTooltip();
     ImGui::PopStyleVar();
@@ -365,11 +371,11 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
   auto const& theme = app.getTheme();
   for (uint32_t n = 0; n < drawableNodes.size(); ++n)
   {
-    auto& dn = drawableNodes[n];
+    auto& dn = *drawableNodes[n].get();
 
     bool toggled = previewNode == dn.getId();
-    dn.begin(app, backend, *this, toggled);
-    dn.end(app, backend, *this);
+    dn.begin(app, backend, *this, toggled ? previewNodeStyle : 0);
+    dn.end(app, backend, *this, toggled ? previewNodeStyle : 0);
   }
 
   links.for_each(
@@ -495,12 +501,28 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
   
 }
 
+void NodeEditor::createCurveEditor(TerraMainApp& app, ImVec2 pos)
+{
+  drawableNodes.emplace_back(std::make_unique<DrawableNode>(app, get().createCurve(), pos));
+}
+
+void NodeEditor::createImageNode(TerraMainApp& app, std::filesystem::path path, ImVec2 pos)
+{
+  drawableNodes.emplace_back(std::make_unique<DrawableNode>(app, get().getImage(std::move(path)), pos));
+}
+
+void NodeEditor::changeImage(dshandle id)
+{
+  pendingAction.action = Action::eChangeImage;
+  pendingAction.node   = id.um_index();
+}
+
 void NodeEditor::createNode(TerraMainApp& app, NodeMeta const& meta, ImVec2 pos)
 {
-  drawableNodes.emplace_back(app, get().createNode(meta), pos);
+  drawableNodes.emplace_back(std::make_unique<DrawableNode>(app, get().createNode(meta), pos));
   if (drawableNodes.size() == 1)
   {
-    previewNode          = drawableNodes.back().getId();
+    previewNode       = drawableNodes.back()->getId();
     nodeRegenRequired = true;
   }
 }
@@ -509,7 +531,7 @@ void NodeEditor::deleteNode(imne::NodeId node)
 {
   for (auto dn = drawableNodes.begin(); dn != drawableNodes.end(); dn++)
   {
-    if (dn->is(dshandle((uint32_t)node.Get())))
+    if ((*dn)->is(dshandle((uint32_t)node.Get())))
     {
       drawableNodes.erase(dn);
       break;

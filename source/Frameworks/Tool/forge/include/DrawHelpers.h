@@ -33,5 +33,6 @@ bool drawProp(TerraMainApp&, Property<TextureFile>&);
 void doTooltip(DisplayInfo const& info);
 bool drawCurveEditor(TerraMainApp& app, CurveData& data);
 bool drawNodeEditorCombo(std::u8string_view name, std::span<std::u8string_view const> items, int& result, int& displayPopup);
+bool loadImage(const char* name, std::string& lastPath);
 
 }

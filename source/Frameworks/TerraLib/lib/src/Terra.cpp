@@ -50,13 +50,21 @@ void Terra::destroy()
 
 dshandle Terra::getImage(std::filesystem::path path)
 {
-  for (uint32_t i = 0; i < dataSources.size(); ++i)
-    if (dataSources[i]->getType() == DataSource::Type::eImage)
+  dshandle found;
+  dataSources.for_each([&found, &path](auto& image) 
     {
-      if (static_cast<Image const*>(dataSources[i].get())->source == path)
-        return dataSources[i]->getSelf();
-    }
-      
+      if (image && image->getType() == DataSource::Type::eImage)
+      {
+        if (static_cast<Image const*>(image.get())->source == path)
+        {
+          found = image->getSelf();
+          return false;
+        }
+      }
+      return true;
+    });
+  if (found)
+    return found;
   auto ptr = std::make_shared<Image>(path);
   ptr->setSelf(dataSources.emplace(ptr));
   return ptr->getSelf();

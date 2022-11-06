@@ -154,7 +154,7 @@ void Pipeline_hwy::popInput(uint32_t thread)
 void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 {
   // auto div = N * lanes();
-  constexpr bool SingleThreaded = false;
+  constexpr bool SingleThreaded = true;
   if constexpr (SingleThreaded)
   {
     threadDatas.emplace_back();
