@@ -37,8 +37,6 @@ ThreadPool::ThreadPool()
           entry();
           entry.reset();
         }
-
-        quit++;
       });
   }
 }
@@ -50,10 +48,8 @@ ThreadPool& ThreadPool::get()
 
 void ThreadPool::shutdown()
 {
-  quit = 1;
-  uint32_t rc = (uint32_t)workers.size() + 1;
-  while (quit.load() != rc)
-    notifier.notify_all();
+  quit = true;
+  notifier.notify_all();
   for (auto& w : workers)
   {
     if (w.joinable())

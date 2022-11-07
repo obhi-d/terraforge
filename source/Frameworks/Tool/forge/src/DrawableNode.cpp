@@ -301,9 +301,15 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
   {
     // static const char* browseImage = "@browseImage"_lsc;
     auto name = static_cast<Image&>(source).source.filename().string();
-    if (ImGui::Button(name.empty() ? ICON_FA_FILE_IMAGE : name.c_str()))
+    if (ImGui::Button(ICON_FA_FILE_IMAGE))
     {
       ne.changeImage(id);
+    }
+    
+    if (!name.empty())
+    {
+      ImGui::SameLine();
+      ImGui::TextUnformatted(name.c_str(), name.data() + name.length());
     }
     headerMaxY = ImGui::GetCursorPosY() + 2;
     if (thumbnailVersion != source.getVersion())
@@ -372,7 +378,7 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
       {
         parameters[i].xy.x = min.x;
         drawPinIcon(ne, style, parameters[i], meta.parameterDef[i].format,
-                    parameters[i].flags & PinStateFlags::fIsFilled);
+                    std::holds_alternative<Source>(node.parameters[i]));
       }
     }
   }

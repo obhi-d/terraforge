@@ -621,7 +621,7 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, dshandle id, imne::
   }
   else
   {
-    if (node.getFormat() == static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second].format)
+    if (node.getFormat() == static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second - 1].format)
     {
       createLink(col, uintpair(id, 0), srcPin);
     }

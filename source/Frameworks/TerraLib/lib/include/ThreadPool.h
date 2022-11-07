@@ -81,7 +81,7 @@ private:
   std::vector<std::thread> workers;
   std::mutex               lock;
   std::deque<Entry>        container;
-  std::atomic_int          quit = 0;
+  std::atomic_bool         quit = 0;
   
 };
 
