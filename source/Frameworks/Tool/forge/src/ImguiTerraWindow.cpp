@@ -1,7 +1,7 @@
 
+#include "DrawHelpers.h"
 #include "GlGfx.h"
 #include "TerraMainApp.h"
-#include "DrawHelpers.h"
 #include <Common.h>
 #include <ImguiTerraWindow.h>
 #include <imgui.h>
@@ -35,7 +35,7 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   imguiContext = ImGui::CreateContext();
   ImGui::SetCurrentContext(imguiContext);
 
-  ImGuiIO& io = ImGui::GetIO();
+  ImGuiIO& io                          = ImGui::GetIO();
   io.ConfigWindowsMoveFromTitleBarOnly = true;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // Enable Docking
@@ -54,9 +54,23 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   nodeEditor.init(app);
   meshPreview.init(app);
   SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
-  settingName = app.getLocalizedString("@Settings");
+  settingName           = app.getLocalizedString("@Settings");
   mainWindowName        = app.getLocalizedString("@Forge");
   meshDrawData.instance = &app;
+  previewWindow.canBeMaximized = true;
+  previewWindow.isMain         = false;
+  previewWindow.locked         = false;
+  previewWindow.maximized      = false;
+  settingsWindow.canBeMaximized = false;
+  settingsWindow.isMain         = false;
+  settingsWindow.locked         = false;
+  settingsWindow.maximized      = false;
+}
+
+void ImguiTerraWindow::deinit(TerraMainApp& app)
+{
+  meshPreview.deinit(app);
+  nodeEditor.deinit(app);
 }
 
 void ImguiTerraWindow::setTheme(ImguiTheme const& theme)
@@ -81,8 +95,8 @@ bool ImguiTerraWindow::pollEvents()
     switch (event.type)
     {
     case SDL_MOUSEMOTION:
-      mouseState.mouseDelta.x    += event.motion.x - mouseState.mousePosition.x;
-      mouseState.mouseDelta.y    += event.motion.y - mouseState.mousePosition.y;
+      mouseState.mouseDelta.x += event.motion.x - mouseState.mousePosition.x;
+      mouseState.mouseDelta.y += event.motion.y - mouseState.mousePosition.y;
       mouseState.mousePosition.x = event.motion.x;
       mouseState.mousePosition.y = event.motion.y;
       mouseState.dragging        = mouseState.leftDown || mouseState.rightDown;
@@ -106,6 +120,9 @@ bool ImguiTerraWindow::pollEvents()
       else if (event.button.button == SDL_BUTTON_RIGHT)
         mouseState.rightDown = false;
       break;
+    case SDL_QUIT:
+      // quit event
+      return false;
     case SDL_WINDOWEVENT:
     {
       switch (event.window.event)
@@ -134,51 +151,53 @@ bool ImguiTerraWindow::pollEvents()
   return true;
 }
 
-void ImguiTerraWindow::drawSettings(TerraMainApp& app) 
+void ImguiTerraWindow::drawSettings(TerraMainApp& app)
 {
   auto& settings   = app.getSettings();
-  bool regenerate = false;
-  if (ImGui::Begin((char const*)settingName.data()))
-  {    
-    // Settings
-    float item_height = ImGui::GetTextLineHeightWithSpacing();
-    if (ImGui::BeginChildFrame(ImGui::GetID("gen_settings"), ImVec2(-FLT_MIN, 6.25f * item_height), ImGuiWindowFlags_NoBackground))
+  bool  regenerate = false;
+  if (settingsWindow.opened)
+  {
+    setHeaderFont();
+    ImGui::SetNextWindowSizeConstraints(ImVec2(40, 40), ImVec2(10000, 10000));
+    if (ImGui::Begin((char const*)settingName.data(), nullptr, settingsWindow.locked ? ImGuiWindowFlags_NoMove : 0))
     {
-      static std::u8string_view header = app.getLocalizedString("@genParams");
-      ImGui::Text("%s", (const char*)header.data());
-      ImGui::Separator();
-      regenerate |= drawProp(app, settings.frequency, 0, std::numeric_limits<float>::max(), 0.01f);
-      regenerate |= drawProp(app, settings.seed, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
-      ImGui::EndChildFrame();
+      settingsWindow.opened = drawTitleMenu(settingsWindow);
+      setNormalFont();
+      // Settings
+      float item_height = ImGui::GetTextLineHeightWithSpacing();
+      {
+        static std::u8string_view header = app.getLocalizedString("@genParams");
+        ImGui::Text("%s", (const char*)header.data());
+        ImGui::Separator();
+        regenerate |= drawProp(app, settings.frequency, 0, std::numeric_limits<float>::max(), 0.01f);
+        regenerate |= drawProp(app, settings.seed, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+      }
+      {
+        static std::u8string_view header = app.getLocalizedString("@exportParams");
+        ImGui::Text("%s", (const char*)header.data());
+        ImGui::Separator();
+        regenerate |= drawProp(app, settings.tileSize, 4, 8129);
+        regenerate |= drawProp(app, settings.tileOffset, 1, std::numeric_limits<int>::max());
+        regenerate |= drawProp(app, settings.nbPreviewTiles, 1, 8);
+      }
+      {
+        static std::u8string_view header = app.getLocalizedString("@previewParams");
+        ImGui::Text("%s", (const char*)header.data());
+        ImGui::Separator();
+        drawProp(app, meshPreview.sunColor);
+        drawProp(app, meshPreview.sunIntensity, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(),
+                 0.05f);
+        drawProp(app, meshPreview.meshTint);
+        drawProp(app, meshPreview.heightMultiplier, std::numeric_limits<float>::min(),
+                 std::numeric_limits<float>::max(), 0.05f);
+        drawProp(app, meshPreview.heightTexPath);
+        drawProp(app, meshPreview.meshStyle, 1.0f, std::numeric_limits<float>::max(), 0.5f);
+      }
+      popNormalFont();
     }
-    if (ImGui::BeginChildFrame(ImGui::GetID("export_settings"), ImVec2(-FLT_MIN, 6.25f * item_height),
-                               ImGuiWindowFlags_NoBackground))
-    {
-      static std::u8string_view header = app.getLocalizedString("@exportParams");
-      ImGui::Text("%s", (const char*)header.data());
-      ImGui::Separator();
-      regenerate |= drawProp(app, settings.tileSize, 4, 8129);
-      regenerate |= drawProp(app, settings.tileOffset, 1, std::numeric_limits<int>::max());
-      regenerate |= drawProp(app, settings.nbPreviewTiles, 1, 8);
-      ImGui::EndChildFrame();
-    }
-    if (ImGui::BeginChildFrame(ImGui::GetID("preview_settings"), ImVec2(-FLT_MIN, 12 * item_height),
-                               ImGuiWindowFlags_NoBackground))
-    {
-      static std::u8string_view header = app.getLocalizedString("@previewParams");
-      ImGui::Text("%s", (const char*)header.data());
-      ImGui::Separator();
-      drawProp(app, meshPreview.sunColor);
-      drawProp(app, meshPreview.sunIntensity, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), 0.05f);
-      drawProp(app, meshPreview.meshTint);
-      drawProp(app, meshPreview.heightMultiplier, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(), 0.05f);
-      drawProp(app, meshPreview.heightTexPath);
-      drawProp(app, meshPreview.meshStyle, 1.0f, std::numeric_limits<float>::max(), 0.5f);
-      ImGui::EndChildFrame();
-    }
-    
+    ImGui::End();
+    popHeaderFont();
   }
-  ImGui::End();
   if (regenerate)
   {
     // validate settings
@@ -206,40 +225,47 @@ bool ImguiTerraWindow::draw(TerraMainApp& app)
   ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowSize(ImVec2(1024, 768), ImGuiCond_FirstUseEver);
   
-  if (!ImGui::Begin((const char*)mainWindowName.data(), &open, 0))
+  if (previewWindow.opened)
   {
-    ImGui::End();
-    SDL_DestroyWindow(window);
-    return false;
-  }
-
-  if (!open)
-  {
-    SDL_DestroyWindow(window);
-    return false;
-  }
-
-  ImGui::GetWindowDrawList()->AddCallback([](const ImDrawList* parent_list, const ImDrawCmd* cmd) 
+    ImGui::SetNextWindowSizeConstraints(ImVec2(256, 256), ImVec2(10000, 10000));
+    setHeaderFont();
+    if (ImGui::Begin((const char*)mainWindowName.data(), nullptr, previewWindow.locked ? ImGuiWindowFlags_NoMove : 0))
     {
-      auto& cbk  = *(ImguiBackend::CallbackData*)cmd->UserCallbackData;
-      auto& app  = *(TerraMainApp*)cbk.instance;
-      auto& self = (ImguiTerraWindow&)app.getWindow();
+      previewWindow.opened = drawTitleMenu(previewWindow);
+      setNormalFont();
+      ImGui::GetWindowDrawList()->AddCallback(
+        [](const ImDrawList* parent_list, const ImDrawCmd* cmd)
+        {
+          auto& cbk  = *(ImguiBackend::CallbackData*)cmd->UserCallbackData;
+          auto& app  = *(TerraMainApp*)cbk.instance;
+          auto& self = (ImguiTerraWindow&)app.getWindow();
 
-      self.meshPreview.update(cbk.scissor.size, self.mouseState);
-      self.meshPreview.draw(cbk.viewport, cbk.scissor, app);
-    },
-    &meshDrawData);
-  
-  ImGui::InvisibleButton("main_viewer_trap", ImGui::GetContentRegionAvail());
-  mouseState.mainWnd = ImGui::IsItemHovered();
-  ImGui::End();
+          self.meshPreview.update(cbk.scissor.size, self.mouseState);
+          self.meshPreview.draw(cbk.viewport, cbk.scissor, app);
+        },
+        &meshDrawData);
+
+      ImGui::InvisibleButton("main_viewer_trap", ImGui::GetContentRegionAvail());
+      mouseState.mainWnd = ImGui::IsItemHovered();
+      popNormalFont();
+    }
+
+    ImGui::End();
+    popHeaderFont();
+  }
+
   ImGui::SetNextWindowPos(ImVec2(400, 40), ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-  nodeEditor.drawNodeEditor(app, backend);
+  if (!nodeEditor.drawNodeEditor(app, backend))
+  {
+    SDL_Event event;
+    event.type = SDL_QUIT;
+    SDL_PushEvent(&event);
+  }
   drawSettings(app);
   // Rendering
   ImGui::Render();
-  
+
   backend.draw();
   SDL_GL_SwapWindow(window);
   backend.drawOtherWindows();

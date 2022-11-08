@@ -59,18 +59,54 @@ void NodeEditor::init(TerraMainApp& app)
   style.NodeRounding = 4.0f;
   style.PinRounding  = 2.0f;
   previewNodeStyle   = app.getTheme().getNodeStyle("selected") + 1;
+  window.canBeMaximized = true;
+  window.isMain         = true;
+  window.locked         = false;
+  window.maximized      = false;
+  
+  openPreview.name = DisplayInfo(ICON_FA_MAGNIFYING_GLASS, "preview.help"_ls, "preview.tip"_ls);
+  openPreview.function = [&app]() {
+    app.getWindow().openPreview();
+  };
+  
+  settingsWindow.name  = DisplayInfo(ICON_FA_GEAR, "settings.help"_ls, "settings.tip"_ls);
+  settingsWindow.function = [&app]()
+  {
+    app.getWindow().openSettings();
+  };
+  
 }
 
 void NodeEditor::deinit(TerraMainApp& app)
 {
+  imne::DestroyEditor(editorContext);
+  editorContext = nullptr;
+  drawableNodes.clear();
+  links.clear();
+  cachedMetas.clear();
 }
 
-void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
+bool NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
 {
   ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f);
   imne::SetCurrentEditor(editorContext);
-  if (ImGui::Begin((const char*)nodeEditor.data()))
+  
+  setHeaderFont();
+  if (ImGui::Begin((const char*)nodeEditor.data(), nullptr, window.locked ? ImGuiWindowFlags_NoMove : 0))
   {
+    window.delegates.clear();
+    if (!app.getWindow().isPreviewOpen())
+      window.delegates.push_back(&openPreview);
+    if (!app.getWindow().isSettingsOpen())
+      window.delegates.push_back(&settingsWindow);
+    if (!drawTitleMenu(window))
+    {
+      // bail out
+      ImGui::End();
+      ImGui::PopStyleVar();
+      return false;
+    }
+    setNormalFont();
     if (imne::Begin((const char*)nodeEditor.data(), ImVec2(0, 0)))
     {
       imne::Detail::EditorContext* ec = (imne::Detail::EditorContext*)(editorContext);
@@ -105,8 +141,10 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
         imne::SetCurrentEditor(nullptr);
       }
     }
+    popNormalFont();
   }
   ImGui::End();
+  popHeaderFont();
   ImGui::PopStyleVar();
 
   if (!nodeRegenRequired)
@@ -124,6 +162,7 @@ void NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
     app.regenWithActor(previewNode);
     nodeRegenRequired = false;
   }
+  return true;
 }
 
 bool NodeEditor::acceptsAction()

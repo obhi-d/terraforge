@@ -413,6 +413,9 @@ struct HelpInfo
   std::u8string_view help;
   std::u8string_view tooltip;
 
+  HelpInfo() = default;
+  HelpInfo(std::u8string_view h, std::u8string_view t) : help(h), tooltip(t) {}
+
   const char* getHelp() const
   {
     return (const char*)help.data();
@@ -428,6 +431,10 @@ struct DisplayInfo : HelpInfo
 {
   std::u8string_view name;
 
+  DisplayInfo() = default;
+  DisplayInfo(std::string_view n, std::u8string_view h, std::u8string_view t) : name((char8_t const*)n.data(), n.length()), HelpInfo(h, t) {}
+  DisplayInfo(std::u8string_view n, std::u8string_view h, std::u8string_view t) : name(n), HelpInfo(h, t) {}
+
   const char* getName() const
   {
     return (const char*)name.data();
@@ -442,6 +449,22 @@ struct UVMeter
 {
   vec2 offset{};
   vec2 recipSize{};
+};
+
+struct MenuDelegate
+{
+  DisplayInfo           name;
+  std::function<void()> function;
+};
+
+struct MenuData
+{
+  std::vector<MenuDelegate*> delegates;
+  bool                      canBeMaximized = true;
+  bool                      isMain         = false;
+  bool                      locked         = false;
+  bool                      maximized      = false;
+  bool                      opened         = true;
 };
 
 } // namespace terra

@@ -35,6 +35,7 @@ void ImguiBackend::init(std::shared_ptr<GfxDevice43> renderer)
   state.blend           = BlendMode::eAdditive;
   state.depthTest       = DepthTestMode::eDisabled;
   state.scissorsEnabled = true;
+  
 }
 void ImguiBackend::destroy()
 {
@@ -58,6 +59,7 @@ void ImguiBackend::applyTheme(ImguiTheme const& theme)
   clearColor                  = theme.themeColors.clear;
   auto& style                 = ImGui::GetStyle();
   style.Colors[ImGuiCol_Text] = theme.themeColors.text;
+  style.FramePadding.y *= 2;
   uploadFonts(theme);
 }
 void ImguiBackend::draw()
@@ -83,6 +85,19 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   ImGuiIO& io = ImGui::GetIO();
 
   io.Fonts->Clear();
+  
+  /*if (std::filesystem::exists(getMediaPath() / theme.images[ImageName::eHeaderFont].path))
+  {
+    ImFontConfig config;
+    config.FontDataOwnedByAtlas = false;
+    config.OversampleH          = 4;
+    config.OversampleV          = 4;
+    config.PixelSnapH           = false;
+    auto font                   = fileContentToBytes(theme.images[ImageName::eHeaderFont].path);
+    io.Fonts->AddFontFromMemoryTTF(reinterpret_cast<char*>(font.data()), (int)font.size(),
+                                   (float)theme.images[ImageName::eHeaderFont].size.y, &config);
+  }*/ 
+  if (std::filesystem::exists(getMediaPath() / theme.images[ImageName::eFont].path))
   {
     ImFontConfig config;
     config.FontDataOwnedByAtlas = false;
@@ -93,7 +108,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     io.Fonts->AddFontFromMemoryTTF(reinterpret_cast<char*>(font.data()), (int)font.size(),
                                    (float)theme.images[ImageName::eFont].size.y, &config);
   }
-
+  if (std::filesystem::exists(getMediaPath() / theme.images[ImageName::eIconFont].path))
   {
     ImFontConfig config;
     config.FontDataOwnedByAtlas = false;
@@ -127,7 +142,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   ImageSerializer                 serializer;
   std::vector<std::byte>          imageData;
   std::array<int, ImagePackCount> packIDs;
-  for (uint32 i = 2; i < theme.images.size(); ++i)
+  for (uint32 i = ImageName::eLogo; i < theme.images.size(); ++i)
   {
     auto const& img = theme.images[i];
     packIDs[i]      = io.Fonts->AddCustomRectRegular(img.size.x, img.size.y);
@@ -143,7 +158,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
 
   io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
 
-  for (uint32 i = 2; i < theme.images.size(); ++i)
+  for (uint32 i = ImageName::eLogo; i < theme.images.size(); ++i)
   {
     auto const& img      = theme.images[i];
     auto        custRect = io.Fonts->GetCustomRectByIndex(packIDs[i]);

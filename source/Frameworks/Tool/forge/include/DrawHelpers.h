@@ -1,8 +1,8 @@
 
 #pragma once
 
-#include "Setup.h"
 #include "Property.h"
+#include "Setup.h"
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <span>
@@ -30,9 +30,15 @@ bool drawProp(TerraMainApp&, Property<int>&, int min, int max);
 bool drawProp(TerraMainApp&, Property<float>&, float min, float max, float step);
 bool drawProp(TerraMainApp&, Property<Color>&);
 bool drawProp(TerraMainApp&, Property<TextureFile>&);
-void doTooltip(DisplayInfo const& info);
+int  doTooltip(DisplayInfo const& info);
 bool drawCurveEditor(TerraMainApp& app, CurveData& data);
-bool drawNodeEditorCombo(std::u8string_view name, std::span<std::u8string_view const> items, int& result, int& displayPopup);
+bool drawNodeEditorCombo(std::u8string_view name, std::span<std::u8string_view const> items, int& result,
+                         int& displayPopup);
 bool loadImage(const char* name, std::string& lastPath);
+bool drawTitleMenu(MenuData&);
+void setHeaderFont();
+void setNormalFont();
+void popHeaderFont();
+void popNormalFont();
 
-}
+} // namespace terra

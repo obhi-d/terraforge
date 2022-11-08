@@ -13,6 +13,7 @@ namespace terra
 {
 enum ImageName
 {
+  // eHeaderFont,
   eFont,
   eIconFont,
   eLogo,

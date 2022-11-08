@@ -30,7 +30,7 @@ public:
 
   void init(TerraMainApp& app);
   void deinit(TerraMainApp& app);
-  void drawNodeEditor(TerraMainApp&, ImguiBackend&);
+  bool drawNodeEditor(TerraMainApp&, ImguiBackend&);
 
   bool acceptsAction();
 
@@ -141,6 +141,9 @@ private:
   FrameCache           frameCache;
   imne::EditorContext* editorContext     = nullptr;
   bool                 nodeRegenRequired = false;
+  MenuData             window;
+  MenuDelegate         openPreview;
+  MenuDelegate         settingsWindow;
 };
 
 } // namespace terra

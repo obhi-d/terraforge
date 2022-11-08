@@ -27,7 +27,7 @@ ThemeCmdHandler(pack, theme, state, cmd)
 {
   auto const& params = cmd.params();
   auto        size   = params.value().size();
-  terra::ImageName name   = terra::ImageName::eFont;
+  terra::ImageName name   = terra::ImageName::kCount;
   for (auto const& p : params.value())
   {
     if (!std::holds_alternative<neo::single>(p))

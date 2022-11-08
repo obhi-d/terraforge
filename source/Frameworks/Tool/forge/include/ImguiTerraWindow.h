@@ -20,8 +20,10 @@ class ImguiTerraWindow
 public:
   static inline constexpr uint32_t titlebarHeight = 60;
 
-  void drawSettings(TerraMainApp&);
   void init(TerraMainApp&);
+  void deinit(TerraMainApp&);
+
+  void drawSettings(TerraMainApp&);
   bool pollEvents();
   bool draw(TerraMainApp&);
   void setTheme(ImguiTheme const&);
@@ -34,6 +36,26 @@ public:
   inline MouseState& getMouseState()
   {
     return mouseState;
+  }
+
+  inline bool isPreviewOpen() const 
+  {
+    return previewWindow.opened;
+  }
+
+  inline bool isSettingsOpen() const
+  {
+    return settingsWindow.opened;
+  }
+
+  inline void openPreview() 
+  {
+    previewWindow.opened = true;
+  }
+
+  inline void openSettings() 
+  {
+    settingsWindow.opened = true;
   }
 
 private:
@@ -64,6 +86,8 @@ private:
   glm::ivec2 windowSize;
   DragData   dragData;
   MouseState mouseState;
-  bool       open = true;
+
+  MenuData   previewWindow;
+  MenuData   settingsWindow;
 };
 } // namespace terra

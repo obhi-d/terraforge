@@ -30,6 +30,7 @@ public:
   void run();
   bool draw();
   void reloadTheme();
+  void destroy();
 
   static int Main(int argc, const char* argv[]);
 

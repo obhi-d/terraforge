@@ -71,8 +71,8 @@ void Image::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
 
 HelpInfo Image::getHelpInfo(HelpType type, int param) const
 {
-  static HelpInfo output = {.help = "@imageOut.help"_ls, .tooltip = "@imageOut.tip"_ls};
-  static HelpInfo main   = {.help = "@image.help"_ls, .tooltip = "@image.tip"_ls};
+  static HelpInfo output ("@imageOut.help"_ls, "@imageOut.tip"_ls);
+  static HelpInfo main   ("@image.help"_ls, "@image.tip"_ls);
   switch (type)
   {
   case HelpType::eDataSource:

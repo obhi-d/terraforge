@@ -191,5 +191,4 @@ struct Rect
   inline bool operator!=(Rect const&) const noexcept = default;
 };
 
-
 } // namespace terra

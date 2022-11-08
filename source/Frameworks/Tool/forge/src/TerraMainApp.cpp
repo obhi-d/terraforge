@@ -33,7 +33,13 @@ TerraMainApp::TerraMainApp()
 
 TerraMainApp::~TerraMainApp()
 {
+}
+
+void TerraMainApp::destroy()
+{
+  viewer.deinit(*this);
   get().destroy();
+  device = nullptr;
   SDL_Quit();
 }
 
@@ -188,7 +194,6 @@ int TerraMainApp::Main(int argc, const char* argv[])
   #endif
   {
     g_app->run();
-    get().destroy();
   }
 #ifdef NDEBUG
   catch (std::exception& ex)
@@ -198,7 +203,7 @@ int TerraMainApp::Main(int argc, const char* argv[])
     std::exit(-1);
   }
 #endif
-  g_app = nullptr;
+  g_app->destroy();
   return 0;
 }
 

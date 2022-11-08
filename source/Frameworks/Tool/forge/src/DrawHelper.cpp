@@ -247,8 +247,9 @@ void drawIcon(ImDrawList* drawList, const ImVec2& a, const ImVec2& b, IconType t
   }
 }
 
-void doTooltip(DisplayInfo const& info)
+int doTooltip(DisplayInfo const& info)
 {
+  int tip = 0;
   if (!info.tooltip.empty())
   {
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
@@ -256,16 +257,19 @@ void doTooltip(DisplayInfo const& info)
       ImGui::BeginTooltip();
       ImGui::TextUnformatted((const char*)info.tooltip.data());
       ImGui::EndTooltip();
+      tip++;
     }
   }
   if (info.help.empty())
-    return;
+    return tip;
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
   {
     ImGui::BeginTooltip();
     ImGui::TextUnformatted((const char*)info.help.data());
     ImGui::EndTooltip();
+    tip++;
   }
+  return tip;
 }
 
 template <typename Prop>
@@ -660,4 +664,119 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
     return data.endEdits(true);
   return data.endEdits(false);
 }
+void popNormalFont()
+{
+  ImGui::PopFont();
+  auto font   = ImGui::GetFont();
+  font->Scale = 1.f;
+}
+void popHeaderFont()
+{
+  // ImGui::PopFont();
+}
+void setHeaderFont()
+{
+  auto font = ImGui::GetFont();
+  // font->Scale = 1.5f;
+  // ImGui::PushFont(font);
+}
+
+void setNormalFont()
+{
+  auto font   = ImGui::GetFont();
+  font->Scale = .87f;
+  ImGui::PushFont(font);
+}
+
+bool drawTitlebarButton(DisplayInfo const& text, float size)
+{
+  auto const& theme  = app().getTheme();
+  auto        pos    = ImGui::GetCursorPos();
+  auto        wpos   = ImGui::GetCursorScreenPos();
+  bool        hover = ImGui::IsMouseHoveringRect(wpos, ImVec2(wpos.x + size, wpos.y + size));
+  
+  if (hover)
+  {
+    if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+      ImGui::PushStyleColor(ImGuiCol_Text, (ImVec4)theme.themeColors.iconPressed);
+    else
+      ImGui::PushStyleColor(ImGuiCol_Text, (ImVec4)theme.themeColors.iconHover);
+  }
+  ImGui::SetCursorPos(pos);
+  ImGui::Text(text.getName(), ImVec2(size + 4, size + 4));
+  doTooltip(text);
+  if (hover)
+  {
+    ImGui::PopStyleColor();
+    if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+      return true;
+  }
+  return false;
+}
+
+bool drawTitleMenu(MenuData& state)
+{
+  float       width        = ImGui::GetWindowWidth();
+  float       fontSize     = ImGui::GetFontSize();
+  auto const& framePadding = ImGui::GetStyle().FramePadding;
+  bool        canBeMaximized = (state.canBeMaximized && !ImGui::IsWindowDocked()) || state.isMain;
+  float       size           = ((state.delegates.size() + (canBeMaximized ? 3 : 2)) * (fontSize + framePadding.x));
+  float       titlebarHeight = fontSize + framePadding.y * 2.0f;
+  auto        cursorPos      = ImGui::GetCursorPos();
+  auto        pos            = ImGui::GetWindowPos();
+  ImGui::PushClipRect(pos, ImVec2(pos.x + width, pos.y + titlebarHeight), false);
+  size = width - size;
+  for (auto& d : state.delegates)
+  {
+    ImGui::SetCursorPosX(size);
+    ImGui::SetCursorPosY(framePadding.y);
+    if (drawTitlebarButton(d->name, fontSize))
+      d->function();
+    size += (fontSize + framePadding.x);
+  }
+
+  ImGui::SetCursorPosX(size);
+  ImGui::SetCursorPosY(framePadding.y);
+  if (state.locked)
+  {
+    static DisplayInfo unlock(ICON_FA_LOCK, "unlock.help"_ls, "unlock.tip"_ls);
+    if (drawTitlebarButton(unlock, fontSize))
+      state.locked = false;
+  }
+  else
+  {
+    static DisplayInfo lock(ICON_FA_UNLOCK, "lock.help"_ls, "lock.tip"_ls);
+    if (drawTitlebarButton(lock, fontSize))
+      state.locked = true;
+  }
+  size += (fontSize + framePadding.x);
+
+  if (canBeMaximized)
+  {
+    ImGui::SetCursorPosX(size);
+    ImGui::SetCursorPosY(framePadding.y);
+    if (state.maximized)
+    {
+      static DisplayInfo info(ICON_FA_WINDOW_RESTORE, "restore.help"_ls, "restore.tip"_ls);
+      if (drawTitlebarButton(info, fontSize))
+        state.maximized = false;
+    }
+    else
+    {
+      static DisplayInfo info(ICON_FA_WINDOW_MAXIMIZE, "restore.help"_ls, "restore.tip"_ls);
+      if (drawTitlebarButton(info, fontSize))
+        state.maximized = true;
+    }
+    size += (fontSize + framePadding.x);
+  }
+
+  ImGui::SetCursorPosX(size);
+  ImGui::SetCursorPosY(framePadding.y);
+  static DisplayInfo info(ICON_FA_XMARK, "close.help"_ls, "close.tip"_ls);
+  bool               closed = drawTitlebarButton(info, fontSize);
+  ImGui::PopClipRect();
+  ImGui::SetCursorPos(cursorPos);
+  return !closed;
+}
+
 } // namespace terra

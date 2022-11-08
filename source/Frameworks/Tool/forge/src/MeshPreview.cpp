@@ -32,6 +32,11 @@ void MeshPreview::init(TerraMainApp& app)
 void MeshPreview::deinit(TerraMainApp& app)
 {
   app.dispatcher().remove(setActorEventListener);
+  app.getDevice()->destroy(vertex);
+  app.getDevice()->destroy(index);
+  app.getDevice()->destroy(material.program);
+  app.getDevice()->destroy(material.descriptorSet);
+  app.getDevice()->destroy(GfxImage2D::handle(heightTexPath->image));
 }
 
 void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
@@ -323,3 +328,4 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
 }
 
 } // namespace terra
+

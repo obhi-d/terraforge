@@ -1,6 +1,6 @@
 
-pack (index=font, file=fonts/DroidSans.ttf, y=14);
-pack (index=iconfont, file=fonts/fontawesome.otf, y=14);
+pack (index=font, file=fonts/DroidSans.ttf, y=16);
+pack (index=iconfont, file=fonts/fontawesome.otf, y=16);
 pack (index=logo, file=icons/default-logo.png, x=64, y=64);
 pack (index=resize, file=icons/resize.png, x=32, y=32);
 tint = ffffffff;
