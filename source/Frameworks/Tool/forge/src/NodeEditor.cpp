@@ -6,6 +6,7 @@
 #include "TerraMainApp.h"
 #include "imgui.h"
 #include "DrawHelpers.h"
+#include "imgui_impl_sdl.h"
 #include "imgui_internal.h"
 #include "imgui_node_editor.h"
 #include "imgui_node_editor_internal.h"
@@ -99,8 +100,15 @@ bool NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
       window.delegates.push_back(&openPreview);
     if (!app.getWindow().isSettingsOpen())
       window.delegates.push_back(&settingsWindow);
-    if (!drawTitleMenu(window))
+    switch (drawTitleMenu(window))
     {
+    case WindowAction::eRestore:
+      ImGui::RestoreWindow();
+      break;
+    case WindowAction::eMaximize:
+      ImGui::MaximizeWindow();
+      break;
+    case WindowAction::eClose:
       // bail out
       ImGui::End();
       ImGui::PopStyleVar();

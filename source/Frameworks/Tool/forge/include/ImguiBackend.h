@@ -9,30 +9,6 @@
 
 namespace terra
 {
-enum class ImWith
-{
-  fMinimize   = 1 << 0,
-  fMaximize   = 1 << 1,
-  fRestore    = 1 << 2,
-  fClose      = 1 << 3,
-  fMenu       = 1 << 4,
-  fLogo       = 1 << 5,
-  fResizeCtrl = 1 << 6,
-};
-
-ENUM_FLAGS(ImWith);
-
-enum class WindowAction
-{
-  eNone,
-  eToggleSize,
-  eMinimize,
-  eMaximize,
-  eRestore,
-  eDrag,
-  eResize,
-  eClose
-};
 
 enum class ImAlign
 {
@@ -64,7 +40,6 @@ public:
   // Draw a titlebar with flags, returns the button name clicked
   // if Menu flag is used, cursor is placed at next menu draw
   // You can right align to draw from right
-  WindowAction windowDecoration(ImguiTerraWindow&, ImWith flags);
   void         endTitlebar();
   void         textCentered(std::string_view text, ImVec2 pos, ImVec2 size);
   bool         iconButton(std::string_view name, ImVec2 size, Color color, Color hover);

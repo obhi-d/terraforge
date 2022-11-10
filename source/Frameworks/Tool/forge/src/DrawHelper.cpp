@@ -247,12 +247,13 @@ void drawIcon(ImDrawList* drawList, const ImVec2& a, const ImVec2& b, IconType t
   }
 }
 
-int doTooltip(DisplayInfo const& info)
+int doTooltip(DisplayInfo const& info, ImGuiHoveredFlags flags)
 {
   int tip = 0;
   if (!info.tooltip.empty())
   {
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+    if ((!flags && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort)) ||
+        (flags && ImGui::IsWindowHovered(ImGuiHoveredFlags_DelayShort | flags)))
     {
       ImGui::BeginTooltip();
       ImGui::TextUnformatted((const char*)info.tooltip.data());
@@ -262,7 +263,8 @@ int doTooltip(DisplayInfo const& info)
   }
   if (info.help.empty())
     return tip;
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+  if ((!flags && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) ||
+      (flags && ImGui::IsWindowHovered(ImGuiHoveredFlags_DelayShort | flags)))
   {
     ImGui::BeginTooltip();
     ImGui::TextUnformatted((const char*)info.help.data());
@@ -704,9 +706,10 @@ bool drawTitlebarButton(DisplayInfo const& text, float size)
   }
   ImGui::SetCursorPos(pos);
   ImGui::Text(text.getName(), ImVec2(size + 4, size + 4));
-  doTooltip(text);
+   
   if (hover)
   {
+    doTooltip(text, ImGuiHoveredFlags_AnyWindow);
     ImGui::PopStyleColor();
     if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
       return true;
@@ -714,8 +717,9 @@ bool drawTitlebarButton(DisplayInfo const& text, float size)
   return false;
 }
 
-bool drawTitleMenu(MenuData& state)
+WindowAction drawTitleMenu(MenuData& state)
 {
+  WindowAction act            = WindowAction::eNone;
   float       width        = ImGui::GetWindowWidth();
   float       fontSize     = ImGui::GetFontSize();
   auto const& framePadding = ImGui::GetStyle().FramePadding;
@@ -753,19 +757,28 @@ bool drawTitleMenu(MenuData& state)
 
   if (canBeMaximized)
   {
+    constexpr bool toogle = false;
+    //  ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) &&
+    //  ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + width, pos.y + titlebarHeight));
     ImGui::SetCursorPosX(size);
     ImGui::SetCursorPosY(framePadding.y);
     if (state.maximized)
     {
       static DisplayInfo info(ICON_FA_WINDOW_RESTORE, "restore.help"_ls, "restore.tip"_ls);
-      if (drawTitlebarButton(info, fontSize))
+      if (drawTitlebarButton(info, fontSize) || toogle)
+      {
         state.maximized = false;
+        act             = WindowAction::eRestore;
+      }
     }
     else
     {
-      static DisplayInfo info(ICON_FA_WINDOW_MAXIMIZE, "restore.help"_ls, "restore.tip"_ls);
-      if (drawTitlebarButton(info, fontSize))
+      static DisplayInfo info(ICON_FA_WINDOW_MAXIMIZE, "maximize.help"_ls, "maximize.tip"_ls);
+      if (drawTitlebarButton(info, fontSize) || toogle)
+      {
         state.maximized = true;
+        act             = WindowAction::eMaximize;
+      }
     }
     size += (fontSize + framePadding.x);
   }
@@ -773,10 +786,11 @@ bool drawTitleMenu(MenuData& state)
   ImGui::SetCursorPosX(size);
   ImGui::SetCursorPosY(framePadding.y);
   static DisplayInfo info(ICON_FA_XMARK, "close.help"_ls, "close.tip"_ls);
-  bool               closed = drawTitlebarButton(info, fontSize);
+  if( drawTitlebarButton(info, fontSize) )
+    act = WindowAction::eClose;
   ImGui::PopClipRect();
   ImGui::SetCursorPos(cursorPos);
-  return !closed;
+  return act;
 }
 
 } // namespace terra

@@ -161,7 +161,12 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
     ImGui::SetNextWindowSizeConstraints(ImVec2(40, 40), ImVec2(10000, 10000));
     if (ImGui::Begin((char const*)settingName.data(), nullptr, settingsWindow.locked ? ImGuiWindowFlags_NoMove : 0))
     {
-      settingsWindow.opened = drawTitleMenu(settingsWindow);
+      switch (drawTitleMenu(settingsWindow))
+      {
+      case WindowAction::eClose:
+        settingsWindow.opened = false;
+        break;
+      }
       setNormalFont();
       // Settings
       float item_height = ImGui::GetTextLineHeightWithSpacing();
@@ -231,7 +236,18 @@ bool ImguiTerraWindow::draw(TerraMainApp& app)
     setHeaderFont();
     if (ImGui::Begin((const char*)mainWindowName.data(), nullptr, previewWindow.locked ? ImGuiWindowFlags_NoMove : 0))
     {
-      previewWindow.opened = drawTitleMenu(previewWindow);
+      switch (drawTitleMenu(previewWindow))
+      {
+      case WindowAction::eRestore:
+        ImGui::RestoreWindow();
+        break;
+      case WindowAction::eMaximize:
+        ImGui::MaximizeWindow();
+        break;
+      case WindowAction::eClose:
+        previewWindow.opened = false;
+        break;
+      }
       setNormalFont();
       ImGui::GetWindowDrawList()->AddCallback(
         [](const ImDrawList* parent_list, const ImDrawCmd* cmd)

@@ -547,73 +547,7 @@ void ImguiBackend::textCentered(std::string_view text, ImVec2 pos, ImVec2 window
   ImGui::SetCursorPos(ImVec2(pos.x + (windowWidth.x - textDim.x) * 0.5f, pos.y + (windowWidth.y - textDim.y) * 0.5f));
   ImGui::Text(text.data());
 }
-WindowAction ImguiBackend::windowDecoration(ImguiTerraWindow& app, ImWith flags)
-{
-  auto const& io          = ImGui::GetIO();
-  int         saveY       = currentRegExtends.max.y;
-  int         saveX       = currentRegExtends.min.x;
-  int         dx          = currentRegExtends.dx();
-  currentRegExtends.max.y = currentRegExtends.min.y + 32;
-  WindowAction name       = WindowAction::eNone;
-  if (flags & ImWith::fLogo)
-  {
-    drawIcon(ImageName::eLogo, glm::ivec2(0, 0),
-             glm::ivec2(ImguiTerraWindow::titlebarHeight, ImguiTerraWindow::titlebarHeight), theme->themeColors.logo);
-  }
-  auto const& color  = theme->themeColors;
-  auto        iconSz = theme->images[ImageName::eFont].size.y - 4;
-  align(ImAlign::eRight);
-  if (flags & ImWith::fClose)
-  {
-    if (iconButton(0xf00d, glm::ivec2(30, 30), iconSz, color.icon, color.iconPressed, color.iconHover) &&
-        !io.WantCaptureMouse)
-      name = WindowAction::eClose;
-  }
-  if (flags & ImWith::fMaximize)
-  {
-    if (iconButton(0xf2d0, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed) &&
-        !io.WantCaptureMouse)
-      name = WindowAction::eMaximize;
-  }
-  if (flags & ImWith::fRestore)
-  {
-    if (iconButton(0xf2d2, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed) &&
-        !io.WantCaptureMouse)
-      name = WindowAction::eRestore;
-  }
-  if (flags & ImWith::fMinimize)
-  {
-    if (iconButton(0xf2d1, glm::ivec2(30, 30), iconSz, color.icon, color.iconHover, color.iconPressed) &&
-        !io.WantCaptureMouse)
-      name = WindowAction::eMinimize;
-  }
-  align(ImAlign::eLeft);
-  auto& ms = app.getMouseState();
-  if (!io.WantCaptureMouse && ms.locked == MouseLockedBy::eNone || ms.locked == MouseLockedBy::eMainWndDecorations)
-  {
-    if (isIntersecting())
-    {
-      if (ms.leftDown && ms.dragging)
-        name = WindowAction::eDrag;
-      else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-        name = WindowAction::eToggleSize;
-    }
-    if (name == WindowAction::eNone && isIntersecting())
-    {
-      if (ms.leftDown && ms.dragging)
-        name = WindowAction::eDrag;
-      else if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
-        name = WindowAction::eToggleSize;
-    }
-    setLayout(glm::ivec2(saveX, saveY - 26), glm::ivec2(dx, 30), ImAlign::eRight, 1);
-    if (flags & ImWith::fResizeCtrl)
-    {
-      if (iconButton(ImageName::eResize, glm::ivec2(20, 20), 18, color.icon, color.iconHover, color.iconPressed, false))
-        name = WindowAction::eResize;
-    }
-  }
-  return name;
-}
+
 void ImguiBackend::endTitlebar()
 {
   ImGui::End();

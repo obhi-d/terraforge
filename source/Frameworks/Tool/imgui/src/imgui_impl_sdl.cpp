@@ -67,6 +67,7 @@
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
+#include "imgui_internal.h"
 
 // SDL
 // (the multi-viewports feature requires SDL features supported from SDL 2.0.4+. SDL 2.0.5+ is highly recommended)
@@ -327,28 +328,40 @@ bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event)
             //   causing SDL_WINDOWEVENT_LEAVE on previous frame to interrupt drag operation by clear mouse position. This is why
             //   we delay process the SDL_WINDOWEVENT_LEAVE events by one frame. See issue #5012 for details.
             Uint8 window_event = event->window.event;
-            if (window_event == SDL_WINDOWEVENT_ENTER)
+            switch (window_event)
             {
-                bd->MouseWindowID = event->window.windowID;
-                bd->PendingMouseLeaveFrame = 0;
+            case SDL_WINDOWEVENT_ENTER:
+            {
+              bd->MouseWindowID          = event->window.windowID;
+              bd->PendingMouseLeaveFrame = 0;
             }
-            if (window_event == SDL_WINDOWEVENT_LEAVE)
+            break;
+            case SDL_WINDOWEVENT_LEAVE:
                 bd->PendingMouseLeaveFrame = ImGui::GetFrameCount() + 1;
-            if (window_event == SDL_WINDOWEVENT_FOCUS_GAINED)
+              break;
+            case SDL_WINDOWEVENT_FOCUS_GAINED:
                 io.AddFocusEvent(true);
-            else if (window_event == SDL_WINDOWEVENT_FOCUS_LOST)
+              break;
+            case SDL_WINDOWEVENT_FOCUS_LOST:
                 io.AddFocusEvent(false);
-            if (window_event == SDL_WINDOWEVENT_CLOSE || window_event == SDL_WINDOWEVENT_MOVED || window_event == SDL_WINDOWEVENT_RESIZED)
-                if (ImGuiViewport* viewport = ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event->window.windowID)))
+              break;
+            case SDL_WINDOWEVENT_CLOSE:
+            case SDL_WINDOWEVENT_MOVED:
+            case SDL_WINDOWEVENT_RESIZED:
+            case SDL_WINDOWEVENT_RESTORED:
+                if (ImGuiViewport* viewport =
+                      ImGui::FindViewportByPlatformHandle((void*)SDL_GetWindowFromID(event->window.windowID)))
                 {
-                    if (window_event == SDL_WINDOWEVENT_CLOSE)
-                        viewport->PlatformRequestClose = true;
-                    if (window_event == SDL_WINDOWEVENT_MOVED)
-                        viewport->PlatformRequestMove = true;
-                    if (window_event == SDL_WINDOWEVENT_RESIZED)
-                        viewport->PlatformRequestResize = true;
-                    return true;
+                  if (window_event == SDL_WINDOWEVENT_CLOSE)
+                    viewport->PlatformRequestClose = true;
+                  if (window_event == SDL_WINDOWEVENT_MOVED)
+                    viewport->PlatformRequestMove = true;
+                  if (window_event == SDL_WINDOWEVENT_RESIZED || window_event == SDL_WINDOWEVENT_RESTORED)
+                    viewport->PlatformRequestResize = true;
+                  return true;
                 }
+                break;
+            }
             return true;
         }
     }
@@ -535,14 +548,23 @@ static void ImGui_ImplSDL2_UpdateMouseData()
             // Single-viewport mode: mouse position in client window coordinates (io.MousePos is (0,0) when the mouse is on the upper-left corner of the app window)
             // Multi-viewport mode: mouse position in OS absolute coordinates (io.MousePos is (0,0) when the mouse is on the upper-left of the primary monitor)
             int mouse_x, mouse_y, window_x, window_y;
+            bool skipPosEvent = false;
             SDL_GetGlobalMouseState(&mouse_x, &mouse_y);
             if (!(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable))
             {
-                SDL_GetWindowPosition(focused_window, &window_x, &window_y);
+              SDL_GetWindowPosition(focused_window, &window_x, &window_y);
+              if (window_x > 0 && window_y > 0)
+              {
                 mouse_x -= window_x;
                 mouse_y -= window_y;
+              }
+              else
+              {
+                skipPosEvent = true;
+              }
             }
-            io.AddMousePosEvent((float)mouse_x, (float)mouse_y);
+            if (!skipPosEvent)
+              io.AddMousePosEvent((float)mouse_x, (float)mouse_y);
         }
     }
 
@@ -711,8 +733,9 @@ struct ImGui_ImplSDL2_ViewportData
 {
     SDL_Window*     Window;
     Uint32          WindowID;
-    bool            WindowOwned;
     SDL_GLContext   GLContext;
+    SDL_Rect        SavedRect;
+    bool            WindowOwned;
 
     ImGui_ImplSDL2_ViewportData() { Window = NULL; WindowID = 0; WindowOwned = false; GLContext = NULL; }
     ~ImGui_ImplSDL2_ViewportData() { IM_ASSERT(Window == NULL && GLContext == NULL); }
@@ -729,23 +752,19 @@ static void ImGui_ImplSDL2_CreateWindow(ImGuiViewport* viewport)
 
     // Share GL resources with main context
     bool use_opengl = (main_viewport_data->GLContext != NULL);
-    SDL_GLContext backup_context = NULL;
-    if (use_opengl)
-    {
-        backup_context = SDL_GL_GetCurrentContext();
-        SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
-        SDL_GL_MakeCurrent(main_viewport_data->Window, main_viewport_data->GLContext);
-    }
+
+    SDL_SetHint("SDL_BORDERLESS_WINDOWED_STYLE", "1");
+    SDL_SetHint("SDL_BORDERLESS_RESIZABLE_STYLE", "1");
 
     Uint32 sdl_flags = 0;
     sdl_flags |= use_opengl ? SDL_WINDOW_OPENGL : (bd->UseVulkan ? SDL_WINDOW_VULKAN : 0);
     sdl_flags |= SDL_GetWindowFlags(bd->Window) & SDL_WINDOW_ALLOW_HIGHDPI;
     sdl_flags |= SDL_WINDOW_HIDDEN;
-    sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? SDL_WINDOW_BORDERLESS : 0;
-    sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoDecoration) ? 0 : SDL_WINDOW_RESIZABLE;
+    sdl_flags |= SDL_WINDOW_BORDERLESS;
+    sdl_flags |= SDL_WINDOW_RESIZABLE;
 #if !defined(_WIN32)
     // See SDL hack in ImGui_ImplSDL2_ShowWindow().
-    sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoTaskBarIcon) ? SDL_WINDOW_SKIP_TASKBAR : 0;
+    // sdl_flags |= (viewport->Flags & ImGuiViewportFlags_NoTaskBarIcon) ? SDL_WINDOW_SKIP_TASKBAR : 0;
 #endif
 #if SDL_HAS_ALWAYS_ON_TOP
     sdl_flags |= (viewport->Flags & ImGuiViewportFlags_TopMost) ? SDL_WINDOW_ALWAYS_ON_TOP : 0;
@@ -754,12 +773,8 @@ static void ImGui_ImplSDL2_CreateWindow(ImGuiViewport* viewport)
     vd->WindowOwned = true;
     if (use_opengl)
     {
-        vd->GLContext = SDL_GL_CreateContext(vd->Window);
-        SDL_GL_SetSwapInterval(0);
+        vd->GLContext = SDL_GL_GetCurrentContext();
     }
-    if (use_opengl && backup_context)
-        SDL_GL_MakeCurrent(vd->Window, backup_context);
-
     viewport->PlatformHandle = (void*)vd->Window;
     viewport->PlatformHandleRaw = NULL;
     SDL_SysWMinfo info;
@@ -778,8 +793,6 @@ static void ImGui_ImplSDL2_DestroyWindow(ImGuiViewport* viewport)
 {
     if (ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData)
     {
-        if (vd->GLContext && vd->WindowOwned)
-            SDL_GL_DeleteContext(vd->GLContext);
         if (vd->Window && vd->WindowOwned)
             SDL_DestroyWindow(vd->Window);
         vd->GLContext = NULL;
@@ -888,8 +901,8 @@ static void ImGui_ImplSDL2_SwapBuffers(ImGuiViewport* viewport, void*)
     ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData;
     if (vd->GLContext)
     {
-        SDL_GL_MakeCurrent(vd->Window, vd->GLContext);
-        SDL_GL_SwapWindow(vd->Window);
+      SDL_GL_MakeCurrent(vd->Window, vd->GLContext);
+      SDL_GL_SwapWindow(vd->Window);
     }
 }
 
@@ -906,23 +919,47 @@ static int ImGui_ImplSDL2_CreateVkSurface(ImGuiViewport* viewport, ImU64 vk_inst
 }
 #endif // SDL_HAS_VULKAN
 
+void ImGui_ImplSDL2_MaximizeWindow(ImGuiViewport* viewport)
+{
+  ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData;
+  
+  SDL_Rect rect;
+  SDL_GetWindowPosition(vd->Window, &vd->SavedRect.x, &vd->SavedRect.y);
+  SDL_GetWindowSize(vd->Window, &vd->SavedRect.w, &vd->SavedRect.h);
+  if (!SDL_GetDisplayUsableBounds(SDL_GetWindowDisplayIndex(vd->Window), &rect))
+  {
+    SDL_SetWindowPosition(vd->Window, rect.x, rect.y);
+    SDL_SetWindowSize(vd->Window, rect.w, rect.h);
+  }
+}
+
+void ImGui_ImplSDL2_RestoreWindow(ImGuiViewport* viewport)
+{
+  ImGui_ImplSDL2_ViewportData* vd = (ImGui_ImplSDL2_ViewportData*)viewport->PlatformUserData;
+  SDL_SetWindowPosition(vd->Window, vd->SavedRect.x, vd->SavedRect.y);
+  SDL_SetWindowSize(vd->Window, vd->SavedRect.w, vd->SavedRect.h);
+}
+
 static void ImGui_ImplSDL2_InitPlatformInterface(SDL_Window* window, void* sdl_gl_context)
 {
     // Register platform interface (will be coupled with a renderer interface)
     ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
-    platform_io.Platform_CreateWindow = ImGui_ImplSDL2_CreateWindow;
-    platform_io.Platform_DestroyWindow = ImGui_ImplSDL2_DestroyWindow;
-    platform_io.Platform_ShowWindow = ImGui_ImplSDL2_ShowWindow;
-    platform_io.Platform_SetWindowPos = ImGui_ImplSDL2_SetWindowPos;
-    platform_io.Platform_GetWindowPos = ImGui_ImplSDL2_GetWindowPos;
-    platform_io.Platform_SetWindowSize = ImGui_ImplSDL2_SetWindowSize;
-    platform_io.Platform_GetWindowSize = ImGui_ImplSDL2_GetWindowSize;
-    platform_io.Platform_SetWindowFocus = ImGui_ImplSDL2_SetWindowFocus;
-    platform_io.Platform_GetWindowFocus = ImGui_ImplSDL2_GetWindowFocus;
+    platform_io.Platform_CreateWindow       = ImGui_ImplSDL2_CreateWindow;
+    platform_io.Platform_DestroyWindow      = ImGui_ImplSDL2_DestroyWindow;
+    platform_io.Platform_ShowWindow         = ImGui_ImplSDL2_ShowWindow;
+    platform_io.Platform_SetWindowPos       = ImGui_ImplSDL2_SetWindowPos;
+    platform_io.Platform_GetWindowPos       = ImGui_ImplSDL2_GetWindowPos;
+    platform_io.Platform_SetWindowSize      = ImGui_ImplSDL2_SetWindowSize;
+    platform_io.Platform_GetWindowSize      = ImGui_ImplSDL2_GetWindowSize;
+    platform_io.Platform_SetWindowFocus     = ImGui_ImplSDL2_SetWindowFocus;
+    platform_io.Platform_GetWindowFocus     = ImGui_ImplSDL2_GetWindowFocus;
     platform_io.Platform_GetWindowMinimized = ImGui_ImplSDL2_GetWindowMinimized;
-    platform_io.Platform_SetWindowTitle = ImGui_ImplSDL2_SetWindowTitle;
-    platform_io.Platform_RenderWindow = ImGui_ImplSDL2_RenderWindow;
-    platform_io.Platform_SwapBuffers = ImGui_ImplSDL2_SwapBuffers;
+    platform_io.Platform_SetWindowTitle     = ImGui_ImplSDL2_SetWindowTitle;
+    platform_io.Platform_RenderWindow       = ImGui_ImplSDL2_RenderWindow;
+    platform_io.Platform_SwapBuffers        = ImGui_ImplSDL2_SwapBuffers;
+    platform_io.Platform_Maximize           = ImGui_ImplSDL2_MaximizeWindow;
+    platform_io.Platform_Restore            = ImGui_ImplSDL2_RestoreWindow;
+
 #if SDL_HAS_WINDOW_ALPHA
     platform_io.Platform_SetWindowAlpha = ImGui_ImplSDL2_SetWindowAlpha;
 #endif

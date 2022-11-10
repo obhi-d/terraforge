@@ -5,7 +5,7 @@ version : "2.24.0";
 fetch "https://github.com/libsdl-org/SDL.git"
 {
   license    : "LICENSE";
-  commit     : "33050fea3997c7d0c1cf709fa5a70f5462e35ad9";
+  commit     : "55b03c7493a7abed33cf803d1380a40fa8af903f";
   package    : SDL2;
   components : [SDL2main, SDL2-static];
   namespace  : SDL2;

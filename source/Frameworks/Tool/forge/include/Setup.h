@@ -191,4 +191,12 @@ struct Rect
   inline bool operator!=(Rect const&) const noexcept = default;
 };
 
+enum class WindowAction
+{
+  eNone,
+  eRestore,
+  eMaximize,
+  eClose
+};
+
 } // namespace terra
