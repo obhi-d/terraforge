@@ -18,16 +18,15 @@ namespace terra::HWY_NAMESPACE
 {
 namespace hn = hwy::HWY_NAMESPACE;
 
+
 void simplex(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
   const I_t itag{};
-
-  const auto               lanes = (uint32)hn::Lanes(vtag);
+    
+  const auto      lanes = (uint32)hn::Lanes(vtag);
   constexpr float SQRT3 = 1.7320508075688772935274463415059f;
-  constexpr float F2    = 0.5f * (SQRT3 - 1.0f);
-  constexpr float G2    = (3.0f - SQRT3) / 6.0f;
-
+  
   auto& out = pipe.getOutput(threadGroupId, lanes);
   auto& inp = pipe.getInput(threadGroupId, lanes, true);
 
@@ -86,7 +85,112 @@ void simplex(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
   }
 }
 
-void openSimplex(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+// 2D simplex noise
+void noise(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  const V_t vtag{};
+  const I_t itag{};
+
+  const auto lanes = (uint32)hn::Lanes(vtag);
+
+  auto& out = pipe.getOutput(threadGroupId, lanes);
+  auto& inp = pipe.getInput(threadGroupId, lanes, true);
+
+  auto  out_data   = out.data();
+  auto  inp_x_data = inp.x.data();
+  auto  inp_y_data = inp.y.data();
+  auto  seed       = hn::Set(itag, pipe.seed());
+
+  auto const& perm = pipe.getConstants().perm;
+
+  for (uint32_t ii = 0; ii < out.size(); ii += lanes)
+  {
+    const auto x = hn::Load(vtag, inp_x_data + ii);
+    const auto y = hn::Load(vtag, inp_y_data + ii);
+
+    
+    // Skew the input space to determine which simplex cell we're in
+    auto s  = (x + y) * hn::Set(vtag, F2); // Hairy factor for 2D
+    auto xs = x + s;
+    auto ys = y + s;
+    auto i  = hn::Floor(xs);
+    auto j  = hn::Floor(ys);
+
+    auto t  = (i + j) * hn::Set(vtag, G2);
+    auto  X0 = i - t; // Unskew the cell origin back to (x,y) space
+    auto  Y0 = j - t;
+    auto  x0 = x - X0; // The x,y distances from the cell origin
+    auto  y0 = y - Y0;
+
+    // For the 2D case, the simplex shape is an equilateral triangle.
+    // Determine which simplex we are in.
+    auto mask = (x0 > y0);
+
+  	auto i1 = hn::IfThenElse(x0 > y0, hn::Set(vtag, 1.0f), hn::Zero(vtag));
+    auto j1 = hn::IfThenElse(x0 > y0, hn::Zero(vtag), hn::Set(vtag, 1.0f));
+    
+
+    // A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
+    // a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
+    // c = (3-sqrt(3))/6
+
+    auto x1 = x0 - i1 + hn::Set(vtag, G2); // Offsets for middle corner in (x,y) unskewed coords
+    auto y1 = y0 - j1 + hn::Set(vtag, G2);
+    auto x2 = x0 - hn::Set(vtag, 1.0f) + hn::Set(vtag, 2.0f * G2); // Offsets for last corner in (x,y) unskewed coords
+    auto y2 = y0 - hn::Set(vtag, 1.0f) + hn::Set(vtag, 2.0f * G2);
+    auto ti = hn::ConvertTo(itag, i);
+    auto tj = hn::ConvertTo(itag, j);
+    
+    // Wrap the integer indices at 256, to avoid indexing details::perm[] out of bounds
+   
+    // Calculate the contribution from the three corners
+    
+      auto t0 = hn::Set(vtag, 0.5f) - x0 * x0 - y0 * y0;
+      auto t0t0  = t0 * t0;
+      auto n0 = hn::IfNegativeThenElse(
+        t0, hn::Zero(vtag),
+           t0t0 * t0t0 *
+          grad(hn::GatherIndex(
+                 itag, perm.data(),
+                                  hn::And(ti + hn::GatherIndex(itag, perm.data(), hn::And(tj, hn::Set(itag, 0xff))),
+                                          hn::Set(itag, 0xff))),
+               x0, y0));
+    
+
+    
+      auto t1   = hn::Set(vtag, 0.5f) - x1 * x1 - y1 * y1;
+      auto t1t1 = t1 * t1;
+      auto n1   = hn::IfNegativeThenElse(
+          t1, hn::Zero(vtag),
+          t1t1 * t1t1 *
+            grad(hn::GatherIndex(itag, perm.data(),
+                                 hn::And(ti + hn::ConvertTo(itag, i1) +
+                                           hn::GatherIndex(itag, perm.data(),
+                                                           hn::And(tj + hn::ConvertTo(itag, j1), hn::Set(itag, 0xff))),
+                                         hn::Set(itag, 0xff))),
+                 x1, y1));
+    
+
+    auto t2 = hn::Set(vtag, 0.5f) - x2 * x2 - y2 * y2;
+    auto t2t2 = t2 * t2;
+    auto n2  = hn::IfNegativeThenElse(
+        t2, hn::Zero(vtag),
+        t2t2 * t2t2 *
+          grad(hn::GatherIndex(
+                 itag, perm.data(),
+                 hn::And(ti + hn::Set(itag, 1) +
+                           hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::Set(itag, 1), hn::Set(itag, 0xff))),
+                         hn::Set(itag, 0xff))),
+               x2, y2));
+
+    // Add contributions from each corner to get the final noise value.
+    // The result is scaled to return values in the interval [-1,1].
+    hn::Store(hn::Mul(hn::Set(vtag, 38.283687591552734375f), n0 + n1 + n2),
+              vtag, out_data + ii);
+  }
+}
+
+void openSimplex2(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
   const I_t itag{};
@@ -160,7 +264,8 @@ HWY_AFTER_NAMESPACE();
 namespace terra
 {
 HWY_EXPORT(simplex);
-HWY_EXPORT(openSimplex);
+HWY_EXPORT(openSimplex2);
+HWY_EXPORT(noise);
 void Noise_hwy()
 {
   // Common
@@ -170,12 +275,16 @@ void Noise_hwy()
 
   // openSimplex
   meta.icon    = "\xef\x87\xbe";
-  meta.fn      = HWY_DYNAMIC_DISPATCH(openSimplex);
+  meta.fn      = HWY_DYNAMIC_DISPATCH(openSimplex2);
   get().addMeta("@openSimplex", meta);
 
   meta.icon    = "\xef\x87\xbe";
   meta.fn      = HWY_DYNAMIC_DISPATCH(simplex);
   get().addMeta("@simplex", meta);
+
+  meta.icon = "\xef\x87\xbe";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(noise);
+  get().addMeta("@noise", meta);
 }
 
 } // namespace terra

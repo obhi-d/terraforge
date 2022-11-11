@@ -41,6 +41,15 @@ struct hwyvb
   hwyvb(uint32_t width, uint32_t height, uint32_t lanes) : x(width, height, lanes), y(width, height, lanes) {}
 };
 
+struct PermuatationConstants
+{
+  std::array<int32_t, 256>                      perm;
+  static std::array<std::array<int32_t, 4>, 64> simplexlut;
+  static std::array<std::array<float, 3>, 16>   grad3u;
+  static std::array<std::array<float, 3>, 16>   grad3v;
+  uint64_t                               seed;
+};
+
 class Pipeline_hwy : public Pipeline
 {
 
@@ -98,13 +107,19 @@ public:
     return threadDatas[t];
   }
 
+  PermuatationConstants const& getConstants() const
+  {
+    return constants;
+  }
+
 protected:
   void wait() final;
   void launch() final;
   void pushTileTask(EnvParams const&) final;
 
 private:
-  
+    
+  PermuatationConstants constants;
   WaitList waiters;
 
   // tiles are subdivided into NxN blocks of vectors (M lanes)

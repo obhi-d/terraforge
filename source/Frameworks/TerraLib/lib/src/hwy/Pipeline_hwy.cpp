@@ -7,6 +7,7 @@
 
 #include "Terra.h"
 #include "Logger.h"
+#include "wyrand.h"
 #include <hwy/highway.h>
 
 HWY_BEFORE_NAMESPACE();
@@ -15,6 +16,7 @@ namespace terra::HWY_NAMESPACE
 {
 namespace hn = hwy::HWY_NAMESPACE;
 using T      = float;
+
 
 uint32_t lanes()
 {
@@ -81,6 +83,52 @@ HWY_AFTER_NAMESPACE();
 
 namespace terra
 {
+
+std::array<std::array<int32_t, 4>, 64> PermuatationConstants::simplexlut = {
+  {{0, 1, 2, 3}, {0, 1, 3, 2}, {0, 0, 0, 0}, {0, 2, 3, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {1, 2, 3, 0},
+   {0, 2, 1, 3}, {0, 0, 0, 0}, {0, 3, 1, 2}, {0, 3, 2, 1}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {1, 3, 2, 0},
+   {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+   {1, 2, 0, 3}, {0, 0, 0, 0}, {1, 3, 0, 2}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {2, 3, 0, 1}, {2, 3, 1, 0},
+   {1, 0, 2, 3}, {1, 0, 3, 2}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {2, 0, 3, 1}, {0, 0, 0, 0}, {2, 1, 3, 0},
+   {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
+   {2, 0, 1, 3}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {3, 0, 1, 2}, {3, 0, 2, 1}, {0, 0, 0, 0}, {3, 1, 2, 0},
+   {2, 1, 0, 3}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {3, 1, 0, 2}, {0, 0, 0, 0}, {3, 2, 0, 1}, {3, 2, 1, 0}}};
+
+
+constexpr float                      sqrt2by3                      = 0.81649658f; // std ::sqrt(2.f) / std::sqrt(3.f);
+std::array<std::array<float, 3>, 16> PermuatationConstants::grad3u = {{{1.0f, 0.0f, 1.0f},
+                                                                       {0.0f, 1.0f, 1.0f}, // 12 cube edges
+                                                                       {-1.0f, 0.0f, 1.0f},
+                                                                       {0.0f, -1.0f, 1.0f},
+                                                                       {1.0f, 0.0f, -1.0f},
+                                                                       {0.0f, 1.0f, -1.0f},
+                                                                       {-1.0f, 0.0f, -1.0f},
+                                                                       {0.0f, -1.0f, -1.0f},
+                                                                       {sqrt2by3, sqrt2by3, sqrt2by3},
+                                                                       {-sqrt2by3, sqrt2by3, -sqrt2by3},
+                                                                       {-sqrt2by3, -sqrt2by3, sqrt2by3},
+                                                                       {sqrt2by3, -sqrt2by3, -sqrt2by3},
+                                                                       {-sqrt2by3, sqrt2by3, sqrt2by3},
+                                                                       {sqrt2by3, -sqrt2by3, sqrt2by3},
+                                                                       {sqrt2by3, -sqrt2by3, -sqrt2by3},
+                                                                       {-sqrt2by3, sqrt2by3, -sqrt2by3}}};
+
+std::array<std::array<float, 3>, 16> PermuatationConstants::grad3v = {{{-sqrt2by3, sqrt2by3, sqrt2by3},
+                                                                       {-sqrt2by3, -sqrt2by3, sqrt2by3},
+                                                                       {sqrt2by3, -sqrt2by3, sqrt2by3},
+                                                                       {sqrt2by3, sqrt2by3, sqrt2by3},
+                                                                       {-sqrt2by3, -sqrt2by3, -sqrt2by3},
+                                                                       {sqrt2by3, -sqrt2by3, -sqrt2by3},
+                                                                       {sqrt2by3, sqrt2by3, -sqrt2by3},
+                                                                       {-sqrt2by3, sqrt2by3, -sqrt2by3},
+                                                                       {1.0f, -1.0f, 0.0f},
+                                                                       {1.0f, 1.0f, 0.0f},
+                                                                       {-1.0f, 1.0f, 0.0f},
+                                                                       {-1.0f, -1.0f, 0.0f},
+                                                                       {1.0f, 0.0f, 1.0f},
+                                                                       {-1.0f, 0.0f, 1.0f}, // 4 repeats to make 16
+                                                                       {0.0f, 1.0f, -1.0f},
+                                                                       {0.0f, -1.0f, -1.0f}}};
 
 HWY_EXPORT(lanes);
 HWY_EXPORT(writeInputLine);
@@ -214,10 +262,16 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
       }
     }
   }
+  if (envParams.seed != (int)constants.seed)
+  {
+    constants.seed = (uint64_t)envParams.seed;
+    for (size_t i = 0; i < 256; ++i)
+      constants.perm[i] = (int32_t)wyrand(&constants.seed);
+  }
 }
 
 void Pipeline_hwy::launch()
-{
+{  
   get().pool().for_each(threadDatas.begin(), threadDatas.end(),
   [this](ThreadData& data)
   {

@@ -16,6 +16,18 @@ using M_t = hn::ScalableTag<uint32_t>;
 using V_t = hn::ScalableTag<float>;
 using I_t = hn::ScalableTag<int>;
 
+constexpr float F2 = 0.366025403f;
+constexpr float G2 = 0.211324865f;
+/* Skewing factors for 3D simplex grid:
+ * F3 = 1/3
+ * G3 = 1/6 */
+constexpr float F3 = 0.333333333f;
+constexpr float G3 = 0.166666667f;
+
+// The skewing and unskewing factors are hairy again for the 4D case
+constexpr float F4 = 0.309016994f; // F4 = (Math.sqrt(5.0)-1.0)/4.0
+constexpr float G4 = 0.138196601f; // G4 = (5.0-Math.sqrt(5.0))/20.0
+
 HWY_API auto int32v(int32_t i)
 {
   I_t const itag{};
@@ -818,6 +830,145 @@ HWY_API auto Distance(V dx, V dy)
     return hn::Max(dx, dy);
   else
     return hn::Sqrt(hn::MulAdd(dx, dx, hn::Mul(dy, dy)));
+}
+
+
+template <typename I, typename V>
+inline V grad(I hash, V x, V y)
+{
+  hn::DFromV<I> itag{};
+  hn::DFromV<V> vtag{};
+  const auto    one = hn::Set(itag, 1);
+  auto const    two = hn::Set(itag, 2);
+  auto const h = hn::And(hash, hn::Set(itag, 7));            // Convert low 3 bits of hash code
+  auto const u = hn::IfThenElse(hn::RebindMask(vtag, h < hn::Set(itag, 4)), x, y); // into 8 simple gradient directions,
+  auto const v = hn::IfThenElse(hn::RebindMask(vtag, h < hn::Set(itag, 4)), y, x);
+  return hn::IfThenElse(hn::RebindMask(vtag, hn::And(h, one) == one), hn::Neg(u), u) +
+         hn::IfThenElse(hn::RebindMask(vtag, hn::And(h, two) == two), hn::Set(vtag, -2.f) * v, hn::Set(vtag, 2.f) * v);
+}
+
+static inline constexpr std::array<float, 8> grad2lutX = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f};
+static inline constexpr std::array<float, 8> grad2lutY = {-1.0f, 0.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f};
+
+struct DerivNoise
+{
+  hn::Vec<V_t> h;
+  hn::Vec<V_t> dx;
+  hn::Vec<V_t> dy;
+};
+
+template <typename V, typename C, typename G>
+inline DerivNoise dnoise(V x, V y, C const& perm)
+{
+  I_t           itag{};
+  hn::DFromV<V> vtag{};
+
+  // float n0, n1, n2; // Noise contributions from the three corners
+
+  // Skew the input space to determine which simplex cell we're in
+  auto  s  = (x + y) * float32v(F2); // Hairy factor for 2D
+  auto xs = x + s;
+  auto ys = y + s;
+  auto  i  = hn::Floor(xs);
+  auto  j  = hn::Floor(ys);
+
+  auto t  = (i + j) * float32v(G2);
+  auto  X0 = i - t; // Unskew the cell origin back to (x,y) space
+  auto  Y0 = j - t;
+  auto  x0 = x - X0; // The x,y distances from the cell origin
+  auto  y0 = y - Y0;
+
+  auto i1 = hn::IfThenElse(x0 > y0, hn::Set(vtag, 1.0f), hn::Zero(vtag));
+  auto j1 = hn::IfThenElse(x0 > y0, hn::Zero(vtag), hn::Set(vtag, 1.0f));
+
+  // A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
+  // a step of (0,1) in (i,j) means a step of (-c,1-c) in (x,y), where
+  // c = (3-sqrt(3))/6
+
+  auto x1 = x0 - i1 + hn::Set(vtag, G2); // Offsets for middle corner in (x,y) unskewed coords
+  auto y1 = y0 - j1 + hn::Set(vtag, G2);
+  auto x2 = x0 - hn::Set(vtag, 1.0f) + hn::Set(vtag, 2.0f * G2); // Offsets for last corner in (x,y) unskewed coords
+  auto y2 = y0 - hn::Set(vtag, 1.0f) + hn::Set(vtag, 2.0f * G2);
+  auto ti = hn::ConvertTo(itag, i);
+  auto tj = hn::ConvertTo(itag, j);
+
+  // float gx0, gy0, gx1, gy1, gx2, gy2; /* Gradients at simplex corners */
+  // float t20, t40;
+
+  /* Calculate the contribution from the three corners */
+  auto t0  = float32v(0.5f) - x0 * x0 - y0 * y0;
+  auto idx = hn::And(hn::GatherIndex(itag, perm.data(),
+                                     hn::And(ti + hn::GatherIndex(itag, perm.data(), hn::And(tj, hn::Set(itag, 0xff))),
+                                             hn::Set(itag, 0xff))),
+                     hn::Set(itag, 7));
+
+  auto gx0 = hn::IfNegativeThenElse(t0, float32v(0.f), hn::GatherIndex(vtag, grad2lutX.data(), idx));
+  auto gy0 = hn::IfNegativeThenElse(t0, float32v(0.f), hn::GatherIndex(vtag, grad2lutY.data(), idx));
+  auto t20 = hn::IfNegativeThenElse(t0, float32v(0.f), t0 * t0);
+  auto t40 = t20 * t20;
+  auto n0  = t40 * (gx0 * x0 + gy0 * y0);
+
+  auto t1  = float32v(0.5f) - x1 * x1 - y1 * y1;
+  idx      = hn::And(hn::GatherIndex(itag, perm.data(),
+                                     hn::And(ti + hn::ConvertTo(itag, i1) +
+                                               hn::GatherIndex(itag, perm.data(),
+                                                               hn::And(tj + hn::ConvertTo(itag, j1), hn::Set(itag, 0xff))),
+                                             hn::Set(itag, 0xff))),
+                     hn::Set(itag, 7));
+  auto gx1 = hn::IfNegativeThenElse(t1, float32v(0.f), hn::GatherIndex(vtag, grad2lutX.data(), idx));
+  auto gy1 = hn::IfNegativeThenElse(t1, float32v(0.f), hn::GatherIndex(vtag, grad2lutY.data(), idx));
+  auto t21 = hn::IfNegativeThenElse(t1, float32v(0.f), t1 * t1);
+  auto t41 = t21 * t21;
+  auto n1  = t41 * (gx1 * x1 + gy1 * y1);
+
+  auto t2 = float32v(0.5f) - x2 * x2 - y2 * y2;
+  idx     = hn::And(
+        hn::GatherIndex(itag, perm.data(),
+                        hn::And(ti + hn::Set(itag, 1) +
+                                  hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::Set(itag, 1), hn::Set(itag, 0xff))),
+                                hn::Set(itag, 0xff))),
+        hn::Set(itag, 7));
+  auto gx2 = hn::IfNegativeThenElse(t2, float32v(0.f), hn::GatherIndex(vtag, grad2lutX.data(), idx));
+  auto gy2 = hn::IfNegativeThenElse(t2, float32v(0.f), hn::GatherIndex(vtag, grad2lutY.data(), idx));
+  auto t22 = hn::IfNegativeThenElse(t2, float32v(0.f), t2 * t2);
+  auto t42 = t22 * t22;
+  auto n2  = t42 * (gx2 * x2 + gy2 * y2);
+
+  /* Compute derivative, if requested by supplying non-null pointers
+   * for the last two arguments */
+  /*  A straight, unoptimised calculation would be like:
+   *    *dnoise_dx = -8.0f * t20 * t0 * x0 * ( gx0 * x0 + gy0 * y0 ) + t40 * gx0;
+   *    *dnoise_dy = -8.0f * t20 * t0 * y0 * ( gx0 * x0 + gy0 * y0 ) + t40 * gy0;
+   *    *dnoise_dx += -8.0f * t21 * t1 * x1 * ( gx1 * x1 + gy1 * y1 ) + t41 * gx1;
+   *    *dnoise_dy += -8.0f * t21 * t1 * y1 * ( gx1 * x1 + gy1 * y1 ) + t41 * gy1;
+   *    *dnoise_dx += -8.0f * t22 * t2 * x2 * ( gx2 * x2 + gy2 * y2 ) + t42 * gx2;
+   *    *dnoise_dy += -8.0f * t22 * t2 * y2 * ( gx2 * x2 + gy2 * y2 ) + t42 * gy2;
+   */
+  auto temp0     = t20 * t0 * (gx0 * x0 + gy0 * y0);
+  auto  dnoise_dx = temp0 * x0;
+  auto  dnoise_dy = temp0 * y0;
+  auto  temp1     = t21 * t1 * (gx1 * x1 + gy1 * y1);
+  dnoise_dx += temp1 * x1;
+  dnoise_dy += temp1 * y1;
+  auto temp2 = t22 * t2 * (gx2 * x2 + gy2 * y2);
+  dnoise_dx += temp2 * x2;
+  dnoise_dy += temp2 * y2;
+  dnoise_dx *= -8.0f;
+  dnoise_dy *= -8.0f;
+  dnoise_dx += t40 * gx0 + t41 * gx1 + t42 * gx2;
+  dnoise_dy += t40 * gy0 + t41 * gy1 + t42 * gy2;
+  
+  // Add contributions from each corner to get the final noise value.
+  // The result is scaled to return values in the interval [-1,1].
+#ifdef SIMPLEX_DERIVATIVES_RESCALE
+  dnoise_dx *= 70.175438596f; /* Scale derivative to match the noise scaling */
+  dnoise_dy *= 70.175438596f;
+  return DerivNoise(70.175438596f * (n0 + n1 + n2), dnoise_dx, dnoise_dy); // TODO: The scale factor is preliminary!
+#else
+  dnoise_dx *= 40.0f; /* Scale derivative to match the noise scaling */
+  dnoise_dy *= 40.0f;
+  return DerivNoise(40.0f * (n0 + n1 + n2), dnoise_dx, dnoise_dy); // TODO: The scale factor is preliminary!
+#endif
 }
 
 } // namespace terra::HWY_NAMESPACE
