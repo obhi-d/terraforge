@@ -5,11 +5,13 @@
 #include "Dependency.h"
 #include "RenderResource.h"
 #include "Serializer.h"
+#include <unordered_set>
 
 namespace terra
 {
 class Node;
 class Pipeline;
+using SourceSet = std::unordered_set<dshandle>;
 class DataSource : public Dependency
 {
 public:
@@ -77,8 +79,24 @@ public:
   {
     return version;
   }
+
+  void getSources(SourceSet& set) const
+  {
+    if (set.contains(self))
+      return;
+    set.emplace(self);
+    getSourcesImpl(set);
+  }
     
   virtual HelpInfo getHelpInfo(HelpType, int param = -1) const = 0;
+
+  virtual void prepareGeneration(Pipeline&) {}
+  virtual void beginIteration(Pipeline&) {}
+  virtual void endIteration(Pipeline&) {}
+
+  static void prepareGeneration(dshandle, Pipeline&);
+  static void beginIteration(dshandle, Pipeline&);
+  static void endIteration(dshandle, Pipeline&);
 
   void propagate(Event);
   void onParamChange(dshandle oldValue, dshandle newValue);
@@ -103,6 +121,7 @@ public:
   }
 
 protected:
+  virtual void        getSourcesImpl(SourceSet&) const = 0;
   inline virtual bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
   {
     return true;

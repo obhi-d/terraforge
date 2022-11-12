@@ -8,7 +8,7 @@ namespace terra
 class Node : public DataSource
 {
 public:
-
+    
   acl::dynamic_array<Parameter> parameters;
 
   std::u8string   name;
@@ -56,8 +56,13 @@ public:
 
   virtual DataFormat getFormat() const
   {
-    return DataFormat(DataType::eBuffer);
+    return meta.format;
   }
+
+  void getSourcesImpl(SourceSet&) const final;
+  void prepareGeneration(Pipeline&) final;
+  void beginIteration(Pipeline&) final;
+  void endIteration(Pipeline&) final;
 
   void accept(dshandle source, Event) override;
   HelpInfo getHelpInfo(HelpType type, int param = -1) const final;

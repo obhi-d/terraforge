@@ -11,9 +11,18 @@ class NodeMeta_hwy : public NodeMeta
 {
 public:
   using Fn = void (*)(Node& node, Pipeline_hwy&, uint32_t thread);
+  using Pfn = void (*)(Node& node, Pipeline_hwy&);
 
+  Pfn prepare = nullptr;
+  Pfn beginIt   = nullptr;
+  Pfn endIt    = nullptr;
   Fn fn = nullptr;
-    
+
+  void prepareGeneration(Node&, Pipeline&) const final;
+  void beginIteration(Node&, Pipeline&) const final;
+  void endIteration(Node&, Pipeline&) const final;
+
+  static void domain(Parameter const& param, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
   static void run(dshandle, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
   static void end(dshandle, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
   static void fill(float, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);

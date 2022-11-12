@@ -61,4 +61,25 @@ void DataSource::accept(dshandle source, Event ev)
     version++;
 }
 
+void DataSource::prepareGeneration(dshandle ds, Pipeline& pipe) 
+{
+  auto p = get().getIf<DataSource>(ds);
+  if (p)
+    p->prepareGeneration(pipe);
+}
+
+void DataSource::beginIteration(dshandle ds, Pipeline& pipe)
+{
+  auto p = get().getIf<DataSource>(ds);
+  if (p)
+    p->beginIteration(pipe);
+}
+
+void DataSource::endIteration(dshandle ds, Pipeline& pipe)
+{
+  auto p = get().getIf<DataSource>(ds);
+  if (p)
+    p->endIteration(pipe);
+}
+
 }

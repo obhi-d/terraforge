@@ -120,6 +120,7 @@ struct CurveData : public DataSource
 
   inline void accept(dshandle source, Event) final {}
 
+  void getSourcesImpl(SourceSet& s) const final {}
   bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
   void toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
   HelpInfo getHelpInfo(HelpType, int param = -1) const final;

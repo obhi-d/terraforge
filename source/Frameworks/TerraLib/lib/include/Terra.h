@@ -52,6 +52,19 @@ public:
            get<DataSource>(at).getSelf() == DataSource::handle(at.reserved);
   }
 
+  template <typename As>
+  inline As* getIf(dshandle at) const
+  {
+    if (at && dataSources.contains(at))
+    {
+      auto& ptr = dataSources.at(at);
+      if (ptr && ptr->getSelf() == at)
+        return static_cast<As*>(ptr.get());
+        
+    }
+    return nullptr;
+  }
+
   inline void destroy(dshandle n)
   {
     dataSources.erase(n);

@@ -1,6 +1,7 @@
 
 #pragma once
 #include "Common.h"
+#include <acl/sparse_vector.hpp>
 #include <hwy/aligned_allocator.h>
 
 namespace terra
@@ -56,6 +57,11 @@ public:
     return *this;
   }
 
+  void swap_data(Buffer_hwy& other)
+  {
+    std::swap(data_, other.data_);
+  }
+
   T* data()
   {
     if (!data_)
@@ -89,7 +95,7 @@ public:
       data_[i] = (float)std::rand() / (float)RAND_MAX;
   }
 
-  void fill(float value) 
+  void fill(float value)
   {
     std::fill(data(), data() + size_, value);
   }
@@ -121,4 +127,49 @@ private:
   uint32_t height_ = 0;
   uint32_t lanes_  = 0;
 };
+
+struct traits
+{
+  using size_type                              = std::uint32_t;
+  static constexpr std::uint32_t pool_size     = 8;
+  static constexpr std::uint32_t idx_pool_size = 8;
+  static constexpr bool          assume_pod_v  = false;
+  // null
+  // static constexpr T null_v = {};
+  // using offset
+  // using offset = acl::offset<&selfref::self>;
+};
+
+using hwybuffer      = Buffer_hwy<float>;
+using hwybuffer_list = acl::sparse_vector<hwybuffer, acl::default_allocator<>, traits>;
+
+template <typename T>
+struct VBuffer_hwy
+{
+  Buffer_hwy<T> x;
+  Buffer_hwy<T> y;
+
+  auto pitch() const
+  {
+    return x.pitch();
+  }
+
+  VBuffer_hwy(VBuffer_hwy&&) noexcept            = default;
+  VBuffer_hwy& operator=(VBuffer_hwy&&) noexcept = default;
+
+  VBuffer_hwy(VBuffer_hwy const& other) noexcept : x(other.x), y(other.y) {}
+  VBuffer_hwy& operator=(VBuffer_hwy const& other) noexcept
+  {
+    x = other.x;
+    y = other.y;
+    return *this;
+  }
+
+  constexpr VBuffer_hwy() = default;
+  VBuffer_hwy(uint32_t width, uint32_t height, uint32_t lanes) : x(width, height, lanes), y(width, height, lanes) {}
+};
+
+using hwyvb      = VBuffer_hwy<float>;
+using hwyvb_list = acl::sparse_vector<hwyvb, acl::default_allocator<>, traits>;
+
 } // namespace terra

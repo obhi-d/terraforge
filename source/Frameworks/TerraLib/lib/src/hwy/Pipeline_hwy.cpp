@@ -5,8 +5,8 @@
 #include "hwy/NodeMeta_hwy.h"
 #include "hwy/Pipeline_hwy.h"
 
-#include "Terra.h"
 #include "Logger.h"
+#include "Terra.h"
 #include "wyrand.h"
 #include <hwy/highway.h>
 
@@ -17,7 +17,6 @@ namespace terra::HWY_NAMESPACE
 namespace hn = hwy::HWY_NAMESPACE;
 using T      = float;
 
-
 uint32_t lanes()
 {
   const hn::ScalableTag<T> d;
@@ -27,10 +26,10 @@ uint32_t lanes()
 void writeInputLine(float freq, uint32_t startx, uint32_t liney, uint32_t pitch, float* x, float* y)
 {
   const hn::ScalableTag<T> d;
-  auto                     line = hn::Iota(d, (float)startx);
+  auto                     line  = hn::Iota(d, (float)startx);
   auto const               lanes = (uint32_t)hn::Lanes(d);
   auto const               vfreq = hn::Set(d, freq);
-  auto const               vy = hn::Set(d, freq * float(liney));
+  auto const               vy    = hn::Set(d, freq * float(liney));
   for (uint32_t i = 0; i < pitch; i += lanes)
   {
     hn::Store(hn::Mul(line, vfreq), d, x + i);
@@ -57,8 +56,8 @@ vec2 getMinMax(float const* input, uint32_t pitch, uint32_t width, uint32_t heig
       if (i + lanes <= width)
       {
         auto v = hn::Load(d, line + i);
-        max = hn::Max(v, max);
-        min = hn::Min(v, min);
+        max    = hn::Max(v, max);
+        min    = hn::Min(v, min);
       }
       else
       {
@@ -93,7 +92,6 @@ std::array<std::array<int32_t, 4>, 64> PermuatationConstants::simplexlut = {
    {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0},
    {2, 0, 1, 3}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {3, 0, 1, 2}, {3, 0, 2, 1}, {0, 0, 0, 0}, {3, 1, 2, 0},
    {2, 1, 0, 3}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {3, 1, 0, 2}, {0, 0, 0, 0}, {3, 2, 0, 1}, {3, 2, 1, 0}}};
-
 
 constexpr float                      sqrt2by3                      = 0.81649658f; // std ::sqrt(2.f) / std::sqrt(3.f);
 std::array<std::array<float, 3>, 16> PermuatationConstants::grad3u = {{{1.0f, 0.0f, 1.0f},
@@ -161,7 +159,6 @@ void Pipeline_hwy::popOutput(uint32_t thread)
   threadData.outputs.pop_back();
 }
 
-
 hwyvb& Pipeline_hwy::getInput(uint32_t thread, uint32_t lanes, bool populated)
 {
   auto& threadData = threadDatas[thread];
@@ -177,15 +174,14 @@ hwyvb& Pipeline_hwy::pushInput(uint32_t thread, uint32_t lanes, bool populated)
   threadData.inputs.emplace_back(threadData.width, threadData.height, lanes);
   if (populated)
   {
-    auto& inp = threadData.inputs.back();
-    auto  x   = inp.x.data();
-    auto  y   = inp.y.data();
+    auto& inp    = threadData.inputs.back();
+    auto  x      = inp.x.data();
+    auto  y      = inp.y.data();
     auto  xstart = threadData.params.startxy[0] - 1;
     auto  ystart = threadData.params.startxy[1] - 1;
     for (int i = 0; i < threadData.height; ++i)
     {
-      HWY_DYNAMIC_DISPATCH(writeInputLine)(frequency(), xstart,
-         ystart + i, inp.pitch(), x, y);
+      HWY_DYNAMIC_DISPATCH(writeInputLine)(frequency(), xstart, ystart + i, inp.pitch(), x, y);
       x += inp.pitch();
       y += inp.pitch();
     }
@@ -206,11 +202,11 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
   if constexpr (SingleThreaded)
   {
     threadDatas.emplace_back();
-    auto& threadData  = threadDatas.back();
-    threadData.params = envParams;
-    threadData.width  = threadData.params.tileRegion.size[0] + 2;
-    threadData.height = threadData.params.tileRegion.size[1] + 2;
-    threadData.thread = (uint32_t)threadDatas.size() - 1;
+    auto& threadData           = threadDatas.back();
+    threadData.params          = envParams;
+    threadData.width           = threadData.params.tileRegion.size[0] + 2;
+    threadData.height          = threadData.params.tileRegion.size[1] + 2;
+    threadData.thread          = (uint32_t)threadDatas.size() - 1;
     threadData.uv.recipSize[0] = 1.f / (envParams.frequency * (float)envParams.tileSize[0]);
     threadData.uv.recipSize[1] = 1.f / (envParams.frequency * (float)envParams.tileSize[1]);
     threadData.uv.offset[0]    = envParams.startxy[0] * envParams.frequency;
@@ -271,17 +267,29 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 }
 
 void Pipeline_hwy::launch()
-{  
-  get().pool().for_each(threadDatas.begin(), threadDatas.end(),
-  [this](ThreadData& data)
-  {
-    NodeMeta_hwy::run(getActor(), *this, data.thread, lanes());
-    if (!data.outputs.empty())
+{
+  if (threadDatas.empty())
+    return;
+  if (iteration == 0)
+    DataSource::prepareGeneration(getActor(), *this);
+  DataSource::beginIteration(getActor(), *this);
+  get().pool().for_each(
+    threadDatas.begin(), threadDatas.end(),
+    [this](ThreadData& data)
     {
-      auto& back = data.outputs.back();
-      data.minMax = HWY_DYNAMIC_DISPATCH(getMinMax)(back.data(), back.pitch(), back.width(), back.height());
-    }
-  }, waiters);
+      NodeMeta_hwy::run(getActor(), *this, data.thread, lanes());
+      if (!data.outputs.empty())
+      {
+        auto& back  = data.outputs.back();
+        data.minMax = HWY_DYNAMIC_DISPATCH(getMinMax)(back.data(), back.pitch(), back.width(), back.height());
+      }
+    },
+    waiters);
+  DataSource::endIteration(getActor(), *this);
+  if (reissued)
+    iteration++;
+  for (auto& td : threadDatas)
+    td.params.iteration = iteration;
 }
 
 std::size_t Pipeline_hwy::hasResults()
@@ -296,18 +304,18 @@ std::size_t Pipeline_hwy::hasResults()
 
 void Pipeline_hwy::getResults(float* ready, uint32_t size, float& min, float& max)
 {
-  min = std::numeric_limits<float>::max();
-  max = std::numeric_limits<float>::min();
-  auto const& ls    = launchSize();
-  auto const& lo    = launchOffset();
+  min            = std::numeric_limits<float>::max();
+  max            = std::numeric_limits<float>::min();
+  auto const& ls = launchSize();
+  auto const& lo = launchOffset();
   // auto        ready = std::unique_ptr<float[]>(new float[ls[0] * ls[1]]);
   for (auto& td : threadDatas)
   {
     if (!td.outputs.empty())
     {
-      uint32 x = td.params.region.offset[0];
-      uint32 y = td.params.region.offset[1];
-      auto& back = td.outputs.back();
+      uint32 x    = td.params.region.offset[0];
+      uint32 y    = td.params.region.offset[1];
+      auto&  back = td.outputs.back();
       for (uint32 i = 1; i < back.height() - 1; ++i, ++y)
       {
         auto offset = ready + (y * ls[0]) + x;
@@ -326,9 +334,7 @@ void Pipeline_hwy::getResults(float* ready, uint32_t size, float& min, float& ma
     launch();
 }
 
-void Pipeline_hwy::wait()
-{
-}
+void Pipeline_hwy::wait() {}
 
 } // namespace terra
 #endif

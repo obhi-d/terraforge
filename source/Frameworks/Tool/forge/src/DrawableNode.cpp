@@ -39,7 +39,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
       auto&       p = parameters[i];
       auto const& d = meta.parameterDef[i];
       p.id          = pack(id.um_index(), i + 1);
-      if (d.format.type == DataType::eBuffer || d.format.type == DataType::eImage ||
+      if (d.format.type == DataType::eInput || d.format.type == DataType::eBuffer || d.format.type == DataType::eImage ||
           d.format.type == DataType::eCurveData)
       {
         p.flags = PinStateFlags::fInputPin;
@@ -73,6 +73,9 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
     break;
   case DataType::eImage:
     icon = IconType::Circle;
+    break;
+  case DataType::eInput:
+    icon = IconType::Flow;
     break;
   case DataType::eBuffer:
     icon = IconType::Diamond;
@@ -212,6 +215,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     ImGui::SameLine();
     ImGui::TextUnformatted(def.displayInfo.getName());
     break;
+  case DataType::eInput:
   case DataType::eBuffer:
     if (std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source))
     {

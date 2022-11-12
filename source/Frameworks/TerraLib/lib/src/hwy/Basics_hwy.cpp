@@ -25,13 +25,15 @@ void checkerBoard(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   const I_t  itag{};
   const auto lanes = (uint32)hn::Lanes(vtag);
 
+  modifyDomain(node, pipe, threadGroupId);
+
   auto& out = pipe.getOutput(threadGroupId, lanes);
   auto& inp = pipe.getInput(threadGroupId, lanes, true);
 
   auto out_data   = out.data();
   auto inp_x_data = inp.x.data();
   auto inp_y_data = inp.y.data();
-  auto multiplier = hn::Set(vtag, std::get<ScalarValue>(node.param(0)).value);
+  auto multiplier = hn::Set(vtag, std::get<ScalarValue>(node.param(1)).value);
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
   {
     const auto x = hn::Load(vtag, inp_x_data + ii);
@@ -41,6 +43,7 @@ void checkerBoard(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 
     hn::Store(float32v(1.0f) * FS_Casti32_f32(hn::ShiftLeft<31>(value)), vtag, out_data + ii);
   }
+  finish(node, pipe, threadGroupId);
 }
 
 void curve(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
@@ -48,22 +51,23 @@ void curve(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   const V_t  vtag{};
   const I_t  itag{};
   const auto lanes = (uint32)hn::Lanes(vtag);
+  modifyDomain(node, pipe, threadGroupId);
 
   auto& out = pipe.getOutput(threadGroupId, lanes);
   auto& inp = pipe.getInput(threadGroupId, lanes, true);
 
   auto         out_data = out.data();
   const float* xy[2]    = {inp.x.data(), inp.y.data()};
-  auto const&  param    = node.param(0);
+  auto const&  param    = node.param(1);
   // if we dont have a curve, we just fill with the constant
 
   if (std::holds_alternative<Source>(param))
   {
     auto const& td     = pipe.getThreadData(threadGroupId);
     auto&       cd     = get().get<CurveData>(std::get<Source>(param).source);
-    bool        allowX = std::get<ScalarValue>(node.param(1)).bvalue;
-    bool        allowY = std::get<ScalarValue>(node.param(2)).bvalue;
-    auto const& str    = std::get<ScalarValue>(node.param(3)).value2;
+    bool        allowX = std::get<ScalarValue>(node.param(2)).bvalue;
+    bool        allowY = std::get<ScalarValue>(node.param(3)).bvalue;
+    auto const& str    = std::get<ScalarValue>(node.param(4)).value2;
 
     auto doIt = [&]<bool applyX, bool applyY>(std::bool_constant<applyX>, std::bool_constant<applyY>)
     {
@@ -110,6 +114,7 @@ void curve(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   }
   else
     out.fill(0.f);
+  finish(node, pipe, threadGroupId);
 }
 
 void imageMask(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
@@ -117,22 +122,23 @@ void imageMask(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   const V_t  vtag{};
   const I_t  itag{};
   const auto lanes = (uint32)hn::Lanes(vtag);
+  modifyDomain(node, pipe, threadGroupId);
 
   auto& out = pipe.getOutput(threadGroupId, lanes);
   auto& inp = pipe.getInput(threadGroupId, lanes, true);
 
   auto         out_data = out.data();
   const float* xy[2]    = {inp.x.data(), inp.y.data()};
-  auto const&  param    = node.param(0);
+  auto const&  param    = node.param(1);
   // if we dont have a curve, we just fill with the constant
 
   if (std::holds_alternative<Source>(param))
   {
     auto const& td       = pipe.getThreadData(threadGroupId);
     auto&       cd       = get().get<Image>(std::get<Source>(param).source);
-    int         sampling = std::get<ScalarValue>(node.param(1)).ivalue;
-    auto        offset   = std::get<ScalarValue>(node.param(2)).value2;
-    auto        scale    = std::get<ScalarValue>(node.param(3)).value2;
+    int         sampling = std::get<ScalarValue>(node.param(2)).ivalue;
+    auto        offset   = std::get<ScalarValue>(node.param(3)).value2;
+    auto        scale    = std::get<ScalarValue>(node.param(4)).value2;
     auto        xoffset  = hn::Set(vtag, td.uv.offset[0]);
     auto        xrsize   = hn::Set(vtag, td.uv.recipSize[0]);
     auto        yoffset  = hn::Set(vtag, td.uv.offset[1]);
@@ -183,6 +189,7 @@ void imageMask(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   }
   else
     out.fill(0.f);
+  finish(node, pipe, threadGroupId);
 }
 
 void sin(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
@@ -190,14 +197,15 @@ void sin(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   const V_t  vtag{};
   const I_t  itag{};
   const auto lanes = (uint32)hn::Lanes(vtag);
+  modifyDomain(node, pipe, threadGroupId);
 
   auto& out = pipe.getOutput(threadGroupId, lanes);
   auto& inp = pipe.getInput(threadGroupId, lanes, true);
 
   auto out_data = out.data();
 
-  auto const& amplitude  = std::get<ScalarValue>(node.param(0));
-  auto const& phase      = std::get<ScalarValue>(node.param(1));
+  auto const& amplitude  = std::get<ScalarValue>(node.param(1));
+  auto const& phase      = std::get<ScalarValue>(node.param(2));
   auto        ampX       = hn::Set(vtag, amplitude.value2[0]);
   auto        ampY       = hn::Set(vtag, amplitude.value2[1]);
   auto        phaseX     = hn::Set(vtag, phase.value2[0]);
@@ -212,6 +220,7 @@ void sin(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
       hn::Add(hn::Mul(ampX, hn::Sin(vtag, hn::Add(x, phaseX))), hn::Mul(ampY, hn::Sin(vtag, hn::Add(y, phaseY))));
     hn::Store(store, vtag, out_data + ii);
   }
+  finish(node, pipe, threadGroupId);
 }
 
 void distance(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
@@ -219,18 +228,18 @@ void distance(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   const V_t  vtag{};
   const I_t  itag{};
   const auto lanes = (uint32)hn::Lanes(vtag);
+  modifyDomain(node, pipe, threadGroupId);
 
   auto& inp = pipe.getInput(threadGroupId, lanes, true);
 
   auto& out_x = pipe.getOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_y = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto        out_x_data = out_x.data();
   auto        out_y_data = out_y.data();
-  auto const& from       = std::get<ScalarValue>(node.param(0));
   auto        inp_x_data = inp.x.data();
   auto        inp_y_data = inp.y.data();
   auto const& td         = pipe.getThreadData(threadGroupId);
@@ -280,6 +289,7 @@ void distance(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   else
     disp(std::bool_constant<false>());
   pipe.popOutput(threadGroupId);
+  finish(node, pipe, threadGroupId);
 }
 
 } // namespace terra::HWY_NAMESPACE
@@ -306,14 +316,14 @@ void Basics_hwy()
   meta.icon = "\xef\x87\xbe";
   meta.fn   = HWY_DYNAMIC_DISPATCH(checkerBoard);
   get().addMeta("@checkerBoard", meta);
-  meta.parameterDef.clear();
+  meta.parameterDef.resize(1);
 
   meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(), "@amplitude");
   meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, -consts::pi, consts::pi), "@phase");
   meta.icon = "\xef\x87\xbe";
   meta.fn   = HWY_DYNAMIC_DISPATCH(sin);
   get().addMeta("@sin", meta);
-  meta.parameterDef.clear();
+  meta.parameterDef.resize(1);
 
   meta.parameterDef.emplace_back(
     FmtVal<DataType::eBuffer>(0.0f, std::numeric_limits<float>::min(), std::numeric_limits<float>::max()), "@fromX");
@@ -327,7 +337,7 @@ void Basics_hwy()
   meta.fn                    = HWY_DYNAMIC_DISPATCH(distance);
   meta.attribTileConstrained = true;
   get().addMeta("@distance", meta);
-  meta.parameterDef.clear();
+  meta.parameterDef.resize(1);
 
   meta.parameterDef.emplace_back(FmtVal<DataType::eImage>(), "@mask");
   meta.parameterDef.emplace_back(FmtEnum(0, {"@x1"_ls, "@x2"_ls, "@x3"_ls, "@x4"_ls}), "@sampling");
@@ -337,7 +347,8 @@ void Basics_hwy()
   meta.fn                    = HWY_DYNAMIC_DISPATCH(imageMask);
   meta.attribTileConstrained = true;
   get().addMeta("@imageMask", meta);
-  meta.parameterDef.clear();
+  meta.parameterDef.resize(1);
+
   meta.attribTileConstrained = false;
 
   meta.parameterDef.emplace_back(FmtVal<DataType::eCurveData>(), "@curve");
@@ -348,7 +359,7 @@ void Basics_hwy()
   meta.fn                    = HWY_DYNAMIC_DISPATCH(curve);
   meta.attribTileConstrained = true;
   get().addMeta("@curve", meta);
-  meta.parameterDef.clear();
+  meta.parameterDef.resize(1);
   meta.attribTileConstrained = false;
 }
 

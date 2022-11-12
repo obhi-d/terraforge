@@ -9,6 +9,7 @@
 
 #include "hwy/NodeMeta_hwy.h"
 #include "hwy/Pipeline_hwy.h"
+#include "hwy/Utility_hwy.h"
 
 #include <hwy/contrib/math/math-inl.h>
 #include <hwy/highway.h>
@@ -24,13 +25,14 @@ void add(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -42,6 +44,7 @@ void add(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
 }
 
@@ -49,13 +52,14 @@ void sub(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -67,6 +71,7 @@ void sub(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
 }
 
@@ -74,13 +79,14 @@ void mul(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -92,6 +98,7 @@ void mul(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
 }
 
@@ -99,13 +106,14 @@ void div(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
-  
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -117,6 +125,7 @@ void div(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
 }
 
@@ -124,13 +133,14 @@ void min(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
 
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -142,6 +152,7 @@ void min(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
 }
 
@@ -149,13 +160,14 @@ void max(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
 
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -167,6 +179,7 @@ void max(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
 }
 
@@ -174,15 +187,16 @@ void minSmooth(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
 
   auto const oneSixth = hn::Set(d, 1.f / 6.f);
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
-  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
   NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
+  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(3), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -193,11 +207,12 @@ void minSmooth(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     const auto b = hn::Load(d, out_b_data + i);
     const auto c = hn::Load(d, out_c_data + i);
     const auto h = hn::Max(c - hn::Abs(a - b), hn::Zero(d)) * hn::ApproximateReciprocal(c);
-    
+
     auto const r = hn::NegMulAdd(oneSixth, h * h * h * c, hn::Min(a, b));
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
   pipe.popOutput(threadGroupId);
 }
@@ -206,15 +221,16 @@ void maxSmooth(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
 
   auto const oneSixth = hn::Set(d, 1.f / 6.f);
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
-  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
   NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
+  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(3), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -230,6 +246,7 @@ void maxSmooth(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
   pipe.popOutput(threadGroupId);
 }
@@ -238,14 +255,15 @@ void madd(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
 
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
-  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
   NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
+  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(3), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -259,6 +277,7 @@ void madd(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
   pipe.popOutput(threadGroupId);
 }
@@ -267,13 +286,14 @@ void pow(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
 
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -285,6 +305,7 @@ void pow(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
 }
 
@@ -292,15 +313,16 @@ void blend(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
 
   auto const oneSixth = hn::Set(d, 1.f / 6.f);
-  NodeMeta_hwy::write(node.param(0), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
-  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
   NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
+  auto& out_c = pipe.pushOutput(threadGroupId, lanes);
+  NodeMeta_hwy::write(node.param(3), pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -310,11 +332,12 @@ void blend(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     const auto a = hn::Load(d, out_a_data + i);
     const auto b = hn::Load(d, out_b_data + i);
     const auto c = hn::Load(d, out_c_data + i);
-    
+
     auto const r = hn::MulAdd(a, hn::Set(d, 1.f) - c, b * c);
     hn::Store(r, d, out_a_data + i);
   }
 
+  finish(node, pipe, threadGroupId);
   pipe.popOutput(threadGroupId);
   pipe.popOutput(threadGroupId);
 }
@@ -350,28 +373,28 @@ void Operators_hwy()
   meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpB");
 
   // Add
-  meta.icon    = "\xef\x81\x95";
-  meta.fn      = HWY_DYNAMIC_DISPATCH(add);
+  meta.icon = "\xef\x81\x95";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(add);
   get().addMeta("@add", meta);
 
   // Sub
-  meta.icon     = "\xef\x81\x96";
-  meta.fn       = HWY_DYNAMIC_DISPATCH(sub);
+  meta.icon = "\xef\x81\x96";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(sub);
   get().addMeta("@sub", meta);
 
   // Mul
-  meta.icon     = "\xef\x81\x97";
-  meta.fn       = HWY_DYNAMIC_DISPATCH(mul);
+  meta.icon = "\xef\x81\x97";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(mul);
   get().addMeta("@mul", meta);
 
   // Divide
-  meta.icon     = "\xef\x94\xa9";
-  meta.fn       = HWY_DYNAMIC_DISPATCH(div);
+  meta.icon = "\xef\x94\xa9";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(div);
   get().addMeta("@div", meta);
 
   // Pow
-  meta.icon     = "\xef\x84\xab";
-  meta.fn       = HWY_DYNAMIC_DISPATCH(pow);
+  meta.icon = "\xef\x84\xab";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(pow);
   get().addMeta("@pow", meta);
 
   // Min
@@ -385,7 +408,8 @@ void Operators_hwy()
   get().addMeta("@min", meta);
 
   // Tartiary
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(.1f, std::numeric_limits<float>::epsilon(), 1.f), "@Smoothing");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(.1f, std::numeric_limits<float>::epsilon(), 1.f),
+                                 "@Smoothing");
 
   // MinSmooth
   meta.icon = "\xef\x84\xab";
@@ -402,8 +426,8 @@ void Operators_hwy()
   meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpC");
 
   // MAdd
-  meta.icon     = "\xef\x81\x97";
-  meta.fn       = HWY_DYNAMIC_DISPATCH(madd);
+  meta.icon = "\xef\x81\x97";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(madd);
   get().addMeta("@madd", meta);
 
   meta.parameterDef.pop_back();

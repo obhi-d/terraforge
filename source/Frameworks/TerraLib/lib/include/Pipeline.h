@@ -52,7 +52,6 @@ public:
     return launchParams.seed;
   }
 
-protected:
   dshandle getActor() const
   {
     return actor;
@@ -73,20 +72,34 @@ protected:
     return start;
   }
 
+  bool isActor(dshandle h) const
+  {
+    return h == actor;
+  }
+
+protected:
+  
   dshandle updateActor() 
   {
     if (reissued)
+    {
       actor = reissued;
+      reissued = {};
+    }
     else
       actor = {}; 
     return actor;
+  }
+
+  bool isPrimary(dshandle h) const
+  {
+    return actor == h;
   }
 
   virtual void wait()                         = 0;
   virtual void launch()                       = 0;
   virtual void pushTileTask(EnvParams const&) = 0;
 
-private:
   // main actor
   dshandle     actor;
   dshandle     reissued;

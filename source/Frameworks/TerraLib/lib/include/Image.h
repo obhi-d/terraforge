@@ -136,50 +136,11 @@ struct Image : public DataSource
   bool     fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
   void     toDataStreamImpl(std::vector<uint8_t>& dataStream) const;
   HelpInfo getHelpInfo(HelpType type, int param = -1) const final;
+  void     getSourcesImpl(SourceSet& s) const final {}
 };
 
 using ImagePtr = std::shared_ptr<Image>;
 
 class Node;
-/*
-struct ImageSource : public DataSource
-{
-  vec2               uvScale              = vec2{1.0f, 1.0f};
-  vec2               uvOffset             = vec2{0.0f, 0.0f};
-  uvec2              tileConstraintOffset = {0, 0}; // outside tile consraint or when image is not present
-  uvec2              tileConstraintSize   = {0, 0}; // outside tile consraint or when image is not present
-  float              defaultValue         = 1.0f;
-  ImageSampling      sampling;
-  GfxSampler::handle sampler;
-  dshandle           source;
 
-  ImageSource() = default;
-  ImageSource(dshandle idx) : source(idx) {}
-
-  inline Type getType() const final
-  {
-    return Type::eImageSource;
-  }
-
-  inline DataFormat getFormat() const final
-  {
-    return DataFormat{.type = DataType::eImage, .scalarSubType = DataType::eFloat};
-  }
-
-  inline bool isWithinTile(uvec2 tile) const
-  {
-    return DataSource::isWithinTile(tile, tileConstraintOffset, tileConstraintSize);
-  }
-
-  bool        isEnabled(Pipeline const&) const final;
-  bool        ensure(Pipeline&) final;
-  inline void accept(dshandle source, Event) final {}
-
-  std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, dshandle) final;
-
-  void fillDescriptor(Pipeline const&, GfxDescriptorSet::rhandle&, std::byte*) final;
-  bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
-  void toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
-};
-*/
 } // namespace terra

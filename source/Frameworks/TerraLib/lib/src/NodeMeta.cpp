@@ -26,6 +26,7 @@ bool DataFormat::isCompatible(DataFormat const& from, DataFormat const& to)
   //case DataType::eImageSource:
   case DataType::eImage:
     return (to.type == DataType::eImage) && from.scalarSubType == to.scalarSubType;
+  case DataType::eInput:
   case DataType::eBuffer:
     return from.type == to.type && from.scalarSubType == to.scalarSubType;
   }
@@ -52,6 +53,8 @@ std::string_view typeToString(DataType type)
     return "image";
   case DataType::eBuffer:
     return "source";
+  case DataType::eInput:
+    return "input";
   case DataType::eCurveData:
     return "curve";
   }
@@ -77,6 +80,8 @@ DataType stringToType(std::string_view stype)
     type = DataType::eImage;
   else if (stype == "buffer" || stype == "source")
     type = DataType::eBuffer;
+  else if (stype == "input")
+    type = DataType::eInput;
   else if (stype == "curve")
     type = DataType::eCurveData;
   return type;
@@ -89,6 +94,7 @@ bool ParameterMeta::canBeSource() const
   case DataType::eCurveData:
   case DataType::eBuffer:
   case DataType::eImage:
+  case DataType::eInput:
     return true;
   }
   return false;
@@ -154,6 +160,7 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
     break;
   case DataType::eCurveData:
   case DataType::eImage:
+  case DataType::eInput:
   case DataType::eBuffer:
   case DataType::eFloat:
   case DataType::eFloat2:

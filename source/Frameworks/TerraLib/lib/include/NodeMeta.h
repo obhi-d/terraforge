@@ -27,8 +27,8 @@ enum class Result
   eAbort
 };
 
-//using ParamSetter = void (*)(Node&, Parameter&&);
-//using ParamGetter = Parameter const& (*)(Node const&);
+// using ParamSetter = void (*)(Node&, Parameter&&);
+// using ParamGetter = Parameter const& (*)(Node const&);
 
 template <DataType Type, DataType Scalar = DataType::eFloat>
 struct FmtVal
@@ -97,8 +97,8 @@ struct ParameterMeta
   DataValue                       values[ValueType::eCount] = {};
   std::vector<std::u8string_view> enumValues                = {};
 
-  //ParamSetter setter = nullptr;
-  //ParamGetter getter = nullptr;
+  // ParamSetter setter = nullptr;
+  // ParamGetter getter = nullptr;
 
   ParameterMeta()                                         = default;
   ParameterMeta(ParameterMeta const&)                     = default;
@@ -107,7 +107,8 @@ struct ParameterMeta
   ParameterMeta& operator=(ParameterMeta&&) noexcept      = default;
 
   template <typename Fmt>
-  ParameterMeta(Fmt format, std::string_view iname, Semantic semantic = Semantic::eNone, DrawHint idrawhint = DrawHint::eDefault)
+  ParameterMeta(Fmt format, std::string_view iname, Semantic semantic = Semantic::eNone,
+                DrawHint idrawhint = DrawHint::eDefault)
       : format(Fmt::get()), drawHint(idrawhint)
   {
     displayInfo.from(iname);
@@ -133,7 +134,7 @@ struct ParameterMeta
   bool canBeScalar() const;
 
   ScalarValue getDefault() const;
-    
+
   void setTypeFromString(std::string_view);
   void setValueFromString(ValueType, std::string_view);
 };
@@ -154,7 +155,7 @@ public:
   DisplayInfo                displayInfo;
   std::u8string_view         category;
   std::string_view           style;
-  std::vector<ParameterMeta> parameterDef;
+  std::vector<ParameterMeta> parameterDef    = {ParameterMeta(FmtVal<DataType::eInput>(), "@input")};
   uint32_t                   outputUpscale   = 1; // multiplier
   uint32_t                   outputDownscale = 1; // divisor for reduction algo
   DataFormat                 format          = DataFormat(DataType::eBuffer);
@@ -173,6 +174,10 @@ public:
   NodeMeta(NodeMeta&&) noexcept                 = default;
   NodeMeta& operator=(NodeMeta const&) noexcept = default;
   NodeMeta& operator=(NodeMeta&&) noexcept      = default;
+
+  virtual void prepareGeneration(Node&, Pipeline&) const = 0;
+  virtual void beginIteration(Node&, Pipeline&) const           = 0;
+  virtual void endIteration(Node&, Pipeline&) const      = 0;
 };
 
 } // namespace terra

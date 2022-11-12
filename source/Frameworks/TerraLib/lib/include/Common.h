@@ -232,6 +232,7 @@ enum class DataType
   eFloat,
   eImage,
   eBuffer,
+  eInput,
   eCurveData,
   eBool,
   eEnum
@@ -317,7 +318,8 @@ struct EnvParams
   float   frequency{};
   float   wavelength{};
   int32_t seed{};
-  int32_t padding{};
+  int32_t iteration{};
+  
 
   inline constexpr auto operator<=>(EnvParams const&) const noexcept = default;
 };
@@ -466,5 +468,11 @@ struct MenuData
   bool                      maximized      = false;
   bool                      opened         = true;
 };
+
+
+constexpr inline float radians(float deg) 
+{
+  return deg * 0.0174533f;
+}
 
 } // namespace terra

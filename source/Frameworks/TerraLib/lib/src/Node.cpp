@@ -3,7 +3,8 @@
 
 namespace terra
 {
-Node::Node(NodeMeta const& m) : meta(m), name(m.displayInfo.name), parameters((uint32_t)m.parameterDef.size(), ScalarValue{})
+Node::Node(NodeMeta const& m)
+    : meta(m), name(m.displayInfo.name), parameters((uint32_t)m.parameterDef.size(), ScalarValue{})
 {
   for (uint32_t i = 0; i < parameters.size(); ++i)
   {
@@ -11,7 +12,7 @@ Node::Node(NodeMeta const& m) : meta(m), name(m.displayInfo.name), parameters((u
   }
 }
 
-void Node::accept(dshandle source, Event ev) 
+void Node::accept(dshandle source, Event ev)
 {
   if (ev == Event::eNodeDeleted)
   {
@@ -28,6 +29,60 @@ void Node::accept(dshandle source, Event ev)
   DataSource::accept(source, ev);
 }
 
+void Node::getSourcesImpl(SourceSet& sources) const
+{
+  for (uint32_t i = 0; i < parameters.size(); ++i)
+  {
+    auto& p = parameters[i];
+    if (std::holds_alternative<Source>(p))
+    {
+      if (DataSource::isValid(std::get<Source>(p).source))
+        sources.emplace(std::get<Source>(p).source);
+    }
+  }
+}
+
+void Node::prepareGeneration(Pipeline& pipe)
+{
+  for (uint32_t i = 0; i < parameters.size(); ++i)
+  {
+    auto& p = parameters[i];
+    if (std::holds_alternative<Source>(p))
+    {
+      DataSource::prepareGeneration(std::get<Source>(p).source, pipe);
+    }
+  }
+  meta.prepareGeneration(*this, pipe);
+}
+
+void Node::beginIteration(Pipeline& pipe)
+{
+  meta.beginIteration(*this, pipe);
+
+  for (uint32_t i = 0; i < parameters.size(); ++i)
+  {
+    auto& p = parameters[i];
+    if (std::holds_alternative<Source>(p))
+    {
+      DataSource::beginIteration(std::get<Source>(p).source, pipe);
+    }
+  }
+}
+
+void Node::endIteration(Pipeline& pipe)
+{
+  for (uint32_t i = 0; i < parameters.size(); ++i)
+  {
+    auto& p = parameters[i];
+    if (std::holds_alternative<Source>(p))
+    {
+      DataSource::endIteration(std::get<Source>(p).source, pipe);
+    }
+  }
+
+  meta.endIteration(*this, pipe);
+}
+
 HelpInfo Node::getHelpInfo(HelpType type, int param) const
 {
   switch (type)
@@ -42,4 +97,4 @@ HelpInfo Node::getHelpInfo(HelpType type, int param) const
   return {};
 }
 
-}
+} // namespace terra

@@ -850,15 +850,49 @@ inline V grad(I hash, V x, V y)
 static inline constexpr std::array<float, 8> grad2lutX = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f};
 static inline constexpr std::array<float, 8> grad2lutY = {-1.0f, 0.0f, 0.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f};
 
-struct DerivNoise
+template <typename V>
+struct XY
 {
-  hn::Vec<V_t> h;
-  hn::Vec<V_t> dx;
-  hn::Vec<V_t> dy;
+  V x;
+  V y;
 };
 
-template <typename V, typename C, typename G>
-inline DerivNoise dnoise(V x, V y, C const& perm)
+template <typename I, typename V>
+inline XY<V> gradrotXY(I idx, V sin, V cos)
+{
+  hn::DFromV<V> vtag{};
+  XY<V>         xy;
+  auto          gx0 = hn::GatherIndex(vtag, grad2lutX.data(), idx);
+  auto          gy0 = hn::GatherIndex(vtag, grad2lutX.data(), idx);
+  xy.x              = hn::MulSub(cos, gx0, sin * gy0);
+  xy.y              = hn::MulAdd(sin, gx0, cos * gy0);
+  return xy;
+}
+
+template <typename V>
+inline V graddotp2(V gx, V gy, V x, V y)
+{
+  return hn::MulAdd(gx, x,  gy * y);
+}
+
+template <typename V>
+inline V graddotp2(XY<V> g, V x, V y)
+{
+  return hn::MulAdd(g.x, x, g.y * y);
+}
+
+template <typename V>
+struct DerivNoise
+{
+  V h;
+  V dx;
+  V dy;
+
+  DerivNoise(V ih, V idx, V idy) : h(ih), idx(dx), idy(dy) {}
+};
+
+template <typename V, typename C>
+inline DerivNoise<V> dnoise(V x, V y, C const& perm)
 {
   I_t           itag{};
   hn::DFromV<V> vtag{};
@@ -967,8 +1001,136 @@ inline DerivNoise dnoise(V x, V y, C const& perm)
 #else
   dnoise_dx *= 40.0f; /* Scale derivative to match the noise scaling */
   dnoise_dy *= 40.0f;
-  return DerivNoise(40.0f * (n0 + n1 + n2), dnoise_dx, dnoise_dy); // TODO: The scale factor is preliminary!
+  return DerivNoise<V>(40.0f * (n0 + n1 + n2), dnoise_dx, dnoise_dy); // TODO: The scale factor is preliminary!
 #endif
 }
+
+template <typename V, typename C, typename G>
+inline DerivNoise<V> dfBm(V x, V y, C const& perm, int32_t octaves, float lacunarity, float gain)
+{
+  
+  auto  sum  = float32v(0.0f);
+  auto  dx   = float32v(0.0f);
+  auto  dy   = float32v(0.0f);
+  float freq = float32v(1.0f);
+  float amp  = float32v(0.5f);
+
+  for (int32_t i = 0; i < octaves; i++)
+  {
+    auto n = dnoise(x * freq, y * freq, perm);
+    sum += n.h * amp;
+    dx += n.dx * amp;
+    dy += n.dy * amp;
+    freq *= float32v(lacunarity);
+    amp *= float32v(gain);
+  }
+
+  return DerivNoise<V>(sum, dx, dy);
+}
+
+inline void modifyDomain(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  const V_t vtag{};
+  auto& param = node.param(0);
+  if (std::holds_alternative<Source>(param))
+  {
+    auto src = std::get<Source>(param).source;
+    if (DataSource::isValid(src))
+    {
+      const auto lanes = (uint32)hn::Lanes(vtag);
+      auto&      inp   = pipe.getInput(threadGroupId, lanes, true);
+      auto&      nin   = pipe.pushInput(threadGroupId, lanes, false);
+      nin              = inp;
+      auto&       node = get().get<Node>(src);
+      auto const& meta = (NodeMeta_hwy const&)node.meta;
+      meta.fn(node, pipe, threadGroupId);
+    }
+  }  
+}
+
+inline void finish(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  auto& param = node.param(0);
+  if (std::holds_alternative<Source>(param))
+  {
+    auto src = std::get<Source>(param).source;
+    if (DataSource::isValid(src))
+      pipe.popInput(threadGroupId);
+  }
+}
+
+template <typename I, typename V>
+inline static I hashPrimesHB(I hash, V x, V y)
+{
+  const hn::ScalableTag<int32_t> d;
+  return hn::Xor(hash, hn::Xor(hn::BitCast(d, x), hn::BitCast(d, y))) * int32v(0x27d4eb2d);
+}
+
+template <int DistTy, typename V, typename I>
+inline V cellularValueNoise(I seed, V jitter, V x, V y, int valueIndex)
+{
+  constexpr float kJitter2D         = 0.437016f;
+  constexpr int   kMaxDistanceCount = 4;
+
+  jitter = float32v(kJitter2D) * jitter;
+  std::array<V, kMaxDistanceCount> value;
+  std::array<V, kMaxDistanceCount> distance;
+
+  value.fill(float32v(INFINITY));
+  distance.fill(float32v(INFINITY));
+
+  auto xc     = FS_Convertf32_i32(x) + int32v(-1);
+  auto ycBase = FS_Convertf32_i32(y) + int32v(-1);
+
+  auto xcf     = FS_Converti32_f32(xc) - x;
+  auto ycfBase = FS_Converti32_f32(ycBase) - y;
+
+  xc *= int32v(consts::X);
+  ycBase *= int32v(consts::Y);
+
+  for (int xi = 0; xi < 3; xi++)
+  {
+    auto ycf = ycfBase;
+    auto yc  = ycBase;
+    for (int yi = 0; yi < 3; yi++)
+    {
+      auto hash = hashPrimesHB(seed, xc, yc);
+      auto xd   = FS_Converti32_f32(hn::And(hash, int32v(0xffff))) - float32v(0xffff / 2.0f);
+      auto yd   = FS_Converti32_f32(hn::And(hn::ShiftRight<16>(hash), int32v(0xffff))) - float32v(0xffff / 2.0f);
+
+      auto invMag = jitter * FS_InvSqrt_f32(FS_FMulAdd_f32(xd, xd, yd * yd));
+      xd          = FS_FMulAdd_f32(xd, invMag, xcf);
+      yd          = FS_FMulAdd_f32(yd, invMag, ycf);
+
+      auto newCellValue = float32v((float)(1.0 / INT_MAX)) * FS_Converti32_f32(hash);
+      auto newDistance  = Distance<DistTy>(xd, yd);
+
+      for (int i = 0;; i++)
+      {
+        auto closer         = newDistance < distance[i];
+        auto localDistance  = distance[i];
+        auto localCellValue = value[i];
+        distance[i]         = FS_Select_f32(closer, newDistance, distance[i]);
+        value[i]            = FS_Select_f32(closer, newCellValue, value[i]);
+
+        if (i > valueIndex)
+        {
+          break;
+        }
+
+        newDistance  = FS_Select_f32(closer, localDistance, newDistance);
+        newCellValue = FS_Select_f32(closer, localCellValue, newCellValue);
+      }
+
+      ycf += float32v(1);
+      yc += int32v(consts::Y);
+    }
+    xcf += float32v(1);
+    xc += int32v(consts::X);
+  }
+
+  return value[valueIndex];
+}
+
 
 } // namespace terra::HWY_NAMESPACE
