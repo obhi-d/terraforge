@@ -31,6 +31,11 @@ node selected
   color = ff38c3cc;
 }
 
+node domain
+{
+  color = ff49442a;
+}
+
 /*
 node generator
 {

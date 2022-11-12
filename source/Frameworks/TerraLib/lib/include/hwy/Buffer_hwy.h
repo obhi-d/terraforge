@@ -21,7 +21,7 @@ public:
   }
   Buffer_hwy& operator=(Buffer_hwy const& other)
   {
-    if (data_)
+    if (data_ && size_ != other.size_)
       hwy::FreeAlignedBytes(data_, &deallocate, nullptr);
 
     width_  = other.width_;
@@ -95,6 +95,16 @@ public:
       data_[i] = (float)std::rand() / (float)RAND_MAX;
   }
 
+  
+  void fill(uint32_t width, uint32_t height, uint32_t lanes, float value)
+  {
+    lanes_ = lanes;
+    width_ = width;
+    height_ = height;
+    size_   = pitch() * height_;
+    std::fill(data(), data() + size_, value);
+  }
+
   void fill(float value)
   {
     std::fill(data(), data() + size_, value);
@@ -113,7 +123,7 @@ public:
 private:
   static void* allocate(void*, size_t size)
   {
-    return mi_malloc(size);
+    return mi_zalloc(size);
   }
 
   static void deallocate(void*, void* memory)

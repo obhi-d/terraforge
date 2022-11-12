@@ -36,10 +36,15 @@ public:
   Property<Color>       sunColor         = Property<Color>("@sunColor", 112, 82, 111, 255);
   Property<float>       sunIntensity     = Property<float>("@sunIntensity", 0.4f);
   Property<Color>       meshTint         = Property<Color>("@meshTint", 111, 111, 111, 255);
-  Property<float>       heightMultiplier = Property<float>("@heightMultiplier", 1.0f);
+  Property<float>       heightMultiplier = Property<float>("@heightMultiplier", 20.0f);
   Property<TextureFile> heightTexPath    = Property<TextureFile>("@heightTexture", "images/default_terrain.png");
   Property<float>       meshStyle        = Property<float>("@meshStyle", 200.f);
   Property<Rotation>    sunRotation      = Property<Rotation>("@sunRotation", 40.f);
+
+  Camera& getCamera()
+  {
+    return camera;
+  }
 
 private:
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);

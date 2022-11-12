@@ -12,7 +12,7 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
   wait();
   cleanup();
 
-  this->reissued     = {};
+  this->continueIter = false;
   this->actor        = h;
   this->launchParams = params;
   this->iteration    = 0;
@@ -63,13 +63,6 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
   launch();
 }
 
-bool Pipeline::reissue(dshandle handle)
-{
-  if (reissued)
-    return false;
-  reissued = handle;
-  return true;
-}
 
 void Pipeline::cleanup() {}
 

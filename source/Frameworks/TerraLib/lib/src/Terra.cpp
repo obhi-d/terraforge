@@ -18,6 +18,7 @@ namespace terra
 void Operators_hwy();
 void Noise_hwy();
 void Basics_hwy();
+void Domain_hwy();
 
 Terra Terra::instance;
 
@@ -36,6 +37,7 @@ void Terra::init(Localization l, std::shared_ptr<ComputeDevice> iDev)
     Operators_hwy();
     Noise_hwy();
     Basics_hwy();
+    Domain_hwy();
   }
 }
 

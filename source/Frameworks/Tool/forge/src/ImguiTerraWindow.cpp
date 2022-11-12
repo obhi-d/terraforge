@@ -198,6 +198,16 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         drawProp(app, meshPreview.heightTexPath);
         drawProp(app, meshPreview.meshStyle, 1.0f, std::numeric_limits<float>::max(), 0.5f);
       }
+      {
+        static std::u8string_view header = app.getLocalizedString("@camera");
+        ImGui::Text("%s", (const char*)header.data());
+        ImGui::Separator();
+        auto& camera = meshPreview.getCamera();
+        drawProp(app, camera.ortho);
+        drawProp(app, camera.fov, 0, 180, .5f);
+        drawProp(app, camera.scrollSpeed, 0.01f, 1000000.f, .5f);
+        drawProp(app, camera.distanceFactor, 0.01f, 1000000.f, .5f);
+      }
       popNormalFont();
     }
     ImGui::End();

@@ -293,6 +293,10 @@ bool drawProp(TerraMainApp& app, Property<float>& prop, float min, float max, fl
 {
   return doProp(ImGui::DragFloat(prop.getDisplayName(), &prop.get(), step, min, max), prop);
 }
+bool drawProp(TerraMainApp& app, Property<bool>& prop)
+{
+  return doProp(ImGui::Checkbox(prop.getDisplayName(), &prop.get()), prop);
+}
 bool drawProp(TerraMainApp& app, Property<Color>& prop)
 {
   bool      result = false;

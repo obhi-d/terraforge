@@ -39,7 +39,7 @@ void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState& m
   view = glm::lookAt(cameraRotation.toDir() * radius, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
   
-  if (viewportSize != this->viewportSize)
+  //if (viewportSize != this->viewportSize)
   {
     if (ortho)
     {

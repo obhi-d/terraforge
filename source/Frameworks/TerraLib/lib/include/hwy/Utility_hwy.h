@@ -1,3 +1,4 @@
+#include <hwy/NodeMeta_hwy.h>
 #include <hwy/contrib/math/math-inl.h>
 #include <hwy/highway.h>
 
@@ -832,7 +833,6 @@ HWY_API auto Distance(V dx, V dy)
     return hn::Sqrt(hn::MulAdd(dx, dx, hn::Mul(dy, dy)));
 }
 
-
 template <typename I, typename V>
 inline V grad(I hash, V x, V y)
 {
@@ -840,11 +840,16 @@ inline V grad(I hash, V x, V y)
   hn::DFromV<V> vtag{};
   const auto    one = hn::Set(itag, 1);
   auto const    two = hn::Set(itag, 2);
-  auto const h = hn::And(hash, hn::Set(itag, 7));            // Convert low 3 bits of hash code
+  auto const    h   = hn::And(hash, hn::Set(itag, 7));                             // Convert low 3 bits of hash code
   auto const u = hn::IfThenElse(hn::RebindMask(vtag, h < hn::Set(itag, 4)), x, y); // into 8 simple gradient directions,
   auto const v = hn::IfThenElse(hn::RebindMask(vtag, h < hn::Set(itag, 4)), y, x);
   return hn::IfThenElse(hn::RebindMask(vtag, hn::And(h, one) == one), hn::Neg(u), u) +
          hn::IfThenElse(hn::RebindMask(vtag, hn::And(h, two) == two), hn::Set(vtag, -2.f) * v, hn::Set(vtag, 2.f) * v);
+}
+template <typename V>
+inline V interpHermite(V t)
+{
+  return t * t * FS_FNMulAdd_f32(t, float32v(2), float32v(3));
 }
 
 static inline constexpr std::array<float, 8> grad2lutX = {-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 0.0f, 0.0f, 1.0f};
@@ -872,7 +877,7 @@ inline XY<V> gradrotXY(I idx, V sin, V cos)
 template <typename V>
 inline V graddotp2(V gx, V gy, V x, V y)
 {
-  return hn::MulAdd(gx, x,  gy * y);
+  return hn::MulAdd(gx, x, gy * y);
 }
 
 template <typename V>
@@ -882,13 +887,19 @@ inline V graddotp2(XY<V> g, V x, V y)
 }
 
 template <typename V>
+inline V lerp(V a, V b, V t)
+{
+  return FS_FMulAdd_f32(t, b - a, a);
+}
+
+template <typename V>
 struct DerivNoise
 {
   V h;
   V dx;
   V dy;
 
-  DerivNoise(V ih, V idx, V idy) : h(ih), idx(dx), idy(dy) {}
+  DerivNoise(V ih, V idx, V idy) : h(ih), dx(idx), dy(idy) {}
 };
 
 template <typename V, typename C>
@@ -900,17 +911,17 @@ inline DerivNoise<V> dnoise(V x, V y, C const& perm)
   // float n0, n1, n2; // Noise contributions from the three corners
 
   // Skew the input space to determine which simplex cell we're in
-  auto  s  = (x + y) * float32v(F2); // Hairy factor for 2D
+  auto s  = (x + y) * float32v(F2); // Hairy factor for 2D
   auto xs = x + s;
   auto ys = y + s;
-  auto  i  = hn::Floor(xs);
-  auto  j  = hn::Floor(ys);
+  auto i  = hn::Floor(xs);
+  auto j  = hn::Floor(ys);
 
   auto t  = (i + j) * float32v(G2);
-  auto  X0 = i - t; // Unskew the cell origin back to (x,y) space
-  auto  Y0 = j - t;
-  auto  x0 = x - X0; // The x,y distances from the cell origin
-  auto  y0 = y - Y0;
+  auto X0 = i - t; // Unskew the cell origin back to (x,y) space
+  auto Y0 = j - t;
+  auto x0 = x - X0; // The x,y distances from the cell origin
+  auto y0 = y - Y0;
 
   auto i1 = hn::IfThenElse(x0 > y0, hn::Set(vtag, 1.0f), hn::Zero(vtag));
   auto j1 = hn::IfThenElse(x0 > y0, hn::Zero(vtag), hn::Set(vtag, 1.0f));
@@ -979,19 +990,19 @@ inline DerivNoise<V> dnoise(V x, V y, C const& perm)
    *    *dnoise_dy += -8.0f * t22 * t2 * y2 * ( gx2 * x2 + gy2 * y2 ) + t42 * gy2;
    */
   auto temp0     = t20 * t0 * (gx0 * x0 + gy0 * y0);
-  auto  dnoise_dx = temp0 * x0;
-  auto  dnoise_dy = temp0 * y0;
-  auto  temp1     = t21 * t1 * (gx1 * x1 + gy1 * y1);
+  auto dnoise_dx = temp0 * x0;
+  auto dnoise_dy = temp0 * y0;
+  auto temp1     = t21 * t1 * (gx1 * x1 + gy1 * y1);
   dnoise_dx += temp1 * x1;
   dnoise_dy += temp1 * y1;
   auto temp2 = t22 * t2 * (gx2 * x2 + gy2 * y2);
   dnoise_dx += temp2 * x2;
   dnoise_dy += temp2 * y2;
-  dnoise_dx *= -8.0f;
-  dnoise_dy *= -8.0f;
+  dnoise_dx *= float32v(-8.0f);
+  dnoise_dy *= float32v(-8.0f);
   dnoise_dx += t40 * gx0 + t41 * gx1 + t42 * gx2;
   dnoise_dy += t40 * gy0 + t41 * gy1 + t42 * gy2;
-  
+
   // Add contributions from each corner to get the final noise value.
   // The result is scaled to return values in the interval [-1,1].
 #ifdef SIMPLEX_DERIVATIVES_RESCALE
@@ -999,21 +1010,22 @@ inline DerivNoise<V> dnoise(V x, V y, C const& perm)
   dnoise_dy *= 70.175438596f;
   return DerivNoise(70.175438596f * (n0 + n1 + n2), dnoise_dx, dnoise_dy); // TODO: The scale factor is preliminary!
 #else
-  dnoise_dx *= 40.0f; /* Scale derivative to match the noise scaling */
-  dnoise_dy *= 40.0f;
-  return DerivNoise<V>(40.0f * (n0 + n1 + n2), dnoise_dx, dnoise_dy); // TODO: The scale factor is preliminary!
+  dnoise_dx *= float32v(40.0f); /* Scale derivative to match the noise scaling */
+  dnoise_dy *= float32v(40.0f);
+  return DerivNoise<V>(float32v(40.0f) * (n0 + n1 + n2), dnoise_dx,
+                       dnoise_dy); // TODO: The scale factor is preliminary!
 #endif
 }
 
 template <typename V, typename C, typename G>
 inline DerivNoise<V> dfBm(V x, V y, C const& perm, int32_t octaves, float lacunarity, float gain)
 {
-  
-  auto  sum  = float32v(0.0f);
-  auto  dx   = float32v(0.0f);
-  auto  dy   = float32v(0.0f);
-  float freq = float32v(1.0f);
-  float amp  = float32v(0.5f);
+
+  auto sum  = float32v(0.0f);
+  auto dx   = float32v(0.0f);
+  auto dy   = float32v(0.0f);
+  auto freq = float32v(1.0f);
+  auto amp  = float32v(0.5f);
 
   for (int32_t i = 0; i < octaves; i++)
   {
@@ -1031,7 +1043,7 @@ inline DerivNoise<V> dfBm(V x, V y, C const& perm, int32_t octaves, float lacuna
 inline void modifyDomain(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
-  auto& param = node.param(0);
+  auto&     param = node.param(0);
   if (std::holds_alternative<Source>(param))
   {
     auto src = std::get<Source>(param).source;
@@ -1041,11 +1053,9 @@ inline void modifyDomain(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
       auto&      inp   = pipe.getInput(threadGroupId, lanes, true);
       auto&      nin   = pipe.pushInput(threadGroupId, lanes, false);
       nin              = inp;
-      auto&       node = get().get<Node>(src);
-      auto const& meta = (NodeMeta_hwy const&)node.meta;
-      meta.fn(node, pipe, threadGroupId);
+      NodeMeta_hwy::run(src, pipe, threadGroupId, lanes);
     }
-  }  
+  }
 }
 
 inline void finish(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
@@ -1132,5 +1142,44 @@ inline V cellularValueNoise(I seed, V jitter, V x, V y, int valueIndex)
   return value[valueIndex];
 }
 
+template <bool WithStrength, typename V, typename I>
+inline auto domainWarpInput(I seed, V warpAmp, V x, V y, V& xOut, V& yOut)
+{
+  auto xs = FS_Floor_f32(x);
+  auto ys = FS_Floor_f32(y);
+
+  auto x0 = FS_Convertf32_i32(xs) * int32v(terra::consts::X);
+  auto y0 = FS_Convertf32_i32(ys) * int32v(terra::consts::Y);
+  auto x1 = x0 + int32v(terra::consts::X);
+  auto y1 = y0 + int32v(terra::consts::Y);
+
+  xs = interpHermite(x - xs);
+  ys = interpHermite(y - ys);
+
+#define GRADIENT_COORD(_x, _y)                                                                                         \
+  auto hash##_x##_y = hashPrimesHB(seed, x##_x, y##_y);                                                                \
+  auto x##_x##_y    = FS_Converti32_f32(hn::And(hash##_x##_y, int32v(0xffff)));                                        \
+  auto y##_x##_y    = FS_Converti32_f32(hn::And(hn::ShiftRight<16>(hash##_x##_y), int32v(0xffff)));
+
+  GRADIENT_COORD(0, 0);
+  GRADIENT_COORD(1, 0);
+  GRADIENT_COORD(0, 1);
+  GRADIENT_COORD(1, 1);
+
+#undef GRADIENT_COORD
+
+  auto normalise = float32v(1.0f / (0xffff / 2.0f));
+
+  auto xWarp = (lerp(lerp(x00, x10, xs), lerp(x01, x11, xs), ys) - float32v(0xffff / 2.0f)) * normalise;
+  auto yWarp = (lerp(lerp(y00, y10, xs), lerp(y01, y11, xs), ys) - float32v(0xffff / 2.0f)) * normalise;
+
+  xOut = FS_FMulAdd_f32(xWarp, warpAmp, xOut);
+  yOut = FS_FMulAdd_f32(yWarp, warpAmp, yOut);
+
+  if constexpr (WithStrength)
+  {
+    return hn::Sqrt(FS_FMulAdd_f32(xWarp, xWarp, yWarp * yWarp));
+  }
+}
 
 } // namespace terra::HWY_NAMESPACE

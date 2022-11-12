@@ -208,8 +208,8 @@ void sin(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto const& phase      = std::get<ScalarValue>(node.param(2));
   auto        ampX       = hn::Set(vtag, amplitude.value2[0]);
   auto        ampY       = hn::Set(vtag, amplitude.value2[1]);
-  auto        phaseX     = hn::Set(vtag, phase.value2[0]);
-  auto        phaseY     = hn::Set(vtag, phase.value2[1]);
+  auto        phaseX     = hn::Set(vtag, radians(phase.value2[0]));
+  auto        phaseY     = hn::Set(vtag, radians(phase.value2[1]));
   auto        inp_x_data = inp.x.data();
   auto        inp_y_data = inp.y.data();
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
@@ -319,7 +319,7 @@ void Basics_hwy()
   meta.parameterDef.resize(1);
 
   meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(), "@amplitude");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, -consts::pi, consts::pi), "@phase");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, -180.f, 180.f), "@phase");
   meta.icon = "\xef\x87\xbe";
   meta.fn   = HWY_DYNAMIC_DISPATCH(sin);
   get().addMeta("@sin", meta);

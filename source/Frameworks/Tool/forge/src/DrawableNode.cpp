@@ -216,6 +216,9 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     ImGui::TextUnformatted(def.displayInfo.getName());
     break;
   case DataType::eInput:
+    ImGui::TextUnformatted(def.displayInfo.getName());
+    ImGui::Dummy(ImVec2(4, 4));
+    break;
   case DataType::eBuffer:
     if (std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source))
     {

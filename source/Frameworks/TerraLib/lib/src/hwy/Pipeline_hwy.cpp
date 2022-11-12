@@ -198,7 +198,7 @@ void Pipeline_hwy::popInput(uint32_t thread)
 void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 {
   // auto div = N * lanes();
-  constexpr bool SingleThreaded = true;
+  constexpr bool SingleThreaded = false;
   if constexpr (SingleThreaded)
   {
     threadDatas.emplace_back();
@@ -272,6 +272,7 @@ void Pipeline_hwy::launch()
     return;
   if (iteration == 0)
     DataSource::prepareGeneration(getActor(), *this);
+  onLaunch();
   DataSource::beginIteration(getActor(), *this);
   get().pool().for_each(
     threadDatas.begin(), threadDatas.end(),
@@ -286,7 +287,7 @@ void Pipeline_hwy::launch()
     },
     waiters);
   DataSource::endIteration(getActor(), *this);
-  if (reissued)
+  if (hasMoreIterations())
     iteration++;
   for (auto& td : threadDatas)
     td.params.iteration = iteration;
@@ -294,7 +295,7 @@ void Pipeline_hwy::launch()
 
 std::size_t Pipeline_hwy::hasResults()
 {
-  if (!threadDatas.empty())
+  if (!threadDatas.empty() && !threadDatas[0].outputs.empty())
   {
     auto const& ls = launchSize();
     return (size_t)ls[0] * (size_t)ls[1];
@@ -328,13 +329,17 @@ void Pipeline_hwy::getResults(float* ready, uint32_t size, float& min, float& ma
     }
   }
 
-  threadDatas.clear();
-
-  if (updateActor())
+  if (hasMoreIterations())
     launch();
+  else
+    threadDatas.clear();
 }
 
 void Pipeline_hwy::wait() {}
+void Pipeline_hwy::cleanup() 
+{
+  threadDatas.clear();
+}
 
 } // namespace terra
 #endif

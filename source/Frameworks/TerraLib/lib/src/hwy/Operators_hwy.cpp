@@ -419,7 +419,7 @@ void Operators_hwy()
   // MaxSmooth
   meta.icon = "\xef\x84\xab";
   meta.fn   = HWY_DYNAMIC_DISPATCH(maxSmooth);
-  get().addMeta("@minSmooth", meta);
+  get().addMeta("@maxSmooth", meta);
 
   // Tartiary
   meta.parameterDef.pop_back();

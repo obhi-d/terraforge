@@ -175,22 +175,16 @@ void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
   {
     pipeline = get().createPipeline();
   }
-
-  auto size = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y) * 4;
+    
   if (actor)
   {
     
     pipeline->compute(actor, params, ivec2{settings.tileOffset->x, settings.tileOffset->y},
                       ivec2{tileSize.x * nbPreviewTiles.x, tileSize.y * nbPreviewTiles.y});
-    if (pipeline->hasResults())
-    {
-      auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
-      pipeline->getResults(vertices, size, min, max);
-      app.getDevice()->unmapBuffer(vertex);
-    }
   }
   else
   {
+    auto size     = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y) * 4;
     auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
     std::memset(vertices, 0, size);
     app.getDevice()->unmapBuffer(vertex);
@@ -250,6 +244,14 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
 {
   GlGfxState state;
   
+  if (pipeline->hasResults())
+  {
+    auto size     = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y) * 4;
+    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
+    pipeline->getResults(vertices, size, min, max);
+    app.getDevice()->unmapBuffer(vertex);
+  }
+
   state.blend           = BlendMode::eDisabled;
   state.depthTest       = DepthTestMode::eLessEq;
   state.scissorsEnabled = true;

@@ -451,7 +451,7 @@ void flowNoise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     /// ------
 
     auto t2 = hn::Set(vtag, 0.5f) - x2 * x2 - y2 * y2;
-    auto gi = hn::And(
+    gi = hn::And(
       hn::GatherIndex(itag, perm.data(),
                       hn::And(ti + hn::Set(itag, 1) +
                                 hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::Set(itag, 1), hn::Set(itag, 0xff))),
@@ -485,14 +485,17 @@ void multiFractal(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto       seed       = hn::Set(itag, pipe.seed());
   iof                   = inp;
 
-  auto& save      = pipe.pushOutput(threadGroupId, lanes);
+  auto& data      = pipe.getCacheData<MultiFractal>(node.getSelf());
+  auto& save      = data.outputs[threadGroupId];
   auto& mod       = pipe.pushOutput(threadGroupId, lanes);
   auto  iteration = pipe.getIteration();
-  auto& data      = pipe.getCacheData<MultiFractal>(node.getSelf());
   float freq      = data.freq;
   float amp       = data.amp;
 
-  save.fill(1.0f);
+  if (pipe.getIteration() == 0)
+  {
+    save.fill(out.width(), out.height(), lanes, 1.0f);
+  }
 
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
   {
@@ -514,13 +517,11 @@ void multiFractal(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     auto sum = hn::Load(vtag, out_data + ii);
     auto n   = hn::Load(vtag, mod_data + ii);
     sum += n * hn::Load(vtag, save_data + ii) * float32v(amp);
-    save.swap_data(mod);
     hn::Store(sum, vtag, out_data + ii);
   }
 
   data.outputs[threadGroupId] = out;
 
-  pipe.popOutput(threadGroupId);
   pipe.popOutput(threadGroupId);
   pipe.popInput(threadGroupId);
 }
@@ -541,15 +542,19 @@ void iqfBm(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto       iof_y_data = iof.y.data();
   auto       seed       = hn::Set(itag, pipe.seed());
   iof                   = inp;
-  auto&       savedx    = pipe.pushOutput(threadGroupId, lanes);
   auto const& perm      = pipe.getConstants().perm;
   auto&       data      = pipe.getCacheData<IqfBm>(node.getSelf());
+  auto&       savedx    = data.dx[threadGroupId];
+  auto&       sum       = data.sum[threadGroupId];
   float       amp       = data.amp;
   float       freq      = data.freq;
 
-  savedx.fill(0.0f);
-  out.fill(0.0f);
-  for (uint32_t ii = 0; ii < out.size(); ii += lanes)
+  if (pipe.getIteration() == 0)
+  {
+    savedx.fill(out.width(), out.height(), lanes, 0.0f);
+    sum.fill(out.width(), out.height(), lanes, 0.0f);
+  }
+  for (uint32_t ii = 0; ii < inp.x.size(); ii += lanes)
   {
     const auto x = hn::Load(vtag, inp_x_data + ii);
     const auto y = hn::Load(vtag, inp_y_data + ii);
@@ -560,6 +565,7 @@ void iqfBm(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   // modify domain if we have a domain modifier
   NodeMeta_hwy::domain(node.param(0), pipe, threadGroupId, lanes);
   auto dxdata = savedx.data();
+  auto sum_data = sum.data();
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
   {
     const auto x  = hn::Load(vtag, iof_x_data + ii);
@@ -567,14 +573,14 @@ void iqfBm(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     auto       d  = dnoise(x, y, perm);
     auto       dx = hn::Load(vtag, dxdata + ii);
     dx += d.dx;
-    auto sum = hn::Load(vtag, out_data + ii);
+    auto sum = hn::Load(vtag, sum_data + ii);
     sum      = sum + hn::Div(float32v(amp) * d.h, hn::MulAdd(float32v(2.f), dx * dx, float32v(1.f)));
     hn::Store(sum, vtag, out_data + ii);
+    hn::Store(dx, vtag, dxdata + ii);
   }
 
-  data.outputs[threadGroupId] = out;
-
-  pipe.popOutput(threadGroupId);
+  data.sum[threadGroupId] = out;
+    
   pipe.popInput(threadGroupId);
 }
 
@@ -664,15 +670,19 @@ void multiFractal_end(Node& node, Pipeline_hwy& pipe)
   mf.freq *= lacunarity;
   mf.amp *= gain;
   if (pipe.getIteration() < octaves)
-    pipe.reissue(node.getSelf());
+    pipe.reissue();
 }
 
 void iqfBm_prepare(Node& node, Pipeline_hwy& pipe)
 {
   auto& mf = pipe.addCacheData<IqfBm>(node.getSelf());
+  mf.amp   = 0.5f;
   mf.freq  = pipe.params().frequency;
   for (uint32_t i = 0; i < pipe.getNumThreads(); ++i)
-    mf.outputs.emplace_at(i, hwybuffer());
+  {
+    mf.sum.emplace_at(i, hwybuffer());
+    mf.dx.emplace_at(i, hwybuffer());
+  }
 }
 
 void iqfBm_end(Node& node, Pipeline_hwy& pipe)
@@ -684,11 +694,14 @@ void iqfBm_end(Node& node, Pipeline_hwy& pipe)
   mf.freq *= lacunarity;
   mf.amp *= gain;
   if (pipe.getIteration() < octaves)
-    pipe.reissue(node.getSelf());
+    pipe.reissue();
 }
 
 void Noise_hwy()
 {
+  constexpr auto min = std::numeric_limits<float>::min();
+  constexpr auto max = std::numeric_limits<float>::max();
+
   // Common
   NodeMeta_hwy meta;
   meta.category = "@Noise"_ls;
@@ -723,7 +736,7 @@ void Noise_hwy()
 
   meta.icon = "\xef\x87\xbe";
   meta.fn   = HWY_DYNAMIC_DISPATCH(flowNoise);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(), "@angle");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.0f, -180.0f, 180.f), "@angle");
   get().addMeta("@flowNoise", meta);
   meta.parameterDef.resize(1);
 
@@ -732,9 +745,9 @@ void Noise_hwy()
   meta.prepare = &multiFractal_prepare;
   meta.endIt   = &multiFractal_end;
   meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 16), "@octaves");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(), "@lacunarity");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(), "@gain");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 256), "@octaves");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.1f, min, max), "@lacunarity");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(1.1f, min, max), "@gain");
   get().addMeta("@multiFractal", meta);
   meta.parameterDef.resize(1);
 
@@ -742,9 +755,9 @@ void Noise_hwy()
   meta.fn      = HWY_DYNAMIC_DISPATCH(iqfBm);
   meta.prepare = &iqfBm_prepare;
   meta.endIt   = &iqfBm_end;
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 16), "@octaves");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(), "@lacunarity");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(), "@gain");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 256), "@octaves");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.1f, min, max), "@lacunarity");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(1.1f, min, max), "@gain");
   get().addMeta("@iqfBm", meta);
   meta.parameterDef.resize(1);
 

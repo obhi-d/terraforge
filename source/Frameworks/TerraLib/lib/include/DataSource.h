@@ -11,7 +11,8 @@ namespace terra
 {
 class Node;
 class Pipeline;
-using SourceSet = std::unordered_set<dshandle>;
+
+using SourceSet = std::unordered_set<dshandle, DSHandleHash>;
 class DataSource : public Dependency
 {
 public:

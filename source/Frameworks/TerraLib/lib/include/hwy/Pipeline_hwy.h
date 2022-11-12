@@ -99,6 +99,7 @@ public:
   }
 
 protected:
+  void cleanup() final;
   void wait() final;
   void launch() final;
   void pushTileTask(EnvParams const&) final;
@@ -109,7 +110,7 @@ private:
   WaitList                  waiters;
   acl::blackboard<CacheMap> cacheData;
   // tiles are subdivided into NxN blocks of vectors (M lanes)
-  static constexpr int32_t N = 16;
+  static constexpr int32_t N = 32;
   std::vector<ThreadData>  threadDatas;
 };
 

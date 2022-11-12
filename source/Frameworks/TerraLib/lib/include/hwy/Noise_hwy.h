@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include "hwy/Buffer_hwy.h"
+
 namespace terra
 {
 
@@ -11,5 +13,12 @@ struct MultiFractal
   hwybuffer_list outputs;
 };
 
-using IqfBm = MultiFractal;
+struct IqfBm
+{
+  float          amp;
+  float          freq;
+  hwybuffer_list sum;
+  hwybuffer_list dx;
+};
+
 } // namespace terra

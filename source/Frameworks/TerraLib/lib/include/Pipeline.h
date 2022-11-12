@@ -28,19 +28,22 @@ public:
   // this function is called once results are available
   virtual void getResults(float*, uint32_t size, float& min, float& max) = 0;
   // returns the size of the results available, 0 if no results are available
-  virtual std::size_t hasResults()       = 0;
+  virtual std::size_t hasResults() = 0;
 
   void cancel();
 
   // Read for the given node
-  void cleanup();
+  virtual void cleanup();
 
   int32_t getIteration() const
   {
     return iteration;
   }
 
-  bool reissue(dshandle);
+  void reissue()
+  {
+    continueIter = true;
+  }
 
   float frequency() const
   {
@@ -78,17 +81,14 @@ public:
   }
 
 protected:
-  
-  dshandle updateActor() 
+  void onLaunch()
   {
-    if (reissued)
-    {
-      actor = reissued;
-      reissued = {};
-    }
-    else
-      actor = {}; 
-    return actor;
+    continueIter = false;
+  }
+
+  bool hasMoreIterations()
+  {
+    return continueIter;
   }
 
   bool isPrimary(dshandle h) const
@@ -102,7 +102,7 @@ protected:
 
   // main actor
   dshandle     actor;
-  dshandle     reissued;
+  bool         continueIter = false;
   LaunchParams launchParams;
   ivec2        start;
   ivec2        size;
