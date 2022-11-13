@@ -380,6 +380,69 @@ void abs(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   finish(node, pipe, threadGroupId);
 }
 
+void falloff(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  const V_t vtag{};
+  const I_t itag{};
+
+  const auto lanes = (uint32)hn::Lanes(vtag);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  auto& out_a = pipe.getOutput(threadGroupId, lanes);
+
+  auto  out_a_data = out_a.data();
+  auto& inp        = pipe.getInput(threadGroupId, lanes, true);
+  auto  inp_x_data = inp.x.data();
+  auto  inp_y_data = inp.y.data();
+
+  auto        freq     = pipe.frequency(threadGroupId);
+  auto const& td       = pipe.getThreadData(threadGroupId);
+  auto        centerx  = hn::Set(vtag, ((float)td.params.startxy[0] + ((float)td.params.tileSize[0] * .5f)) * freq);
+  auto        centery  = hn::Set(vtag, ((float)td.params.startxy[1] + ((float)td.params.tileSize[1] * .5f)) * freq);
+  auto        recipx   = hn::Set(vtag, 1.f / (((float)td.params.tileSize[0] * .5f) * freq));
+  auto        recipy   = hn::Set(vtag, 1.f / (((float)td.params.tileSize[1] * .5f) * freq));
+  auto        edge     = hn::Set(vtag, std::get<ScalarValue>(node.param(2)).value);
+  auto        falloffX = hn::Set(vtag, std::get<ScalarValue>(node.param(3)).value2[0]);
+  auto        falloffY = hn::Set(vtag, std::get<ScalarValue>(node.param(3)).value2[1]);
+  auto        dir      = std::get<ScalarValue>(node.param(4)).ivalue;
+
+  constexpr int Left  = 1;
+  constexpr int Right = 2;
+  constexpr int Top   = 4;
+  constexpr int Bot   = 8;
+  if (dir)
+  {
+    for (uint32_t ii = 0; ii < out_a.size(); ii += lanes)
+    {
+      const auto x  = hn::Load(vtag, inp_x_data + ii);
+      const auto y  = hn::Load(vtag, inp_y_data + ii);
+      auto       z  = hn::Load(vtag, out_a_data + ii) - edge;
+      auto       dx = x - centerx;
+      auto       dy = y - centery;
+      auto       fx = FS_Pow_f32(hn::Abs(dx) * recipx, falloffX);
+      auto       fy = FS_Pow_f32(hn::Abs(dy) * recipy, falloffY);
+      // const auto a = hn::Load(vtag, out_a_data + i);
+      // hn::Store(hn::Abs(a), d, out_a_data + i);
+      auto dist = hn::Zero(vtag);
+      if (dir & Left)
+        dist += hn::IfNegativeThenElse(dx, fx, hn::Zero(vtag));
+      if (dir & Right)
+        dist += hn::IfNegativeThenElse(dx, hn::Zero(vtag), fx);
+      if (dir & Top)
+        dist += hn::IfNegativeThenElse(dy, fy, hn::Zero(vtag));
+      if (dir & Bot)
+        dist += hn::IfNegativeThenElse(dy, hn::Zero(vtag), fy);
+
+      dist = hn::Sqrt(dist);
+      z = hn::IfThenElse(dist < float32v(1.f), (z - z * (dist * dist * (float32v(3.f) - float32v(2.f) * dist))) + edge,
+                         edge);
+      hn::Store(z, vtag, out_a_data + ii);
+    }
+  }
+  finish(node, pipe, threadGroupId);
+}
+
 } // namespace terra::HWY_NAMESPACE
 
 HWY_AFTER_NAMESPACE();
@@ -401,6 +464,7 @@ HWY_EXPORT(maxSmooth);
 HWY_EXPORT(blend);
 HWY_EXPORT(flipSign);
 HWY_EXPORT(abs);
+HWY_EXPORT(falloff);
 void Operators_hwy()
 {
   constexpr auto min = -std::numeric_limits<float>::infinity();
@@ -490,6 +554,16 @@ void Operators_hwy()
   meta.icon = "\xef\x81\x97";
   meta.fn   = HWY_DYNAMIC_DISPATCH(blend);
   get().addMeta("@blend", meta);
+
+  // Complex
+  meta.parameterDef.resize(1);
+  meta.icon = "\xef\x81\x97";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(falloff);
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@source");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.0f, -1.f, 1.f), "@level");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, 0.0f, max), "@falloff");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(0, 0, 16), "@directions");
+  get().addMeta("@falloff", meta);
 }
 
 } // namespace terra

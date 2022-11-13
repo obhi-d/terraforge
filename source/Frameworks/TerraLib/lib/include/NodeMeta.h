@@ -155,7 +155,7 @@ public:
   DisplayInfo                displayInfo;
   std::u8string_view         category;
   std::string_view           style;
-  std::vector<ParameterMeta> parameterDef    = {ParameterMeta(FmtVal<DataType::eInput>(), "@input")};
+  std::vector<ParameterMeta> parameterDef    = {ParameterMeta(FmtVal<DataType::eInput>(), "@domain")};
   uint32_t                   outputUpscale   = 1; // multiplier
   uint32_t                   outputDownscale = 1; // divisor for reduction algo
   DataFormat                 format          = DataFormat(DataType::eBuffer);
@@ -176,7 +176,7 @@ public:
   NodeMeta& operator=(NodeMeta&&) noexcept      = default;
 
   virtual void prepareGeneration(Node&, Pipeline&) const = 0;
-  virtual void beginIteration(Node&, Pipeline&) const           = 0;
+  virtual void beginIteration(Node&, Pipeline&) const    = 0;
   virtual void endIteration(Node&, Pipeline&) const      = 0;
 };
 

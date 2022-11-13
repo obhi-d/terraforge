@@ -10,6 +10,7 @@ struct DomainFractal
 {
   float      amp;
   float      freq;
+  int32_t    seed;
   hwyvb_list inputs;
 };
 

@@ -508,7 +508,7 @@ HWY_API auto FS_Sin_f32(V a)
 template <typename V>
 HWY_API auto FS_Log_f32(V a)
 {
-  return hn::Log(a);
+  return hn::Log(hn::DFromV<V>(), a);
 }
 
 /// <summary>
@@ -732,7 +732,7 @@ HWY_API auto FS_NMaskedAdd_f32(V a, V b, M m)
 /// <code>
 /// float32v FS_NMaskedSub_f32( float32v a, float32v b, mask32v m )
 /// </code>
-//#define FS_NMaskedSub_f32(...) FastSIMD::NMaskedSub_f32<FS>(__VA_ARGS__)
+// #define FS_NMaskedSub_f32(...) FastSIMD::NMaskedSub_f32<FS>(__VA_ARGS__)
 template <typename V, typename M>
 HWY_API auto FS_NMaskedSub_f32(V a, V b, M m)
 {
@@ -797,7 +797,7 @@ HWY_API auto FS_NMaskedMul_i32(I a, I b, M m)
 /// </code>
 // #define FS_Pow_f32(...) FastSIMD::Pow_f32<FS>(__VA_ARGS__)
 template <typename V>
-HWY_API auto FS_Pow_f32(V value, V pow)
+HWY_API V FS_Pow_f32(V value, V pow)
 {
   return FS_Exp_f32(hn::Mul(pow, FS_Log_f32(value)));
 }
@@ -968,11 +968,11 @@ inline DerivNoise<V> dnoise(V x, V y, C const& perm)
 
   auto t2 = float32v(0.5f) - x2 * x2 - y2 * y2;
   idx     = hn::And(
-        hn::GatherIndex(itag, perm.data(),
+    hn::GatherIndex(itag, perm.data(),
                         hn::And(ti + hn::Set(itag, 1) +
                                   hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::Set(itag, 1), hn::Set(itag, 0xff))),
                                 hn::Set(itag, 0xff))),
-        hn::Set(itag, 7));
+    hn::Set(itag, 7));
   auto gx2 = hn::IfNegativeThenElse(t2, float32v(0.f), hn::GatherIndex(vtag, grad2lutX.data(), idx));
   auto gy2 = hn::IfNegativeThenElse(t2, float32v(0.f), hn::GatherIndex(vtag, grad2lutY.data(), idx));
   auto t22 = hn::IfNegativeThenElse(t2, float32v(0.f), t2 * t2);
@@ -1180,6 +1180,25 @@ inline auto domainWarpInput(I seed, V warpAmp, V x, V y, V& xOut, V& yOut)
   {
     return hn::Sqrt(FS_FMulAdd_f32(xWarp, xWarp, yWarp * yWarp));
   }
+}
+
+template <typename V>
+V falloffC2(V xsq)
+{
+  xsq = float32v(1.0) - xsq;
+  return xsq * xsq * xsq;
+}
+
+template <typename V>
+V falloffC1(V xsq)
+{
+  xsq = float32v(1.0) - xsq;
+  return xsq * xsq;
+}
+template <typename V>
+V square(V xsq)
+{
+  return xsq * xsq;
 }
 
 } // namespace terra::HWY_NAMESPACE

@@ -189,6 +189,7 @@ void noise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   finish(node, pipe, threadGroupId);
 }
 
+// TODO https://github.com/KdotJPG/OpenSimplex2/tree/master/java
 void openSimplex2(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
@@ -527,7 +528,7 @@ void dnoiseFractal(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto&       data     = pipe.getCacheData<DerivFractal>(node.getSelf());
   auto        origFreq = pipe.swapFreq(data.freq, threadGroupId);
   auto        origSeed = pipe.swapSeed(data.seed, threadGroupId);
-  auto&       iof      = pipe.pushInput(threadGroupId, lanes, false);
+  auto&       iof      = pipe.pushInput(threadGroupId, lanes, true);
   auto        out_data = out.data();
   auto        seed     = hn::Set(itag, pipe.seed(threadGroupId));
   auto const& perm     = pipe.getConstants().perm;

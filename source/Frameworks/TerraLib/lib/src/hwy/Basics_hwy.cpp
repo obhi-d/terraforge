@@ -264,7 +264,7 @@ void distance(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 
   auto disp = [&]<bool modulate>(std::bool_constant<modulate> m)
   {
-    switch (std::get<ScalarValue>(node.param(3)).ivalue)
+    switch (std::get<ScalarValue>(node.param(4)).ivalue)
     {
     case 0:
       dist(std::integral_constant<int, 0>(), m);
@@ -284,7 +284,7 @@ void distance(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
       break;
     }
   };
-  if (std::get<ScalarValue>(node.param(2)).bvalue)
+  if (std::get<ScalarValue>(node.param(3)).bvalue)
     disp(std::bool_constant<true>());
   else
     disp(std::bool_constant<false>());
