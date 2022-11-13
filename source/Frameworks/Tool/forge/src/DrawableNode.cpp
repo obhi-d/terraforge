@@ -1,21 +1,21 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
-#include "imgui_internal.h"
-#include "DrawHelpers.h"
 #include "DrawableNode.h"
+#include "DrawHelpers.h"
 #include "NodeEditor.h"
 #include "TerraMainApp.h"
+#include "imgui_internal.h"
 
 namespace terra
 {
 
 DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
 {
-  this->id         = id;
-  this->pos        = pos;
+  this->id  = id;
+  this->pos = pos;
   // for nodes
-  auto&       source = get().get<DataSource>(id);
-  
+  auto& source = get().get<DataSource>(id);
+
   output.id    = pack(id.um_index(), 0);
   output.flags = PinStateFlags::fOutput;
   imne::SetPinFlags(output.id, imne::PinKind::Output, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -39,8 +39,8 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
       auto&       p = parameters[i];
       auto const& d = meta.parameterDef[i];
       p.id          = pack(id.um_index(), i + 1);
-      if (d.format.type == DataType::eInput || d.format.type == DataType::eBuffer || d.format.type == DataType::eImage ||
-          d.format.type == DataType::eCurveData)
+      if (d.format.type == DataType::eInput || d.format.type == DataType::eBuffer ||
+          d.format.type == DataType::eImage || d.format.type == DataType::eCurveData)
       {
         p.flags = PinStateFlags::fInputPin;
         imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -52,7 +52,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
   imne::SetNodePosition(id.reserved, pos);
 }
 
-DrawableNode::~DrawableNode() 
+DrawableNode::~DrawableNode()
 {
   app().getDevice()->destroy(thumbnail);
 }
@@ -199,7 +199,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
     if (drawScalar(style, def, def.format.type, value))
       node.param(i, value);
   }
-    break;
+  break;
   case DataType::eEnum:
     // draw combo
     {
@@ -250,7 +250,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
   }
 }
 
-void DrawableNode::updateThumbnailFromImage(Image& image) 
+void DrawableNode::updateThumbnailFromImage(Image& image)
 {
   app().getDevice()->destroy(thumbnail);
   thumbnail = 0;
@@ -260,10 +260,10 @@ void DrawableNode::updateThumbnailFromImage(Image& image)
     return;
   //
   float du = 1.f / ThumbnailSize;
-  
-  float v  = 0;
+
+  float                           v       = 0;
   std::unique_ptr<std::uint8_t[]> sampled = std::make_unique<std::uint8_t[]>((int)ThumbnailSize * (int)ThumbnailSize);
-  for (int y = 0; y < (int)ThumbnailSize; y++, v+=du)
+  for (int y = 0; y < (int)ThumbnailSize; y++, v += du)
   {
     float u = 0;
     for (int x = 0; x < (int)ThumbnailSize; x++, u += du)
@@ -272,8 +272,8 @@ void DrawableNode::updateThumbnailFromImage(Image& image)
       sampled[x + y * (int)ThumbnailSize] = static_cast<std::uint8_t>(image.sample(u, v) * 255.f);
     }
   }
-  thumbnail = app().getDevice()->createImage(GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize,
-                                                    (uint32_t)ThumbnailSize, ImageFormat::eUnorm8,
+  thumbnail = app().getDevice()->createImage(
+    GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize, (uint32_t)ThumbnailSize, ImageFormat::eUnorm8,
     (std::byte const*)sampled.get(),
     GfxImage2D::Swizzle{GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eOne});
   thumbnailVersion = image.getVersion();
@@ -281,16 +281,16 @@ void DrawableNode::updateThumbnailFromImage(Image& image)
 
 bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, uint32_t selectedStyle)
 {
-  auto&       source    = get().get<DataSource>(id);
+  auto&       source = get().get<DataSource>(id);
   auto const& style  = app.getTheme().getNodeStyle(selectedStyle ? selectedStyle - 1 : this->style);
 
-  ImGui::PushID(id);
+  ImGui::PushID(id.um_index());
   imne::PushStyleColor(imne::StyleColor_NodeBg, style.nodeColor);
   imne::BeginNode(id.reserved);
 
   ImGui::BeginGroup();
   output.xy.y = ImGui::GetCursorPosY();
-  
+
   // Output/Header
 
   switch (source.getType())
@@ -312,7 +312,7 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
     {
       ne.changeImage(id);
     }
-    
+
     if (!name.empty())
     {
       ImGui::SameLine();
@@ -357,7 +357,7 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
   {
     ImGui::Image((ImTextureID)(std::uintptr_t)thumbnail.reserved, ImVec2{ThumbnailSize, ThumbnailSize});
   }
-  
+
   return false;
 }
 
@@ -376,7 +376,7 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
   {
   case DataSource::Type::eNode:
   {
-    auto& node = static_cast<Node&>(source);
+    auto&       node = static_cast<Node&>(source);
     auto const& meta = node.meta;
     // Parameters
     for (uint32_t i = 0; i < node.getNumParams(); ++i)
@@ -415,7 +415,7 @@ void DrawableNode::drawHeader(NodeEditor& ne, NodeStyle const& style, ImVec2 hea
     const auto halfBorderWidth = imne::GetStyle().NodeBorderWidth * 0.5f;
 
     if ((headerMax.x > headerMin.x) && (headerMax.y > headerMin.y))
-    {            
+    {
       auto headerSeparatorMin = ImVec2(headerMin.x, headerMax.y);
       auto headerSeparatorMax = ImVec2(headerMax.x, headerMax.y);
 

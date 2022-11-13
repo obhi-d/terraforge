@@ -14,7 +14,7 @@ namespace terra
 
 static constexpr size_t UboSize = 2 * sizeof(glm::mat4) + sizeof(glm::vec4);
 
-MeshPreview::MeshPreview() 
+MeshPreview::MeshPreview()
 {
   heightTexPath->path = (getMediaPath() / heightTexPath->path).string();
 }
@@ -22,11 +22,11 @@ MeshPreview::MeshPreview()
 void MeshPreview::init(TerraMainApp& app)
 {
   regenerate(app, actor);
-  setActorEventListener = app.dispatcher().listen([this](TerraMainApp& app, TerraMainApp::EventRegen const& ev)
-  {
-    regenerate(app, ev.actor ? ev.actor : actor);
-  });
-  
+  setActorEventListener = app.dispatcher().listen(
+    [this](TerraMainApp& app, TerraMainApp::EventRegen const& ev)
+    {
+      regenerate(app, ev.actor ? ev.actor : actor);
+    });
 }
 
 void MeshPreview::deinit(TerraMainApp& app)
@@ -94,21 +94,21 @@ void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
       auto vertId  = uint32_t(y * (patchX + 1));
       // 004, 404
 
-      indices[patchId + 0] =  static_cast<uint32_t>(vertId);
-      indices[patchId + 1] =  static_cast<uint32_t>(vertId + vertexCount);
-      indices[patchId + 2] =  static_cast<uint32_t>(vertId + patchX + 1);
-                              
-      indices[patchId + 3] =  static_cast<uint32_t>(vertId + patchX + 1);
-      indices[patchId + 4] =  static_cast<uint32_t>(vertId + vertexCount);
-      indices[patchId + 5] =  static_cast<uint32_t>(vertId + patchX + 1 + vertexCount);
-                              
-      indices[patchId + 6] =  static_cast<uint32_t>(vertId + patchX);
-      indices[patchId + 7] =  static_cast<uint32_t>(vertId + patchX + patchX + 1);
-      indices[patchId + 8] =  static_cast<uint32_t>(vertId + patchX + vertexCount);
-                              
-      indices[patchId + 9 ] =  static_cast<uint32_t>(vertId + patchX + vertexCount);
-      indices[patchId + 10] =  static_cast<uint32_t>(vertId + patchX + patchX + 1);
-      indices[patchId + 11] =  static_cast<uint32_t>(vertId + patchX + patchX + 1 + vertexCount);
+      indices[patchId + 0] = static_cast<uint32_t>(vertId);
+      indices[patchId + 1] = static_cast<uint32_t>(vertId + vertexCount);
+      indices[patchId + 2] = static_cast<uint32_t>(vertId + patchX + 1);
+
+      indices[patchId + 3] = static_cast<uint32_t>(vertId + patchX + 1);
+      indices[patchId + 4] = static_cast<uint32_t>(vertId + vertexCount);
+      indices[patchId + 5] = static_cast<uint32_t>(vertId + patchX + 1 + vertexCount);
+
+      indices[patchId + 6] = static_cast<uint32_t>(vertId + patchX);
+      indices[patchId + 7] = static_cast<uint32_t>(vertId + patchX + patchX + 1);
+      indices[patchId + 8] = static_cast<uint32_t>(vertId + patchX + vertexCount);
+
+      indices[patchId + 9]  = static_cast<uint32_t>(vertId + patchX + vertexCount);
+      indices[patchId + 10] = static_cast<uint32_t>(vertId + patchX + patchX + 1);
+      indices[patchId + 11] = static_cast<uint32_t>(vertId + patchX + patchX + 1 + vertexCount);
     }
 
     offset += patchY * 12;
@@ -119,22 +119,21 @@ void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
       auto vertId  = uint32_t(x);
       // 004, 404
 
-      indices[patchId + 0] =  static_cast<uint32_t>(vertId);
-      indices[patchId + 1] =  static_cast<uint32_t>(vertId + 1);
-      indices[patchId + 2] =  static_cast<uint32_t>(vertId + vertexCount);
-                             
+      indices[patchId + 0] = static_cast<uint32_t>(vertId);
+      indices[patchId + 1] = static_cast<uint32_t>(vertId + 1);
+      indices[patchId + 2] = static_cast<uint32_t>(vertId + vertexCount);
+
       indices[patchId + 3] = static_cast<uint32_t>(vertId + vertexCount);
       indices[patchId + 4] = static_cast<uint32_t>(vertId + 1);
       indices[patchId + 5] = static_cast<uint32_t>(vertId + 1 + vertexCount);
-                             
-      indices[patchId + 6] =  static_cast<uint32_t>(vertId + lastLine);
-      indices[patchId + 8] =  static_cast<uint32_t>(vertId + lastLine + 1);
-      indices[patchId + 7] =  static_cast<uint32_t>(vertId + lastLine + vertexCount);
-                              
-      indices[patchId + 9]  =  static_cast<uint32_t>(vertId + lastLine + vertexCount);
-      indices[patchId + 11] =  static_cast<uint32_t>(vertId + lastLine + 1);
-      indices[patchId + 10] =  static_cast<uint32_t>(vertId + lastLine + 1 + vertexCount);
 
+      indices[patchId + 6] = static_cast<uint32_t>(vertId + lastLine);
+      indices[patchId + 8] = static_cast<uint32_t>(vertId + lastLine + 1);
+      indices[patchId + 7] = static_cast<uint32_t>(vertId + lastLine + vertexCount);
+
+      indices[patchId + 9]  = static_cast<uint32_t>(vertId + lastLine + vertexCount);
+      indices[patchId + 11] = static_cast<uint32_t>(vertId + lastLine + 1);
+      indices[patchId + 10] = static_cast<uint32_t>(vertId + lastLine + 1 + vertexCount);
     }
 
     offset += patchX * 12;
@@ -175,10 +174,10 @@ void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
   {
     pipeline = get().createPipeline();
   }
-    
+
   if (actor)
   {
-    
+
     pipeline->compute(actor, params, ivec2{settings.tileOffset->x, settings.tileOffset->y},
                       ivec2{tileSize.x * nbPreviewTiles.x, tileSize.y * nbPreviewTiles.y});
   }
@@ -243,7 +242,7 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
 {
   GlGfxState state;
-  
+
   if (pipeline->hasResults())
   {
     auto size     = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y) * 4;
@@ -264,7 +263,7 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
   // update buffer
   int width  = tileSize.x * nbPreviewTiles.x;
   int height = tileSize.y * nbPreviewTiles.y;
-  
+
   struct Data
   {
     glm::mat4 view_projection;
@@ -298,15 +297,15 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
   data.vertexCount       = vertexCount;
   data.max               = max;
   data.min               = min;
-  data.crust             = min - (std::max(box.x, box.z) * .1f);
+  data.crust             = 1.f;
   app.getDevice()->unmapBuffer(ubo);
 
   if (descriptorsDirty)
   {
     std::array<GfxDescriptorSet::rhandle, 2> descriptors;
-    descriptors[0].first  = ubo;
+    descriptors[0].first  = ubo.um_index();
     descriptors[1].first  = heightTexPath->image;
-    descriptors[1].second = sampler;
+    descriptors[1].second = sampler.um_index();
     app.getDevice()->updateDescriptorSet(material.descriptorSet, descriptors);
   }
 
@@ -320,9 +319,9 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
 
   if (ms.dragging && ms.mainWnd && ms.rightDown)
   {
-    ms.locked          = MouseLockedBy::eSun;
-    float           x  = 0.5f * (float)ms.mouseDelta.x / (float)viewportSize.x;
-    float           y  =-0.5f * (float)ms.mouseDelta.y / (float)viewportSize.y;
+    ms.locked = MouseLockedBy::eSun;
+    float x   = 0.5f * (float)ms.mouseDelta.x / (float)viewportSize.x;
+    float y   = -0.5f * (float)ms.mouseDelta.y / (float)viewportSize.y;
 
     sunRotation->thetaAdd(170.f * y);
     sunRotation->phiAdd(350.f * x);
@@ -330,4 +329,3 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
 }
 
 } // namespace terra
-

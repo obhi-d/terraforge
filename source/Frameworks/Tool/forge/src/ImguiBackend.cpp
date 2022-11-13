@@ -1,11 +1,11 @@
 
 #include "ImguiBackend.h"
+#include "CustomFont.cpp"
 #include "IconsFontAwesome6.h"
 #include "ImageSerializer.h"
+#include "ImguiTerraWindow.h"
 #include "Logger.h"
 #include "ResourceUtils.h"
-#include "ImguiTerraWindow.h"
-#include "CustomFont.cpp"
 #include <SDL.h>
 
 namespace tmpl
@@ -35,7 +35,6 @@ void ImguiBackend::init(std::shared_ptr<GfxDevice43> renderer)
   state.blend           = BlendMode::eAdditive;
   state.depthTest       = DepthTestMode::eDisabled;
   state.scissorsEnabled = true;
-  
 }
 void ImguiBackend::destroy()
 {
@@ -68,7 +67,7 @@ void ImguiBackend::draw()
   draw(glm::vec2(io.DisplaySize.x, io.DisplaySize.y), ImGui::GetDrawData());
 }
 
-void ImguiBackend::drawOtherWindows() 
+void ImguiBackend::drawOtherWindows()
 {
   auto& io = ImGui::GetIO();
   if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -85,7 +84,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   ImGuiIO& io = ImGui::GetIO();
 
   io.Fonts->Clear();
-  
+
   /*if (std::filesystem::exists(getMediaPath() / theme.images[ImageName::eHeaderFont].path))
   {
     ImFontConfig config;
@@ -96,7 +95,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     auto font                   = fileContentToBytes(theme.images[ImageName::eHeaderFont].path);
     io.Fonts->AddFontFromMemoryTTF(reinterpret_cast<char*>(font.data()), (int)font.size(),
                                    (float)theme.images[ImageName::eHeaderFont].size.y, &config);
-  }*/ 
+  }*/
   if (std::filesystem::exists(getMediaPath() / theme.images[ImageName::eFont].path))
   {
     ImFontConfig config;
@@ -135,7 +134,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     config.PixelSnapH           = false;
 
     static const ImWchar ranges[] = {ICON_MIN_IGFD, ICON_MAX_IGFD, 0};
-        
+
     io.Fonts->AddFontFromMemoryCompressedBase85TTF(FONT_ICON_BUFFER_NAME_IGFD, 15.0f, &config, ranges);
   }
 
@@ -227,7 +226,7 @@ void ImguiBackend::createDeviceObjects()
   mesh.vertexBuffers[0].stride = sizeof(ImDrawVert);
   layout                       = renderer->createMeshLayout(mesh);
   params = renderer->createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::fUniform, sizeof(Params));
-  this->descriptors[0].first = params;
+  this->descriptors[0].first = params.um_index();
 }
 
 void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
@@ -246,7 +245,7 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
   state.scissor           = state.viewport;
 
   renderer->setState(state);
-  
+
   uint32_t vertexDataOffset = 0;
   uint32_t indexDataOffset  = 0;
   float    L                = data->DisplayPos.x;
@@ -274,7 +273,7 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
     const ImDrawList* cmd_list = data->CmdLists[n];
     for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++)
     {
-      
+
       const ImDrawCmd& pcmd = cmd_list->CmdBuffer[cmd_i];
       ImVec2 clipMin((pcmd.ClipRect.x - clipOff.x) * clipScale.x, (pcmd.ClipRect.y - clipOff.y) * clipScale.y);
       ImVec2 clipMax((pcmd.ClipRect.z - clipOff.x) * clipScale.x, (pcmd.ClipRect.w - clipOff.y) * clipScale.y);
@@ -283,8 +282,8 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
 
       if (pcmd.UserCallback)
       {
-        auto data = (ImguiBackend::CallbackData*)pcmd.UserCallbackData;
-        data->viewport = state.viewport;
+        auto data              = (ImguiBackend::CallbackData*)pcmd.UserCallbackData;
+        data->viewport         = state.viewport;
         data->scissor.offset.x = (int)clipMin.x;
         data->scissor.offset.y = (fbHeight - (int)clipMax.y);
         data->scissor.size.x   = (int)(clipMax.x - clipMin.x);
@@ -303,10 +302,10 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
         renderer->setState(state);
         auto id = (uint32_t)(uintptr_t)pcmd.GetTexID();
         if (id == 0)
-          descriptors[1].first = font;
+          descriptors[1].first = font.um_index();
         else
           descriptors[1].first = id;
-        descriptors[1].second = sampler;
+        descriptors[1].second = sampler.um_index();
         renderer->updateDescriptorSet(descriptorSet, descriptors);
         draw.baseVertex              = pcmd.VtxOffset;
         draw.vertexBuffers[0].offset = vertexDataOffset;

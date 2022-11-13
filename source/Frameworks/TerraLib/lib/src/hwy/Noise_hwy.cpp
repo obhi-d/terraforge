@@ -34,7 +34,7 @@ void simplex(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto out_data   = out.data();
   auto inp_x_data = inp.x.data();
   auto inp_y_data = inp.y.data();
-  auto seed       = hn::Set(itag, pipe.seed());
+  auto seed       = hn::Set(itag, pipe.seed(threadGroupId));
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
   {
     const auto x = hn::Load(vtag, inp_x_data + ii);
@@ -104,7 +104,7 @@ void noise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto out_data   = out.data();
   auto inp_x_data = inp.x.data();
   auto inp_y_data = inp.y.data();
-  auto seed       = hn::Set(itag, pipe.seed());
+  auto seed       = hn::Set(itag, pipe.seed(threadGroupId));
 
   auto const& perm = pipe.getConstants().perm;
 
@@ -151,21 +151,21 @@ void noise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     auto t0   = hn::Set(vtag, 0.5f) - x0 * x0 - y0 * y0;
     auto t0t0 = t0 * t0;
     auto n0   = hn::IfNegativeThenElse(
-        t0, hn::Zero(vtag),
-        t0t0 * t0t0 *
-          grad(hn::GatherIndex(
-                 itag, perm.data(),
-                 hn::And(ti + hn::GatherIndex(itag, perm.data(), hn::And(tj, hn::Set(itag, 0xff))), hn::Set(itag, 0xff))),
+      t0, hn::Zero(vtag),
+      t0t0 * t0t0 *
+        grad(hn::GatherIndex(
+               itag, perm.data(),
+               hn::And(ti + hn::GatherIndex(itag, perm.data(), hn::And(tj, hn::Set(itag, 0xff))), hn::Set(itag, 0xff))),
                x0, y0));
 
     auto t1   = hn::Set(vtag, 0.5f) - x1 * x1 - y1 * y1;
     auto t1t1 = t1 * t1;
     auto n1   = hn::IfNegativeThenElse(
-        t1, hn::Zero(vtag),
-        t1t1 * t1t1 *
-          grad(hn::GatherIndex(
-                 itag, perm.data(),
-                 hn::And(ti + hn::ConvertTo(itag, i1) +
+      t1, hn::Zero(vtag),
+      t1t1 * t1t1 *
+        grad(hn::GatherIndex(
+               itag, perm.data(),
+               hn::And(ti + hn::ConvertTo(itag, i1) +
                            hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::ConvertTo(itag, j1), hn::Set(itag, 0xff))),
                          hn::Set(itag, 0xff))),
                x1, y1));
@@ -173,11 +173,11 @@ void noise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     auto t2   = hn::Set(vtag, 0.5f) - x2 * x2 - y2 * y2;
     auto t2t2 = t2 * t2;
     auto n2   = hn::IfNegativeThenElse(
-        t2, hn::Zero(vtag),
-        t2t2 * t2t2 *
-          grad(hn::GatherIndex(
-                 itag, perm.data(),
-                 hn::And(ti + hn::Set(itag, 1) +
+      t2, hn::Zero(vtag),
+      t2t2 * t2t2 *
+        grad(hn::GatherIndex(
+               itag, perm.data(),
+               hn::And(ti + hn::Set(itag, 1) +
                            hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::Set(itag, 1), hn::Set(itag, 0xff))),
                          hn::Set(itag, 0xff))),
                x2, y2));
@@ -206,7 +206,7 @@ void openSimplex2(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto out_data   = out.data();
   auto inp_x_data = inp.x.data();
   auto inp_y_data = inp.y.data();
-  auto seed       = hn::Set(itag, pipe.seed());
+  auto seed       = hn::Set(itag, pipe.seed(threadGroupId));
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
   {
     const auto x = hn::Load(vtag, inp_x_data + ii);
@@ -272,7 +272,7 @@ void ridgedNoise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto out_a_data = out.data();
   auto inp_x_data = inp.x.data();
   auto inp_y_data = inp.y.data();
-  auto seed       = hn::Set(itag, pipe.seed());
+  auto seed       = hn::Set(itag, pipe.seed(threadGroupId));
 
   NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
@@ -380,7 +380,7 @@ void flowNoise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto out_data   = out.data();
   auto inp_x_data = inp.x.data();
   auto inp_y_data = inp.y.data();
-  auto seed       = hn::Set(itag, pipe.seed());
+  auto seed       = hn::Set(itag, pipe.seed(threadGroupId));
 
   auto const& perm  = pipe.getConstants().perm;
   auto        angle = radians(std::get<ScalarValue>(node.param(1)).value);
@@ -451,11 +451,11 @@ void flowNoise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
     /// ------
 
     auto t2 = hn::Set(vtag, 0.5f) - x2 * x2 - y2 * y2;
-    gi = hn::And(
+    gi      = hn::And(
       hn::GatherIndex(itag, perm.data(),
-                      hn::And(ti + hn::Set(itag, 1) +
-                                hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::Set(itag, 1), hn::Set(itag, 0xff))),
-                              hn::Set(itag, 0xff))),
+                           hn::And(ti + hn::Set(itag, 1) +
+                                     hn::GatherIndex(itag, perm.data(), hn::And(tj + hn::Set(itag, 1), hn::Set(itag, 0xff))),
+                                   hn::Set(itag, 0xff))),
       hn::Set(itag, 7));
     auto t22 = t2 * t2;
     auto t42 = t22 * t22;
@@ -473,37 +473,26 @@ void multiFractal(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   const V_t vtag{};
   const I_t itag{};
 
-  const auto lanes      = (uint32)hn::Lanes(vtag);
-  auto&      out        = pipe.getOutput(threadGroupId, lanes);
-  auto&      inp        = pipe.getInput(threadGroupId, lanes, true);
-  auto&      iof        = pipe.pushInput(threadGroupId, lanes, false);
-  auto       out_data   = out.data();
-  auto       inp_x_data = inp.x.data();
-  auto       inp_y_data = inp.y.data();
-  auto       iof_x_data = iof.x.data();
-  auto       iof_y_data = iof.y.data();
-  auto       seed       = hn::Set(itag, pipe.seed());
-  iof                   = inp;
+  const auto lanes    = (uint32)hn::Lanes(vtag);
+  auto&      data     = pipe.getCacheData<MultiFractal>(node.getSelf());
+  auto       origFreq = pipe.swapFreq(data.freq, threadGroupId);
+  auto       origSeed = pipe.swapSeed(data.seed, threadGroupId);
+  auto&      out      = pipe.getOutput(threadGroupId, lanes);
+  auto&      iof      = pipe.pushInput(threadGroupId, lanes, true);
+  auto       out_data = out.data();
+  auto       seed     = hn::Set(itag, pipe.seed(threadGroupId));
 
-  auto& data      = pipe.getCacheData<MultiFractal>(node.getSelf());
   auto& save      = data.outputs[threadGroupId];
   auto& mod       = pipe.pushOutput(threadGroupId, lanes);
   auto  iteration = pipe.getIteration();
-  float freq      = data.freq;
-  float amp       = data.amp;
 
   if (pipe.getIteration() == 0)
   {
-    save.fill(out.width(), out.height(), lanes, 1.0f);
+    save.fill(out.width(), out.height(), lanes, 0.0f);
   }
 
-  for (uint32_t ii = 0; ii < out.size(); ii += lanes)
-  {
-    const auto x = hn::Load(vtag, inp_x_data + ii);
-    const auto y = hn::Load(vtag, inp_y_data + ii);
-    hn::Store(x * float32v(freq), vtag, iof_x_data + ii);
-    hn::Store(y * float32v(freq), vtag, iof_y_data + ii);
-  }
+  auto freq = float32v(data.freq);
+  auto amp  = float32v(data.amp);
 
   // modify domain if we have a domain modifier
   NodeMeta_hwy::domain(node.param(0), pipe, threadGroupId, lanes);
@@ -514,58 +503,51 @@ void multiFractal(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
   {
-    auto sum = hn::Load(vtag, out_data + ii);
     auto n   = hn::Load(vtag, mod_data + ii);
-    sum += n * hn::Load(vtag, save_data + ii) * float32v(amp);
-    hn::Store(sum, vtag, out_data + ii);
+    auto sum = hn::Load(vtag, save_data + ii);
+    n        = n * amp + sum;
+    hn::Store(n, vtag, out_data + ii);
   }
 
   data.outputs[threadGroupId] = out;
 
   pipe.popOutput(threadGroupId);
   pipe.popInput(threadGroupId);
+  pipe.swapFreq(origFreq, threadGroupId);
+  pipe.swapSeed(origSeed, threadGroupId);
 }
 
-void iqfBm(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void dnoiseFractal(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
   const I_t itag{};
 
-  const auto lanes      = (uint32)hn::Lanes(vtag);
-  auto&      out        = pipe.getOutput(threadGroupId, lanes);
-  auto&      inp        = pipe.getInput(threadGroupId, lanes, true);
-  auto&      iof        = pipe.pushInput(threadGroupId, lanes, false);
-  auto       out_data   = out.data();
-  auto       inp_x_data = inp.x.data();
-  auto       inp_y_data = inp.y.data();
-  auto       iof_x_data = iof.x.data();
-  auto       iof_y_data = iof.y.data();
-  auto       seed       = hn::Set(itag, pipe.seed());
-  iof                   = inp;
-  auto const& perm      = pipe.getConstants().perm;
-  auto&       data      = pipe.getCacheData<IqfBm>(node.getSelf());
-  auto&       savedx    = data.dx[threadGroupId];
-  auto&       sum       = data.sum[threadGroupId];
-  float       amp       = data.amp;
-  float       freq      = data.freq;
+  const auto  lanes    = (uint32)hn::Lanes(vtag);
+  auto&       out      = pipe.getOutput(threadGroupId, lanes);
+  auto&       data     = pipe.getCacheData<DerivFractal>(node.getSelf());
+  auto        origFreq = pipe.swapFreq(data.freq, threadGroupId);
+  auto        origSeed = pipe.swapSeed(data.seed, threadGroupId);
+  auto&       iof      = pipe.pushInput(threadGroupId, lanes, false);
+  auto        out_data = out.data();
+  auto        seed     = hn::Set(itag, pipe.seed(threadGroupId));
+  auto const& perm     = pipe.getConstants().perm;
+  auto&       savedx   = data.dx[threadGroupId];
+  auto&       sum      = data.sum[threadGroupId];
+  float       amp      = data.amp;
+  float       freq     = data.freq;
 
   if (pipe.getIteration() == 0)
   {
     savedx.fill(out.width(), out.height(), lanes, 0.0f);
     sum.fill(out.width(), out.height(), lanes, 0.0f);
   }
-  for (uint32_t ii = 0; ii < inp.x.size(); ii += lanes)
-  {
-    const auto x = hn::Load(vtag, inp_x_data + ii);
-    const auto y = hn::Load(vtag, inp_y_data + ii);
-    hn::Store(x * float32v(freq), vtag, iof_x_data + ii);
-    hn::Store(y * float32v(freq), vtag, iof_y_data + ii);
-  }
 
   // modify domain if we have a domain modifier
   NodeMeta_hwy::domain(node.param(0), pipe, threadGroupId, lanes);
-  auto dxdata = savedx.data();
-  auto sum_data = sum.data();
+  auto dxdata     = savedx.data();
+  auto sum_data   = sum.data();
+  auto iof_x_data = iof.x.data();
+  auto iof_y_data = iof.y.data();
   for (uint32_t ii = 0; ii < out.size(); ii += lanes)
   {
     const auto x  = hn::Load(vtag, iof_x_data + ii);
@@ -580,8 +562,10 @@ void iqfBm(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   }
 
   data.sum[threadGroupId] = out;
-    
+
   pipe.popInput(threadGroupId);
+  pipe.swapFreq(origFreq, threadGroupId);
+  pipe.swapSeed(origSeed, threadGroupId);
 }
 
 void cellularValue(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
@@ -649,14 +633,15 @@ HWY_EXPORT(ridgedNoise);
 HWY_EXPORT(worlyNoise);
 HWY_EXPORT(flowNoise);
 HWY_EXPORT(multiFractal);
-HWY_EXPORT(iqfBm);
+HWY_EXPORT(dnoiseFractal);
 HWY_EXPORT(cellularValue);
 
 void multiFractal_prepare(Node& node, Pipeline_hwy& pipe)
 {
   auto& mf = pipe.addCacheData<MultiFractal>(node.getSelf());
   mf.amp   = 0.5f;
-  mf.freq  = pipe.params().frequency;
+  mf.freq  = pipe.origFrequency();
+  mf.seed  = pipe.origSeed();
   for (uint32_t i = 0; i < pipe.getNumThreads(); ++i)
     mf.outputs.emplace_at(i, hwybuffer());
 }
@@ -667,17 +652,20 @@ void multiFractal_end(Node& node, Pipeline_hwy& pipe)
   auto  octaves    = std::get<ScalarValue>(node.param(2)).ivalue - 1;
   auto  lacunarity = std::get<ScalarValue>(node.param(3)).value;
   auto  gain       = std::get<ScalarValue>(node.param(4)).value;
+  auto  seed       = std::get<ScalarValue>(node.param(5)).ivalue;
   mf.freq *= lacunarity;
   mf.amp *= gain;
+  mf.seed += seed;
   if (pipe.getIteration() < octaves)
     pipe.reissue();
 }
 
-void iqfBm_prepare(Node& node, Pipeline_hwy& pipe)
+void dnoiseFractal_prepare(Node& node, Pipeline_hwy& pipe)
 {
-  auto& mf = pipe.addCacheData<IqfBm>(node.getSelf());
+  auto& mf = pipe.addCacheData<DerivFractal>(node.getSelf());
   mf.amp   = 0.5f;
-  mf.freq  = pipe.params().frequency;
+  mf.freq  = pipe.origFrequency();
+  mf.seed  = pipe.origSeed();
   for (uint32_t i = 0; i < pipe.getNumThreads(); ++i)
   {
     mf.sum.emplace_at(i, hwybuffer());
@@ -685,22 +673,24 @@ void iqfBm_prepare(Node& node, Pipeline_hwy& pipe)
   }
 }
 
-void iqfBm_end(Node& node, Pipeline_hwy& pipe)
+void dnoiseFractal_end(Node& node, Pipeline_hwy& pipe)
 {
-  auto& mf         = pipe.getCacheData<IqfBm>(node.getSelf());
+  auto& mf         = pipe.getCacheData<DerivFractal>(node.getSelf());
   auto  octaves    = std::get<ScalarValue>(node.param(1)).ivalue - 1;
   auto  lacunarity = std::get<ScalarValue>(node.param(2)).value;
   auto  gain       = std::get<ScalarValue>(node.param(3)).value;
+  auto  seed       = std::get<ScalarValue>(node.param(4)).ivalue;
   mf.freq *= lacunarity;
   mf.amp *= gain;
+  mf.seed += seed;
   if (pipe.getIteration() < octaves)
     pipe.reissue();
 }
 
 void Noise_hwy()
 {
-  constexpr auto min = std::numeric_limits<float>::min();
-  constexpr auto max = std::numeric_limits<float>::max();
+  constexpr auto min = -std::numeric_limits<float>::infinity();
+  constexpr auto max = std::numeric_limits<float>::infinity();
 
   // Common
   NodeMeta_hwy meta;
@@ -746,23 +736,27 @@ void Noise_hwy()
   meta.endIt   = &multiFractal_end;
   meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source");
   meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 256), "@octaves");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.1f, min, max), "@lacunarity");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(1.1f, min, max), "@gain");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(2.0f, min, max), "@lacunarity");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.5f, 0.f, 0.99f), "@gain");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1), "@seedOffset");
   get().addMeta("@multiFractal", meta);
   meta.parameterDef.resize(1);
 
   meta.icon    = "\xef\x87\xbe";
-  meta.fn      = HWY_DYNAMIC_DISPATCH(iqfBm);
-  meta.prepare = &iqfBm_prepare;
-  meta.endIt   = &iqfBm_end;
+  meta.fn      = HWY_DYNAMIC_DISPATCH(dnoiseFractal);
+  meta.prepare = &dnoiseFractal_prepare;
+  meta.endIt   = &dnoiseFractal_end;
   meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 256), "@octaves");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.1f, min, max), "@lacunarity");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(1.1f, min, max), "@gain");
-  get().addMeta("@iqfBm", meta);
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(2.0f, min, max), "@lacunarity");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.5f, 0.f, .99f), "@gain");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1), "@seedOffset");
+  get().addMeta("@dnoiseFractal", meta);
   meta.parameterDef.resize(1);
 
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(cellularValue);
+  meta.icon    = "\xef\x87\xbe";
+  meta.fn      = HWY_DYNAMIC_DISPATCH(cellularValue);
+  meta.prepare = nullptr;
+  meta.endIt   = nullptr;
   meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@jitter");
   meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(0, 0, 3), "@returnType");
   meta.parameterDef.emplace_back(

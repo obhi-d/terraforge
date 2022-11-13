@@ -43,11 +43,12 @@ vec2 getMinMax(float const* input, uint32_t pitch, uint32_t width, uint32_t heig
   const hn::ScalableTag<T> d;
   auto const               lanes = (uint32_t)hn::Lanes(d);
 
-  auto const minv = hn::Set(d, std::numeric_limits<float>::max());
-  auto const maxv = hn::Set(d, std::numeric_limits<float>::min());
+  constexpr auto min = -std::numeric_limits<float>::infinity();
+  constexpr auto max = std::numeric_limits<float>::infinity();
 
-  auto min = minv;
-  auto max = maxv;
+  auto minv = hn::Set(d, max);
+  auto maxv = hn::Set(d, min);
+
   for (uint32_t h = 0; h < height; h++)
   {
     auto line = input + pitch * h;
@@ -56,21 +57,21 @@ vec2 getMinMax(float const* input, uint32_t pitch, uint32_t width, uint32_t heig
       if (i + lanes <= width)
       {
         auto v = hn::Load(d, line + i);
-        max    = hn::Max(v, max);
-        min    = hn::Min(v, min);
+        maxv   = hn::Max(v, maxv);
+        minv   = hn::Min(v, minv);
       }
       else
       {
         auto m = hn::FirstN(d, i + lanes - width);
-        max    = hn::Max(hn::IfThenElse(m, hn::Load(d, line + i), maxv), max);
-        min    = hn::Min(hn::IfThenElse(m, hn::Load(d, line + i), minv), min);
+        maxv   = hn::Max(hn::IfThenElse(m, hn::Load(d, line + i), maxv), maxv);
+        minv   = hn::Min(hn::IfThenElse(m, hn::Load(d, line + i), minv), minv);
       }
     }
   }
 
   vec2 value;
-  value[0] = hn::GetLane(hn::MinOfLanes(d, min));
-  value[1] = hn::GetLane(hn::MaxOfLanes(d, max));
+  value[0] = hn::GetLane(hn::MinOfLanes(d, minv));
+  value[1] = hn::GetLane(hn::MaxOfLanes(d, maxv));
   return value;
 }
 
@@ -181,7 +182,7 @@ hwyvb& Pipeline_hwy::pushInput(uint32_t thread, uint32_t lanes, bool populated)
     auto  ystart = threadData.params.startxy[1] - 1;
     for (int i = 0; i < threadData.height; ++i)
     {
-      HWY_DYNAMIC_DISPATCH(writeInputLine)(frequency(), xstart, ystart + i, inp.pitch(), x, y);
+      HWY_DYNAMIC_DISPATCH(writeInputLine)(frequency(thread), xstart, ystart + i, inp.pitch(), x, y);
       x += inp.pitch();
       y += inp.pitch();
     }
@@ -198,7 +199,7 @@ void Pipeline_hwy::popInput(uint32_t thread)
 void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 {
   // auto div = N * lanes();
-  constexpr bool SingleThreaded = false;
+  constexpr bool SingleThreaded = true;
   if constexpr (SingleThreaded)
   {
     threadDatas.emplace_back();
@@ -289,8 +290,6 @@ void Pipeline_hwy::launch()
   DataSource::endIteration(getActor(), *this);
   if (hasMoreIterations())
     iteration++;
-  for (auto& td : threadDatas)
-    td.params.iteration = iteration;
 }
 
 std::size_t Pipeline_hwy::hasResults()
@@ -305,8 +304,8 @@ std::size_t Pipeline_hwy::hasResults()
 
 void Pipeline_hwy::getResults(float* ready, uint32_t size, float& min, float& max)
 {
-  min            = std::numeric_limits<float>::max();
-  max            = std::numeric_limits<float>::min();
+  min            = std::numeric_limits<float>::infinity();
+  max            = -std::numeric_limits<float>::infinity();
   auto const& ls = launchSize();
   auto const& lo = launchOffset();
   // auto        ready = std::unique_ptr<float[]>(new float[ls[0] * ls[1]]);
@@ -336,7 +335,7 @@ void Pipeline_hwy::getResults(float* ready, uint32_t size, float& min, float& ma
 }
 
 void Pipeline_hwy::wait() {}
-void Pipeline_hwy::cleanup() 
+void Pipeline_hwy::cleanup()
 {
   threadDatas.clear();
 }

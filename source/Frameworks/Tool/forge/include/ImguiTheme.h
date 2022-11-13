@@ -1,9 +1,9 @@
 
 #pragma once
 
-#include "Setup.h"
 #include "IconsFontAwesome6.h"
 #include "NeoHelper.h"
+#include "Setup.h"
 #include "glm/glm.hpp"
 #include "imgui.h"
 #include <array>
@@ -53,7 +53,7 @@ struct ImThemeColors
 struct NodeStyle
 {
   std::string name          = "default";
-  float       fixedWidth    = 40.f;
+  float       fixedWidth    = 50.f;
   float       pinSize       = 16.0f;
   Color       pinColor      = 0xefefefef;
   Color       pinHoverColor = 0xffffffff;
@@ -71,7 +71,7 @@ struct ImguiTheme : neo::command_handler
   std::filesystem::path  source;
   Packs                  images;
   ImThemeColors          themeColors;
-  std::vector<NodeStyle> nodeStyles = std::vector<NodeStyle>(1);
+  std::vector<NodeStyle> nodeStyles    = std::vector<NodeStyle>(1);
   float                  linkThickness = 2.0f;
 
   NodeStyle const& getNodeStyle(uint32_t s) const

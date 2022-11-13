@@ -7,12 +7,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mimalloc-2.0/mimalloc.h>
 #include <optional>
-#include <stdexcept>
 #include <semaphore>
-#include <future>
+#include <stdexcept>
 #include <vector>
 
 #define ENUM_FLAGS(Enum)                                                                                               \
@@ -119,16 +119,16 @@ struct handle
   constexpr handle(uint32_t v) noexcept : reserved(v) {}
 
   template <typename D>
-  requires(std::derived_from<D, T> || std::derived_from<T, D>) constexpr handle(terra::handle<D> other) noexcept
-      : reserved(other.reserved)
+    requires(std::derived_from<D, T> || std::derived_from<T, D>)
+  constexpr handle(terra::handle<D> other) noexcept : reserved(other.reserved)
   {}
 
-  constexpr operator uint32_t() const noexcept
+  constexpr explicit operator uint32_t() const noexcept
   {
     return reserved;
   }
 
-  constexpr operator bool() const noexcept
+  constexpr explicit operator bool() const noexcept
   {
     return reserved != 0;
   }
@@ -308,7 +308,7 @@ struct EnvParams
   // Current tile size
   ivec2 tileSize{};
   // size of the output buffer
-  ivec2 outputSize{};  
+  ivec2 outputSize{};
   // The region of data this param represents
   // relative to output
   Box region;
@@ -316,10 +316,7 @@ struct EnvParams
   Box tileRegion;
 
   float   frequency{};
-  float   wavelength{};
   int32_t seed{};
-  int32_t iteration{};
-  
 
   inline constexpr auto operator<=>(EnvParams const&) const noexcept = default;
 };
@@ -360,7 +357,6 @@ enum class PipelineType
   eGPU,
   eCPU
 };
-
 
 struct Event
 {
@@ -434,7 +430,9 @@ struct DisplayInfo : HelpInfo
   std::u8string_view name;
 
   DisplayInfo() = default;
-  DisplayInfo(std::string_view n, std::u8string_view h, std::u8string_view t) : name((char8_t const*)n.data(), n.length()), HelpInfo(h, t) {}
+  DisplayInfo(std::string_view n, std::u8string_view h, std::u8string_view t)
+      : name((char8_t const*)n.data(), n.length()), HelpInfo(h, t)
+  {}
   DisplayInfo(std::u8string_view n, std::u8string_view h, std::u8string_view t) : name(n), HelpInfo(h, t) {}
 
   const char* getName() const
@@ -462,15 +460,14 @@ struct MenuDelegate
 struct MenuData
 {
   std::vector<MenuDelegate*> delegates;
-  bool                      canBeMaximized = true;
-  bool                      isMain         = false;
-  bool                      locked         = false;
-  bool                      maximized      = false;
-  bool                      opened         = true;
+  bool                       canBeMaximized = true;
+  bool                       isMain         = false;
+  bool                       locked         = false;
+  bool                       maximized      = false;
+  bool                       opened         = true;
 };
 
-
-constexpr inline float radians(float deg) 
+constexpr inline float radians(float deg)
 {
   return deg * 0.0174533f;
 }

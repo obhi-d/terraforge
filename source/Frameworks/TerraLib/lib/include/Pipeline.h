@@ -45,12 +45,12 @@ public:
     continueIter = true;
   }
 
-  float frequency() const
+  float origFrequency() const
   {
     return launchParams.frequency;
   }
 
-  int32_t seed() const
+  int32_t origSeed() const
   {
     return launchParams.seed;
   }

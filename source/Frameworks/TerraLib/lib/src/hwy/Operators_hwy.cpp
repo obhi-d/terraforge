@@ -342,6 +342,44 @@ void blend(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
+void flipSign(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  const hn::ScalableTag<T> d;
+  const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  auto& out_a = pipe.getOutput(threadGroupId, lanes);
+
+  auto out_a_data = out_a.data();
+  for (uint32_t i = 0; i < out_a.size(); i += lanes)
+  {
+    const auto a = hn::Load(d, out_a_data + i);
+    hn::Store(hn::Neg(a), d, out_a_data + i);
+  }
+
+  finish(node, pipe, threadGroupId);
+}
+
+void abs(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  const hn::ScalableTag<T> d;
+  const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  auto& out_a = pipe.getOutput(threadGroupId, lanes);
+
+  auto out_a_data = out_a.data();
+  for (uint32_t i = 0; i < out_a.size(); i += lanes)
+  {
+    const auto a = hn::Load(d, out_a_data + i);
+    hn::Store(hn::Abs(a), d, out_a_data + i);
+  }
+
+  finish(node, pipe, threadGroupId);
+}
+
 } // namespace terra::HWY_NAMESPACE
 
 HWY_AFTER_NAMESPACE();
@@ -361,16 +399,31 @@ HWY_EXPORT(max);
 HWY_EXPORT(minSmooth);
 HWY_EXPORT(maxSmooth);
 HWY_EXPORT(blend);
+HWY_EXPORT(flipSign);
+HWY_EXPORT(abs);
 void Operators_hwy()
 {
+  constexpr auto min = -std::numeric_limits<float>::infinity();
+  constexpr auto max = std::numeric_limits<float>::infinity();
+
   // Common
   NodeMeta_hwy meta;
   meta.category = "@Operators"_ls;
   meta.style    = "operators";
 
+  // Unary
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source");
+  // Add
+  meta.icon = "\xef\x81\x95";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(abs);
+  get().addMeta("@abs", meta);
+
+  meta.icon = "\xef\x81\x95";
+  meta.fn   = HWY_DYNAMIC_DISPATCH(flipSign);
+  get().addMeta("@flipSign", meta);
+
   // Binary
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpA");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpB");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source2");
 
   // Add
   meta.icon = "\xef\x81\x95";
@@ -423,7 +476,7 @@ void Operators_hwy()
 
   // Tartiary
   meta.parameterDef.pop_back();
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@OpC");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source3");
 
   // MAdd
   meta.icon = "\xef\x81\x97";
@@ -431,7 +484,7 @@ void Operators_hwy()
   get().addMeta("@madd", meta);
 
   meta.parameterDef.pop_back();
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@Blend");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@factor");
 
   // MAdd
   meta.icon = "\xef\x81\x97";

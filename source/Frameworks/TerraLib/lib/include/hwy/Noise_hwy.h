@@ -10,13 +10,15 @@ struct MultiFractal
 {
   float          amp;
   float          freq;
+  int32_t        seed;
   hwybuffer_list outputs;
 };
 
-struct IqfBm
+struct DerivFractal
 {
   float          amp;
   float          freq;
+  int32_t        seed;
   hwybuffer_list sum;
   hwybuffer_list dx;
 };

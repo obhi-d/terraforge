@@ -8,10 +8,9 @@ namespace terra
 
 struct DomainFractal
 {
-  float          amp;
-  float          freq;
-  int32_t        seed;
-  hwyvb_list     inputs;
+  float      amp;
+  float      freq;
+  hwyvb_list inputs;
 };
 
 } // namespace terra

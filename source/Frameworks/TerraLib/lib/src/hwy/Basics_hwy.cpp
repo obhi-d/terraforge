@@ -41,7 +41,7 @@ void checkerBoard(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 
     auto value = hn::Xor(FS_Convertf32_i32(x * multiplier), FS_Convertf32_i32(y * multiplier));
 
-    hn::Store(float32v(1.0f) * FS_Casti32_f32(hn::ShiftLeft<31>(value)), vtag, out_data + ii);
+    hn::Store(hn::Xor(float32v(1.0f), FS_Casti32_f32(hn::ShiftLeft<31>(value))), vtag, out_data + ii);
   }
   finish(node, pipe, threadGroupId);
 }
@@ -82,8 +82,8 @@ void curve(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
         auto store = hn::Set(vtag, 0);
         if constexpr (applyX)
         {
-          const auto x = hn::Load(vtag, xy[0] + ii);
-          auto       u = FS_SubMul(x, xoffset, xrsize);
+          const auto   x      = hn::Load(vtag, xy[0] + ii);
+          auto         u      = FS_SubMul(x, xoffset, xrsize);
           hn::Vec<V_t> storeV = hn::Set(vtag, 0);
           for (uint32_t l = 0; l < lanes; ++l)
             storeV = hn::InsertLane(storeV, l, cd.spline(hn::ExtractLane(u, l)));
@@ -91,9 +91,9 @@ void curve(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
         }
         if constexpr (applyY)
         {
-          const auto y = hn::Load(vtag, xy[1] + ii);
-          auto       u = FS_SubMul(y, yoffset, yrsize);
-          auto       storeX = hn::Set(vtag, 0);
+          const auto   y      = hn::Load(vtag, xy[1] + ii);
+          auto         u      = FS_SubMul(y, yoffset, yrsize);
+          auto         storeX = hn::Set(vtag, 0);
           hn::Vec<V_t> storeV = hn::Set(vtag, 0);
           for (uint32_t l = 0; l < lanes; ++l)
             storeV = hn::InsertLane(storeV, l, cd.spline(hn::ExtractLane(u, l)));
@@ -306,29 +306,30 @@ HWY_EXPORT(curve);
 HWY_EXPORT(imageMask);
 void Basics_hwy()
 {
+  constexpr auto min = -std::numeric_limits<float>::infinity();
+  constexpr auto max = std::numeric_limits<float>::infinity();
+
   // Common
   NodeMeta_hwy meta;
   meta.category = "@Basics"_ls;
   meta.style    = "basics";
 
   // checkerBoard
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(), "@cbsize");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(1.f, min, max), "@cbsize");
   meta.icon = "\xef\x87\xbe";
   meta.fn   = HWY_DYNAMIC_DISPATCH(checkerBoard);
   get().addMeta("@checkerBoard", meta);
   meta.parameterDef.resize(1);
 
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(), "@amplitude");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(1.0f, min, max), "@amplitude");
   meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, -180.f, 180.f), "@phase");
   meta.icon = "\xef\x87\xbe";
   meta.fn   = HWY_DYNAMIC_DISPATCH(sin);
   get().addMeta("@sin", meta);
   meta.parameterDef.resize(1);
 
-  meta.parameterDef.emplace_back(
-    FmtVal<DataType::eBuffer>(0.0f, std::numeric_limits<float>::min(), std::numeric_limits<float>::max()), "@fromX");
-  meta.parameterDef.emplace_back(
-    FmtVal<DataType::eBuffer>(0.0f, std::numeric_limits<float>::min(), std::numeric_limits<float>::max()), "@fromY");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@fromX");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@fromY");
   meta.parameterDef.emplace_back(FmtVal<DataType::eBool>(1), "@modulateByFreq");
   meta.parameterDef.emplace_back(
     FmtEnum(0, {"@eucledian"_ls, "@eucledianSquared"_ls, "@manhattan"_ls, "@hybrid"_ls, "@maxAxis"_ls}),
@@ -341,8 +342,8 @@ void Basics_hwy()
 
   meta.parameterDef.emplace_back(FmtVal<DataType::eImage>(), "@mask");
   meta.parameterDef.emplace_back(FmtEnum(0, {"@x1"_ls, "@x2"_ls, "@x3"_ls, "@x4"_ls}), "@sampling");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(), "@offset");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(), "@scale");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, min, max), "@offset");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(1.0f, min, max), "@scale");
   meta.icon                  = "\xef\x87\xbe";
   meta.fn                    = HWY_DYNAMIC_DISPATCH(imageMask);
   meta.attribTileConstrained = true;
@@ -354,7 +355,7 @@ void Basics_hwy()
   meta.parameterDef.emplace_back(FmtVal<DataType::eCurveData>(), "@curve");
   meta.parameterDef.emplace_back(FmtVal<DataType::eBool>(), "@applyX");
   meta.parameterDef.emplace_back(FmtVal<DataType::eBool>(), "@applyY");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(), "@strength");
+  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(1.0f, min, max), "@strength");
   meta.icon                  = "\xef\x87\xbe";
   meta.fn                    = HWY_DYNAMIC_DISPATCH(curve);
   meta.attribTileConstrained = true;

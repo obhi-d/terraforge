@@ -1,23 +1,23 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include "NodeEditor.h"
+#include "DrawHelpers.h"
+#include "ImGuiFileDialog.h"
 #include "ImguiBackend.h"
 #include "ResourceUtils.h"
 #include "TerraMainApp.h"
 #include "imgui.h"
-#include "DrawHelpers.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_internal.h"
 #include "imgui_node_editor.h"
 #include "imgui_node_editor_internal.h"
-#include "ImGuiFileDialog.h"
 #include <filesystem>
 
 namespace terra
 {
 
 void NodeEditor::init(TerraMainApp& app)
-{  
+{
   cachedMetas.clear();
   CategoryMap names;
   terra::get().forEachMeta(
@@ -56,26 +56,26 @@ void NodeEditor::init(TerraMainApp& app)
   config.SettingsFile = "terra-nodes.json";
   editorContext       = imne::CreateEditor(&config);
   imne::SetCurrentEditor(editorContext);
-  auto& style        = imne::GetStyle();
-  style.NodeRounding = 4.0f;
-  style.PinRounding  = 2.0f;
-  previewNodeStyle   = app.getTheme().getNodeStyle("selected") + 1;
+  auto& style           = imne::GetStyle();
+  style.NodeRounding    = 4.0f;
+  style.PinRounding     = 2.0f;
+  previewNodeStyle      = app.getTheme().getNodeStyle("selected") + 1;
   window.canBeMaximized = true;
   window.isMain         = true;
   window.locked         = false;
   window.maximized      = false;
-  
-  openPreview.name = DisplayInfo(ICON_FA_MAGNIFYING_GLASS, "preview.help"_ls, "preview.tip"_ls);
-  openPreview.function = [&app]() {
+
+  openPreview.name     = DisplayInfo(ICON_FA_MAGNIFYING_GLASS, "preview.help"_ls, "preview.tip"_ls);
+  openPreview.function = [&app]()
+  {
     app.getWindow().openPreview();
   };
-  
-  settingsWindow.name  = DisplayInfo(ICON_FA_GEAR, "settings.help"_ls, "settings.tip"_ls);
+
+  settingsWindow.name     = DisplayInfo(ICON_FA_GEAR, "settings.help"_ls, "settings.tip"_ls);
   settingsWindow.function = [&app]()
   {
     app.getWindow().openSettings();
   };
-  
 }
 
 void NodeEditor::deinit(TerraMainApp& app)
@@ -91,7 +91,7 @@ bool NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
 {
   ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 12.0f);
   imne::SetCurrentEditor(editorContext);
-  
+
   setHeaderFont();
   if (ImGui::Begin((const char*)nodeEditor.data(), nullptr, window.locked ? ImGuiWindowFlags_NoMove : 0))
   {
@@ -137,11 +137,11 @@ bool NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
           imne::NodeId id;
           if (imne::GetSelectedNodes(&id, 1) > 0 && id)
           {
-            dshandle nid          = (uint32_t)(size_t)id;
+            dshandle nid = (uint32_t)(size_t)id;
             if (nid != previewNode && DataSource::isNode(nid))
             {
               nodeRegenRequired = true;
-              previewNode          = nid;
+              previewNode       = nid;
             }
           }
         }
@@ -193,7 +193,7 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
   ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 12.0f);
   ImGui::PushItemWidth(-1);
   if (ImGui::BeginPopup("new_node", ImGuiWindowFlags_NoScrollbar))
-  {    
+  {
     if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0) && !frameCache.filterHasFocus)
     {
       ImGui::SetKeyboardFocusHere(0);
@@ -204,8 +204,8 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
       ImGui::CloseCurrentPopup();
     }
     else if (ImGui::InputText("##filter", frameCache.filterData.data(), frameCache.filterData.size(),
-                         ImGuiInputTextFlags_EnterReturnsTrue) &&
-        frameCache.createSelected)
+                              ImGuiInputTextFlags_EnterReturnsTrue) &&
+             frameCache.createSelected)
     {
       pendingAction.meta     = frameCache.createSelected;
       pendingAction.action   = Action::eCreateNode;
@@ -214,8 +214,8 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
       ImGui::CloseCurrentPopup();
     }
     else
-    {      
-      if (ImGui::BeginChildFrame(ImGui::GetID("##items"), ImVec2(-1,200), ImGuiWindowFlags_NoBackground))
+    {
+      if (ImGui::BeginChildFrame(ImGui::GetID("##items"), ImVec2(-1, 200), ImGuiWindowFlags_NoBackground))
       {
         std::u8string_view filter = (char8_t*)frameCache.filterData.data();
         for (auto& c : cachedMetas)
@@ -272,14 +272,14 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
         ImGui::Separator();
         if (ImGui::MenuItemEx((const char*)imageNode.data(), ICON_FA_FILE_IMAGE))
         {
-          pendingAction.action = Action::eImageData;
+          pendingAction.action   = Action::eImageData;
           pendingAction.position = openPopupPosition;
           pendingAction.linkTo   = frameCache.linkTo;
           ImGui::CloseCurrentPopup();
         }
         if (ImGui::MenuItemEx((const char*)curveNode.data(), ICON_FA_BEZIER_CURVE))
         {
-          pendingAction.action = Action::eCurveData;
+          pendingAction.action   = Action::eCurveData;
           pendingAction.position = openPopupPosition;
           pendingAction.linkTo   = frameCache.linkTo;
           ImGui::CloseCurrentPopup();
@@ -351,9 +351,9 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
   {
   case Action::eChangeImage:
   case Action::eImageData:
-    fileOpenData.action = pendingAction.action;
-    fileOpenData.linkTo = pendingAction.linkTo;
-    fileOpenData.node   = (uint32_t)pendingAction.node.Get();
+    fileOpenData.action   = pendingAction.action;
+    fileOpenData.linkTo   = pendingAction.linkTo;
+    fileOpenData.node     = (uint32_t)pendingAction.node.Get();
     fileOpenData.position = pendingAction.position;
     ImGuiFileDialog::Instance()->OpenDialog("nodeImage", "Images", ".png", lastImagePath);
     break;
@@ -388,7 +388,7 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
       if (get().isValid(nodel))
       {
         auto const& node = get().get<DataSource>(nodel);
-        info = node.getHelpInfo((param == 0)  ? HelpType::eOutput : HelpType::eParameter, param-1);
+        info             = node.getHelpInfo((param == 0) ? HelpType::eOutput : HelpType::eParameter, param - 1);
       }
     }
     if (!info.tooltip.empty())
@@ -455,10 +455,10 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
         ImGui::TextUnformatted((const char*)label.data());
       };
 
-      auto getFormat = [](uintpair id) -> DataFormat 
+      auto getFormat = [](uintpair id) -> DataFormat
       {
         auto const& node = get().get<DataSource>(id.first);
-        if (!id.second ||  node.getType() != DataSource::Type::eNode)
+        if (!id.second || node.getType() != DataSource::Type::eNode)
           return node.getFormat();
         return static_cast<Node const&>(node).meta.parameterDef[id.second - 1].format;
       };
@@ -545,7 +545,6 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
     }
     imne::EndDelete();
   }
-  
 }
 
 void NodeEditor::createCurveEditor(TerraMainApp& app, ImVec2 pos)
@@ -589,14 +588,14 @@ void NodeEditor::deleteNode(imne::NodeId node)
 
 void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair end)
 {
-  auto&    dst    = get().get<Node>(end.first);
+  auto& dst    = get().get<Node>(end.first);
   Color color  = col.dsLink;
-  auto oldSrc = dst.param(end.second - 1, Source(dshandle(start.first), 0));
+  auto  oldSrc = dst.param(end.second - 1, Source(dshandle(start.first), 0));
   if (std::holds_alternative<Source>(oldSrc))
   {
     auto        oldSrcHandle = std::get<Source>(oldSrc).source;
     uint32_t    del          = 0;
-    imne::PinId pinStart     = pack(oldSrcHandle, 0);
+    imne::PinId pinStart     = pack(oldSrcHandle.um_index(), 0);
     imne::PinId pinEnd       = pack(end.first, end.second);
 
     links.for_each(

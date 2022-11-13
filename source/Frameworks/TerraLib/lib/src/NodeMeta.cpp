@@ -1,6 +1,6 @@
 
-#include "Node.h"
 #include "Logger.h"
+#include "Node.h"
 #include "Pipeline.h"
 #include "ShaderBuilder.h"
 #include "Terra.h"
@@ -23,7 +23,7 @@ bool DataFormat::isCompatible(DataFormat const& from, DataFormat const& to)
   case DataType::eBool:
   case DataType::eEnum:
     return from.type == to.type;
-  //case DataType::eImageSource:
+  // case DataType::eImageSource:
   case DataType::eImage:
     return (to.type == DataType::eImage) && from.scalarSubType == to.scalarSubType;
   case DataType::eInput:
@@ -109,7 +109,7 @@ ScalarValue ParameterMeta::getDefault() const
 {
   if (DataType::eBool == format.type)
     return ScalarValue((bool)(values[ValueType::eDefault].ival != 0));
-  else if(DataType::eEnum == format.type) 
+  else if (DataType::eEnum == format.type)
     return ScalarValue(values[ValueType::eDefault].ival, 0);
   switch (format.scalarSubType)
   {
@@ -165,9 +165,9 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
   case DataType::eFloat:
   case DataType::eFloat2:
     if (value == "inf")
-      fvalue = std::numeric_limits<float>::max();
+      fvalue = std::numeric_limits<float>::infinity();
     else if (value == "-inf")
-      fvalue = std::numeric_limits<float>::min();
+      fvalue = -std::numeric_limits<float>::infinity();
     else
       std::from_chars(value.data(), value.data() + value.size(), fvalue);
     setter(fvalue);

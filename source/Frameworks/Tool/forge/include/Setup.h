@@ -26,7 +26,7 @@ struct AppSettings
   Property<glm::ivec2> nbPreviewTiles = Property<glm::ivec2>("@nbPreviewTiles", 1, 1);
 
   // Generation
-  Property<float> frequency = Property<float>("@frequency", 0.1f);
+  Property<float> frequency = Property<float>("@frequency", 0.02f);
   Property<int>   seed      = Property<int>("@seed", 1337);
 
   glm::ivec2 viewerSize = glm::ivec2(32, 32);

@@ -29,7 +29,7 @@ void main()
   {
    xy.x = (gl_VertexID - constants.vertex_count) % constants.width;
    xy.y = (gl_VertexID - constants.vertex_count) / constants.width;
-   height = constants.crust;
+   height = (constants.min_height * constants.height_multiplier) - constants.crust;
   }
   else
   {

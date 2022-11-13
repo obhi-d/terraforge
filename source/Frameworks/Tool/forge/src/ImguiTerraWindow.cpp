@@ -54,13 +54,13 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   nodeEditor.init(app);
   meshPreview.init(app);
   SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
-  settingName           = app.getLocalizedString("@Settings");
-  mainWindowName        = app.getLocalizedString("@Forge");
-  meshDrawData.instance = &app;
-  previewWindow.canBeMaximized = true;
-  previewWindow.isMain         = false;
-  previewWindow.locked         = false;
-  previewWindow.maximized      = false;
+  settingName                   = app.getLocalizedString("@Settings");
+  mainWindowName                = app.getLocalizedString("@Forge");
+  meshDrawData.instance         = &app;
+  previewWindow.canBeMaximized  = true;
+  previewWindow.isMain          = false;
+  previewWindow.locked          = false;
+  previewWindow.maximized       = false;
   settingsWindow.canBeMaximized = false;
   settingsWindow.isMain         = false;
   settingsWindow.locked         = false;
@@ -190,8 +190,7 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         ImGui::Text("%s", (const char*)header.data());
         ImGui::Separator();
         drawProp(app, meshPreview.sunColor);
-        drawProp(app, meshPreview.sunIntensity, std::numeric_limits<float>::min(), std::numeric_limits<float>::max(),
-                 0.05f);
+        drawProp(app, meshPreview.sunIntensity, 0.01f, std::numeric_limits<float>::max(), 0.05f);
         drawProp(app, meshPreview.meshTint);
         drawProp(app, meshPreview.heightMultiplier, std::numeric_limits<float>::min(),
                  std::numeric_limits<float>::max(), 0.05f);
@@ -239,7 +238,7 @@ bool ImguiTerraWindow::draw(TerraMainApp& app)
 
   ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_FirstUseEver);
   ImGui::SetNextWindowSize(ImVec2(1024, 768), ImGuiCond_FirstUseEver);
-  
+
   if (previewWindow.opened)
   {
     ImGui::SetNextWindowSizeConstraints(ImVec2(256, 256), ImVec2(10000, 10000));

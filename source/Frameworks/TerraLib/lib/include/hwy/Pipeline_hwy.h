@@ -53,6 +53,27 @@ public:
   Pipeline_hwy(Pipeline_hwy const&) noexcept            = delete;
   Pipeline_hwy& operator=(Pipeline_hwy const&) noexcept = delete;
 
+  int32_t swapSeed(int32_t seed, uint32_t thread)
+  {
+    std::swap(threadDatas[thread].params.seed, seed);
+    return seed;
+  }
+  float swapFreq(float freq, uint32_t thread)
+  {
+    std::swap(threadDatas[thread].params.frequency, freq);
+    return freq;
+  }
+
+  int32_t seed(uint32_t thread) const
+  {
+    return threadDatas[thread].params.seed;
+  }
+
+  float frequency(uint32_t thread) const
+  {
+    return threadDatas[thread].params.frequency;
+  }
+
   void        getResults(float*, uint32_t size, float& min, float& max) final;
   std::size_t hasResults() final;
 
@@ -78,7 +99,7 @@ public:
   }
 
   template <typename T>
-  T& getCacheData(dshandle ds) 
+  T& getCacheData(dshandle ds)
   {
     return cacheData.at<T>(ds.um_index());
   }
