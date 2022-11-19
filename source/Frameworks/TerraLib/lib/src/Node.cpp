@@ -3,22 +3,15 @@
 
 namespace terra
 {
-Node::Node(NodeMeta const& m)
-    : meta(m), name(m.displayInfo.name), parameters((uint32_t)m.parameterDef.size(), ScalarValue{})
-{
-  for (uint32_t i = 0; i < parameters.size(); ++i)
-  {
-    parameters[i] = m.parameterDef[i].getDefault();
-  }
-}
+Node::Node(NodeMeta const& m) : meta(m), name(m.displayInfo.name) {}
 
 void Node::accept(dshandle source, Event ev)
 {
   if (ev == Event::eNodeDeleted)
   {
-    for (uint32_t i = 0; i < parameters.size(); ++i)
+    for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
     {
-      auto& p = parameters[i];
+      auto p = param(i);
       if (std::holds_alternative<Source>(p))
       {
         if (std::get<Source>(p).source == source)
@@ -31,9 +24,9 @@ void Node::accept(dshandle source, Event ev)
 
 void Node::getSourcesImpl(SourceSet& sources) const
 {
-  for (uint32_t i = 0; i < parameters.size(); ++i)
+  for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
   {
-    auto& p = parameters[i];
+    auto p = param(i);
     if (std::holds_alternative<Source>(p))
     {
       if (DataSource::isValid(std::get<Source>(p).source))
@@ -44,9 +37,9 @@ void Node::getSourcesImpl(SourceSet& sources) const
 
 void Node::prepareGeneration(Pipeline& pipe)
 {
-  for (uint32_t i = 0; i < parameters.size(); ++i)
+  for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
   {
-    auto& p = parameters[i];
+    auto p = param(i);
     if (std::holds_alternative<Source>(p))
     {
       DataSource::prepareGeneration(std::get<Source>(p).source, pipe);
@@ -59,9 +52,9 @@ void Node::beginIteration(Pipeline& pipe)
 {
   meta.beginIteration(*this, pipe);
 
-  for (uint32_t i = 0; i < parameters.size(); ++i)
+  for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
   {
-    auto& p = parameters[i];
+    auto p = param(i);
     if (std::holds_alternative<Source>(p))
     {
       DataSource::beginIteration(std::get<Source>(p).source, pipe);
@@ -71,9 +64,9 @@ void Node::beginIteration(Pipeline& pipe)
 
 void Node::endIteration(Pipeline& pipe)
 {
-  for (uint32_t i = 0; i < parameters.size(); ++i)
+  for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
   {
-    auto& p = parameters[i];
+    auto p = param(i);
     if (std::holds_alternative<Source>(p))
     {
       DataSource::endIteration(std::get<Source>(p).source, pipe);

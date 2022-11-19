@@ -31,10 +31,11 @@ public:
   struct ThreadData
   {
     EnvParams params;
-    int32_t   width  = 0;
-    int32_t   height = 0;
-    vec2      minMax = {-1.0f, 1.0f};
-    uint32_t  thread = 0;
+    int32_t   width   = 0;
+    int32_t   height  = 0;
+    vec2      minMax  = {-1.0f, 1.0f};
+    uint32_t  thread  = 0;
+    uint32_t  tileIdx = 0;
     UVMeter   uv;
 
     hwyvb_list     inputs;
@@ -45,6 +46,24 @@ public:
     ThreadData(ThreadData&&) noexcept                 = default;
     ThreadData& operator=(ThreadData const&) noexcept = delete;
     ThreadData& operator=(ThreadData&&) noexcept      = default;
+  };
+
+  struct TileData
+  {
+    EnvParams          params;
+    std::vector<float> buffer;
+    uint32_t           threadStart = 0;
+    uint32_t           threadCount = 0;
+
+    float sample(uint32_t x, uint32_t y) const
+    {
+      return buffer[(x % params.tileSize[0]) + (y % params.tileSize[1]) * params.tileSize[0]];
+    }
+
+    float& sample(uint32_t x, uint32_t y)
+    {
+      return buffer[(x % params.tileSize[0]) + (y % params.tileSize[1]) * params.tileSize[0]];
+    }
   };
 
   Pipeline_hwy()                                        = default;
@@ -74,7 +93,7 @@ public:
     return threadDatas[thread].params.frequency;
   }
 
-  void        getResults(float*, uint32_t size, float& min, float& max) final;
+  void        getResults(float*, size_t nbFloats, float& min, float& max) final;
   std::size_t hasResults() final;
 
   hwybuffer& getOutput(uint32_t thread, uint32_t lanes);
@@ -119,6 +138,21 @@ public:
     return (uint32_t)threadDatas.size();
   }
 
+  uint32_t getNumTiles() const
+  {
+    return (uint32_t)tileDatas.size();
+  }
+
+  TileData const& getTileData(uint32_t i) const
+  {
+    return tileDatas[i];
+  }
+
+  TileData& getTileData(uint32_t i)
+  {
+    return tileDatas[i];
+  }
+
 protected:
   void cleanup() final;
   void wait() final;
@@ -127,11 +161,12 @@ protected:
 
 private:
   using CacheMap = std::unordered_map<uint32_t, acl::vlink>;
+
   PermuatationConstants     constants;
-  WaitList                  waiters;
   acl::blackboard<CacheMap> cacheData;
   // tiles are subdivided into NxN blocks of vectors (M lanes)
   static constexpr int32_t N = 32;
+  std::vector<TileData>    tileDatas;
   std::vector<ThreadData>  threadDatas;
 };
 

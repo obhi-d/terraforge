@@ -245,8 +245,8 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
 
   if (pipeline->hasResults())
   {
-    auto size     = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y) * 4;
-    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
+    auto size     = (size_t)(tileSize.x * nbPreviewTiles.x) * (size_t)(tileSize.y * nbPreviewTiles.y);
+    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, (uint32_t)(size * sizeof(float)));
     pipeline->getResults(vertices, size, min, max);
     app.getDevice()->unmapBuffer(vertex);
   }

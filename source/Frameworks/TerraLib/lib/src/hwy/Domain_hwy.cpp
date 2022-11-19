@@ -2,6 +2,7 @@
 #define HWY_TARGET_INCLUDE "Domain_hwy.cpp"
 
 #include "Common.h"
+#include "Icons.h"
 #include "Node.h"
 #include <hwy/foreach_target.h>
 
@@ -189,35 +190,6 @@ void outputToDomain(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
-void outputToDomainScaled(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
-{
-  const V_t  vtag{};
-  const I_t  itag{};
-  const auto lanes = (uint32)hn::Lanes(vtag);
-
-  NodeMeta_hwy::domain(node.param(0), pipe, threadGroupId, lanes);
-  auto& inp        = pipe.getInput(threadGroupId, lanes, true);
-  auto  inp_x_data = inp.x.data();
-  auto  inp_y_data = inp.y.data();
-
-  auto& out_a = pipe.getOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
-  auto& out_b = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
-  auto out_a_data = out_a.data();
-  auto out_b_data = out_b.data();
-  for (uint32_t ii = 0; ii < inp.x.size(); ii += lanes)
-  {
-    const auto a = hn::Load(vtag, out_a_data + ii);
-    const auto b = hn::Load(vtag, out_b_data + ii);
-    const auto x = hn::Load(vtag, inp_x_data + ii);
-    const auto y = hn::Load(vtag, inp_y_data + ii);
-    hn::Store(x * a, vtag, inp_x_data + ii);
-    hn::Store(y * b, vtag, inp_y_data + ii);
-  }
-  pipe.popOutput(threadGroupId);
-}
-
 } // namespace terra::HWY_NAMESPACE
 HWY_AFTER_NAMESPACE();
 
@@ -230,7 +202,6 @@ HWY_EXPORT(domainScaleOffset);
 HWY_EXPORT(domainWarp);
 HWY_EXPORT(domainWarpBounded);
 HWY_EXPORT(outputToDomain);
-HWY_EXPORT(outputToDomainScaled);
 
 void domainWarp_prepare(Node& node, Pipeline_hwy& pipe)
 {
@@ -253,63 +224,61 @@ void domainWarp_end(Node& node, Pipeline_hwy& pipe)
   mf.amp *= gain;
   mf.seed += seed;
   if (pipe.getIteration() < octaves)
-    pipe.reissue();
+    pipe.reissue(node.getSelf());
 }
 
 void Domain_hwy()
 {
-  constexpr auto min = -std::numeric_limits<float>::infinity();
-  constexpr auto max = std::numeric_limits<float>::infinity();
+  auto builder = buildMeta<NodeMeta_hwy>("@Domain"_ls, "domain");
+  builder.outputs(DataFormat(DataType::eInput));
 
-  // Common
-  NodeMeta_hwy meta;
-  meta.category    = "@Domain"_ls;
-  meta.style       = "domain";
-  meta.format.type = DataType::eInput;
+  {
+    builder.add<DomainRotateNode>("@domainRotate", IconDomainRotate);
+    builder.fn(HWY_DYNAMIC_DISPATCH(domainRotate));
+    builder.param<&DomainRotateNode::angle>("@angle");
+    builder.done();
+  }
 
-  // domainRotate
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(domainRotate);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.0f, -180.0f, 180.f), "@angle");
-  get().addMeta("@domainRotate", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<DomainScaleOffsetNode>("@domainScaleOffset", IconDomainScaleOffset);
+    builder.fn(HWY_DYNAMIC_DISPATCH(domainScaleOffset));
+    builder.param<&DomainScaleOffsetNode::scale>("@scale");
+    builder.param<&DomainScaleOffsetNode::offset>("@offset");
+    builder.done();
+  }
 
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(domainScaleOffset);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(1.0f, -10000.f, 10000.f), "@scale");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, min, max), "@offset");
-  get().addMeta("@domainScaleOffset", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<DomainWarpNode>("@domainWarp", IconDomainWarp);
+    builder.fn(HWY_DYNAMIC_DISPATCH(domainWarp));
+    builder.param<&DomainWarpNode::octaves>("@octaves");
+    builder.param<&DomainWarpNode::lacunarity>("@lacunarity");
+    builder.param<&DomainWarpNode::gain>("@gain");
+    builder.param<&DomainWarpNode::seedOffset>("@seedOffset");
+    builder.prepare(domainWarp_prepare);
+    builder.end(domainWarp_end);
+    builder.done();
+  }
+  {
+    builder.add<DomainWarpBoundedNode>("@domainWarpBounded", IconDomainWarpBounded);
+    builder.fn(HWY_DYNAMIC_DISPATCH(domainWarpBounded));
+    builder.param<&DomainWarpBoundedNode::octaves>("@octaves");
+    builder.param<&DomainWarpBoundedNode::lacunarity>("@lacunarity");
+    builder.param<&DomainWarpBoundedNode::gain>("@gain");
+    builder.param<&DomainWarpBoundedNode::seedOffset>("@seedOffset");
+    builder.param<&DomainWarpBoundedNode::gain>("@strength");
+    builder.param<&DomainWarpBoundedNode::seedOffset>("@bounds");
+    builder.prepare(domainWarp_prepare);
+    builder.end(domainWarp_end);
+    builder.done();
+  }
 
-  meta.icon    = "\xef\x87\xbe";
-  meta.fn      = HWY_DYNAMIC_DISPATCH(domainWarp);
-  meta.prepare = &domainWarp_prepare;
-  meta.endIt   = &domainWarp_end;
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 32), "@octaves");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(2.0f, min, max), "@lacunarity");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.5f, 0.f, .99f), "@gain");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1), "@seedOffset");
-  get().addMeta("@domainWarp", meta);
-
-  meta.fn = HWY_DYNAMIC_DISPATCH(domainWarpBounded);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.0f, min, max), "@strength");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.0f, min, max), "@bounds");
-  get().addMeta("@domainWarpBounded", meta);
-  meta.parameterDef.resize(1);
-  meta.prepare = nullptr;
-  meta.endIt   = nullptr;
-
-  meta.fn = HWY_DYNAMIC_DISPATCH(outputToDomainScaled);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@source");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@source2");
-  get().addMeta("@outputToDomainScaled", meta);
-
-  //  Remove 0
-  meta.parameterDef.resize(0);
-  meta.fn = HWY_DYNAMIC_DISPATCH(outputToDomain);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@source");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@source2");
-  get().addMeta("@outputToDomain", meta);
+  {
+    builder.add<DomainWarpBoundedNode>("@outputToDomain", IconDomainOutput);
+    builder.fn(HWY_DYNAMIC_DISPATCH(outputToDomain));
+    builder.param<&OutputToDomain::source>("@source");
+    builder.param<&OutputToDomain::source2>("@source2");
+    builder.done();
+  }
 }
 
 } // namespace terra

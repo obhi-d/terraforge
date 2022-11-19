@@ -1,6 +1,6 @@
 
 #include <Terra.h>
-#include<ThreadPool.h>
+#include <ThreadPool.h>
 
 namespace terra
 {
@@ -15,7 +15,7 @@ ThreadPool::ThreadPool()
       {
         while (!quit.load())
         {
-          Entry entry;
+          Task entry;
           {
             std::unique_lock<std::mutex> lockg{lock};
             if (container.empty())
@@ -35,7 +35,6 @@ ThreadPool::ThreadPool()
           }
 
           entry();
-          entry.reset();
         }
       });
   }
@@ -60,7 +59,7 @@ void ThreadPool::shutdown()
 void ThreadPool::cancel()
 {
   auto event = Event(Event::iunset);
-    
+
   {
     std::unique_lock<std::mutex> lockg{lock};
     container.clear();
@@ -69,9 +68,9 @@ void ThreadPool::cancel()
       {
         event.set();
       });
-  }  
+  }
   notifier.notify_one();
   event.wait();
 }
 
-}
+} // namespace terra

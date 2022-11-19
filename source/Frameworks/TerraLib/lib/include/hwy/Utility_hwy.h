@@ -1043,30 +1043,22 @@ inline DerivNoise<V> dfBm(V x, V y, C const& perm, int32_t octaves, float lacuna
 inline void modifyDomain(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
-  auto&     param = node.param(0);
-  if (std::holds_alternative<Source>(param))
+  auto&     param = node.domain;
+  auto      src   = param.source;
+  if (DataSource::isValid(src))
   {
-    auto src = std::get<Source>(param).source;
-    if (DataSource::isValid(src))
-    {
-      const auto lanes = (uint32)hn::Lanes(vtag);
-      auto&      inp   = pipe.getInput(threadGroupId, lanes, true);
-      auto&      nin   = pipe.pushInput(threadGroupId, lanes, false);
-      nin              = inp;
-      NodeMeta_hwy::run(src, pipe, threadGroupId, lanes);
-    }
+    const auto lanes = (uint32)hn::Lanes(vtag);
+    auto&      inp   = pipe.getInput(threadGroupId, lanes, true);
+    auto&      nin   = pipe.pushInput(threadGroupId, lanes, false);
+    nin              = inp;
+    NodeMeta_hwy::run(src, pipe, threadGroupId, lanes);
   }
 }
 
 inline void finish(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
-  auto& param = node.param(0);
-  if (std::holds_alternative<Source>(param))
-  {
-    auto src = std::get<Source>(param).source;
-    if (DataSource::isValid(src))
-      pipe.popInput(threadGroupId);
-  }
+  if (DataSource::isValid(node.domain.source))
+    pipe.popInput(threadGroupId);
 }
 
 template <typename I, typename V>

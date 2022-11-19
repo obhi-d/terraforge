@@ -26,7 +26,7 @@ public:
   void compute(dshandle, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
 
   // this function is called once results are available
-  virtual void getResults(float*, uint32_t size, float& min, float& max) = 0;
+  virtual void getResults(float*, size_t nbFloats, float& min, float& max) = 0;
   // returns the size of the results available, 0 if no results are available
   virtual std::size_t hasResults() = 0;
 
@@ -40,9 +40,20 @@ public:
     return iteration;
   }
 
-  void reissue()
+  bool reissue(dshandle node)
   {
     continueIter = true;
+    if (!reissueNode)
+    {
+      reissueNode = node;
+      return true;
+    }
+    return false;
+  }
+
+  bool wasReissued(dshandle c)
+  {
+    return c == reissueNode;
   }
 
   float origFrequency() const
@@ -101,6 +112,7 @@ protected:
   virtual void pushTileTask(EnvParams const&) = 0;
 
   // main actor
+  dshandle     reissueNode;
   dshandle     actor;
   bool         continueIter = false;
   LaunchParams launchParams;

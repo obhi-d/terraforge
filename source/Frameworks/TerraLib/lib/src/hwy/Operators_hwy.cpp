@@ -4,13 +4,16 @@
 
 #include <hwy/foreach_target.h>
 
+#include "Icons.h"
 #include "Node.h"
 #include "Terra.h"
 
 #include "hwy/NodeMeta_hwy.h"
+#include "hwy/Operators_hwy.h"
 #include "hwy/Pipeline_hwy.h"
 #include "hwy/Utility_hwy.h"
 
+#include "wyrand.h"
 #include <hwy/contrib/math/math-inl.h>
 #include <hwy/highway.h>
 
@@ -21,18 +24,59 @@ namespace terra::HWY_NAMESPACE
 namespace hn = hwy::HWY_NAMESPACE;
 using T      = float;
 
-void add(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void abs(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
+  UnaryNode&               node = (UnaryNode&)inode;
   const hn::ScalableTag<T> d;
   const auto               lanes = (uint32)hn::Lanes(d);
   modifyDomain(node, pipe, threadGroupId);
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.source, pipe, threadGroupId, lanes);
+  auto& out_a = pipe.getOutput(threadGroupId, lanes);
+
+  auto out_a_data = out_a.data();
+  for (uint32_t i = 0; i < out_a.size(); i += lanes)
+  {
+    const auto a = hn::Load(d, out_a_data + i);
+    hn::Store(hn::Abs(a), d, out_a_data + i);
+  }
+
+  finish(node, pipe, threadGroupId);
+}
+
+void flipSign(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  UnaryNode&               node = (UnaryNode&)inode;
+  const hn::ScalableTag<T> d;
+  const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.source, pipe, threadGroupId, lanes);
+  auto& out_a = pipe.getOutput(threadGroupId, lanes);
+
+  auto out_a_data = out_a.data();
+  for (uint32_t i = 0; i < out_a.size(); i += lanes)
+  {
+    const auto a = hn::Load(d, out_a_data + i);
+    hn::Store(hn::Neg(a), d, out_a_data + i);
+  }
+
+  finish(node, pipe, threadGroupId);
+}
+
+void add(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  auto&                    node = (BinaryNode&)inode;
+  const hn::ScalableTag<T> d;
+  const auto               lanes = (uint32)hn::Lanes(d);
+  modifyDomain(node, pipe, threadGroupId);
+
+  NodeMeta_hwy::write(node.source, pipe, threadGroupId, lanes);
 
   auto& out_a = pipe.getOutput(threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
 
-  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.source2, pipe, threadGroupId, lanes);
 
   auto out_a_data = out_a.data();
   auto out_b_data = out_b.data();
@@ -342,44 +386,6 @@ void blend(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   pipe.popOutput(threadGroupId);
 }
 
-void flipSign(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
-{
-  const hn::ScalableTag<T> d;
-  const auto               lanes = (uint32)hn::Lanes(d);
-  modifyDomain(node, pipe, threadGroupId);
-
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
-  auto& out_a = pipe.getOutput(threadGroupId, lanes);
-
-  auto out_a_data = out_a.data();
-  for (uint32_t i = 0; i < out_a.size(); i += lanes)
-  {
-    const auto a = hn::Load(d, out_a_data + i);
-    hn::Store(hn::Neg(a), d, out_a_data + i);
-  }
-
-  finish(node, pipe, threadGroupId);
-}
-
-void abs(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
-{
-  const hn::ScalableTag<T> d;
-  const auto               lanes = (uint32)hn::Lanes(d);
-  modifyDomain(node, pipe, threadGroupId);
-
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
-  auto& out_a = pipe.getOutput(threadGroupId, lanes);
-
-  auto out_a_data = out_a.data();
-  for (uint32_t i = 0; i < out_a.size(); i += lanes)
-  {
-    const auto a = hn::Load(d, out_a_data + i);
-    hn::Store(hn::Abs(a), d, out_a_data + i);
-  }
-
-  finish(node, pipe, threadGroupId);
-}
-
 void falloff(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   const V_t vtag{};
@@ -451,6 +457,7 @@ HWY_AFTER_NAMESPACE();
 
 namespace terra
 {
+
 HWY_EXPORT(add);
 HWY_EXPORT(sub);
 HWY_EXPORT(mul);
@@ -467,103 +474,128 @@ HWY_EXPORT(abs);
 HWY_EXPORT(falloff);
 void Operators_hwy()
 {
-  constexpr auto min = -std::numeric_limits<float>::infinity();
-  constexpr auto max = std::numeric_limits<float>::infinity();
+
+  auto builder = buildMeta<NodeMeta_hwy>("@Operators"_ls, "operators");
 
   // Common
-  NodeMeta_hwy meta;
-  meta.category = "@Operators"_ls;
-  meta.style    = "operators";
+  {
+    builder.add<UnaryNode>(NoDomain(), "@abs", IconOpAbs);
+    builder.fn(HWY_DYNAMIC_DISPATCH(abs));
+    builder.param<&UnaryNode::source>("@source");
+    builder.done();
+  }
 
-  // Unary
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source");
-  // Add
-  meta.icon = "\xef\x81\x95";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(abs);
-  get().addMeta("@abs", meta);
+  {
+    builder.add<UnaryNode>(NoDomain(), "@flipSign", IconOpFlipSign);
+    builder.fn(HWY_DYNAMIC_DISPATCH(flipSign));
+    builder.param<&UnaryNode::source>("@source");
+    builder.done();
+  }
 
-  meta.icon = "\xef\x81\x95";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(flipSign);
-  get().addMeta("@flipSign", meta);
+  {
+    builder.add<BinaryNode>(NoDomain(), "@add", IconOpAdd);
+    builder.fn(HWY_DYNAMIC_DISPATCH(add));
+    builder.param<&BinaryNode::source>("@source");
+    builder.param<&BinaryNode::source2>("@source2");
+    builder.done();
+  }
 
-  // Binary
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source2");
+  {
+    builder.add<BinaryNode>(NoDomain(), "@sub", IconOpSub);
+    builder.fn(HWY_DYNAMIC_DISPATCH(sub));
+    builder.param<&BinaryNode::source>("@source");
+    builder.param<&BinaryNode::source2>("@source2");
+    builder.done();
+  }
 
-  // Add
-  meta.icon = "\xef\x81\x95";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(add);
-  get().addMeta("@add", meta);
+  {
+    builder.add<BinaryNode>(NoDomain(), "@mul", IconOpMul);
+    builder.fn(HWY_DYNAMIC_DISPATCH(mul));
+    builder.param<&BinaryNode::source>("@source");
+    builder.param<&BinaryNode::source2>("@source2");
+    builder.done();
+  }
 
-  // Sub
-  meta.icon = "\xef\x81\x96";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(sub);
-  get().addMeta("@sub", meta);
+  {
+    builder.add<BinaryNode>(NoDomain(), "@div", IconOpDiv);
+    builder.fn(HWY_DYNAMIC_DISPATCH(div));
+    builder.param<&BinaryNode::source>("@source");
+    builder.param<&BinaryNode::source2>("@source2");
+    builder.done();
+  }
 
-  // Mul
-  meta.icon = "\xef\x81\x97";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(mul);
-  get().addMeta("@mul", meta);
+  {
+    builder.add<BinaryNode>(NoDomain(), "@pow", IconOpPow);
+    builder.fn(HWY_DYNAMIC_DISPATCH(pow));
+    builder.param<&BinaryNode::source>("@source");
+    builder.param<&BinaryNode::source2>("@source2");
+    builder.done();
+  }
 
-  // Divide
-  meta.icon = "\xef\x94\xa9";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(div);
-  get().addMeta("@div", meta);
+  {
+    builder.add<BinaryNode>(NoDomain(), "@min", IconOpMin);
+    builder.fn(HWY_DYNAMIC_DISPATCH(min));
+    builder.param<&BinaryNode::source>("@source");
+    builder.param<&BinaryNode::source2>("@source2");
+    builder.done();
+  }
 
-  // Pow
-  meta.icon = "\xef\x84\xab";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(pow);
-  get().addMeta("@pow", meta);
+  {
+    builder.add<BinaryNode>(NoDomain(), "@max", IconOpMax);
+    builder.fn(HWY_DYNAMIC_DISPATCH(max));
+    builder.param<&BinaryNode::source>("@source");
+    builder.param<&BinaryNode::source2>("@source2");
+    builder.done();
+  }
 
-  // Min
-  meta.icon = "\xef\x84\xab";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(min);
-  get().addMeta("@min", meta);
+  {
+    builder.add<SmoothingNode>(NoDomain(), "@minSmooth", IconOpMinSmooth);
+    builder.fn(HWY_DYNAMIC_DISPATCH(minSmooth));
+    builder.param<&SmoothingNode::source>("@source");
+    builder.param<&SmoothingNode::source2>("@source2");
+    builder.param<&SmoothingNode::smoothing>("@smoothing");
+    builder.done();
+  }
 
-  // Max
-  meta.icon = "\xef\x84\xab";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(max);
-  get().addMeta("@min", meta);
+  {
+    builder.add<SmoothingNode>(NoDomain(), "@maxSmooth", IconOpMaxSmooth);
+    builder.fn(HWY_DYNAMIC_DISPATCH(maxSmooth));
+    builder.param<&SmoothingNode::source>("@source");
+    builder.param<&SmoothingNode::source2>("@source2");
+    builder.param<&SmoothingNode::smoothing>("@smoothing");
+    builder.done();
+  }
 
-  // Tartiary
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(.1f, std::numeric_limits<float>::epsilon(), 1.f),
-                                 "@Smoothing");
+  {
+    builder.add<MulAddNode>(NoDomain(), "@mulAdd", IconOpMulAdd);
+    builder.fn(HWY_DYNAMIC_DISPATCH(madd));
+    builder.param<&MulAddNode::source>("@source");
+    builder.param<&MulAddNode::source2>("@mul");
+    builder.param<&MulAddNode::add>("@add");
+    builder.done();
+  }
 
-  // MinSmooth
-  meta.icon = "\xef\x84\xab";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(minSmooth);
-  get().addMeta("@minSmooth", meta);
+  {
+    builder.add<BlendNode>(NoDomain(), "@blend", IconOpBlend);
+    builder.fn(HWY_DYNAMIC_DISPATCH(blend));
+    builder.param<&BlendNode::source>("@source");
+    builder.param<&BlendNode::source2>("@source2");
+    builder.param<&BlendNode::factor>("@factor");
+    builder.done();
+  }
 
-  // MaxSmooth
-  meta.icon = "\xef\x84\xab";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(maxSmooth);
-  get().addMeta("@maxSmooth", meta);
-
-  // Tartiary
-  meta.parameterDef.pop_back();
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source3");
-
-  // MAdd
-  meta.icon = "\xef\x81\x97";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(madd);
-  get().addMeta("@madd", meta);
-
-  meta.parameterDef.pop_back();
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@factor");
-
-  // MAdd
-  meta.icon = "\xef\x81\x97";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(blend);
-  get().addMeta("@blend", meta);
-
-  // Complex
-  meta.parameterDef.resize(1);
-  meta.icon = "\xef\x81\x97";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(falloff);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@source");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.0f, -1.f, 1.f), "@level");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, 0.0f, max), "@falloff");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(0, 0, 16), "@directions");
-  get().addMeta("@falloff", meta);
+  {
+    builder.add<FalloffNode>("@falloff", IconOpFalloff);
+    builder.fn(HWY_DYNAMIC_DISPATCH(falloff));
+    builder.param<&FalloffNode::source>("@source");
+    builder.param<&FalloffNode::level>("@level");
+    builder.param<&FalloffNode::falloff>("@level");
+    builder.param<&FalloffNode::px>("@+x");
+    builder.param<&FalloffNode::nx>("@-x");
+    builder.param<&FalloffNode::py>("@+y");
+    builder.param<&FalloffNode::ny>("@-y");
+    builder.done();
+  }
 }
 
 } // namespace terra

@@ -1,11 +1,11 @@
 
 #include "Terra.h"
+#include "CurveData.h"
 #include "Logger.h"
 #include "ResourceUtils.h"
-#include "CurveData.h"
 
-#include "hwy/Pipeline_hwy.h"
 #include "gpu/Pipeline_gpu.h"
+#include "hwy/Pipeline_hwy.h"
 
 #include <fmt/format.h>
 #include <fstream>
@@ -19,6 +19,7 @@ void Operators_hwy();
 void Noise_hwy();
 void Basics_hwy();
 void Domain_hwy();
+void PostProcess_hwy();
 
 Terra Terra::instance;
 
@@ -38,22 +39,23 @@ void Terra::init(Localization l, std::shared_ptr<ComputeDevice> iDev)
     Noise_hwy();
     Basics_hwy();
     Domain_hwy();
+    PostProcess_hwy();
   }
 }
 
-void Terra::destroy() 
-{  
+void Terra::destroy()
+{
   dataSources.clear();
   nodeMetaTable.clear();
   threadPool.shutdown();
   // computeThread.shutdown();
- }
-
+}
 
 dshandle Terra::getImage(std::filesystem::path path)
 {
   dshandle found;
-  dataSources.for_each([&found, &path](auto& image) 
+  dataSources.for_each(
+    [&found, &path](auto& image)
     {
       if (image && image->getType() == DataSource::Type::eImage)
       {
@@ -73,8 +75,8 @@ dshandle Terra::getImage(std::filesystem::path path)
 }
 
 dshandle Terra::createNode(NodeMeta const& meta)
-{  
-  auto ptr = std::make_shared<Node>(meta);
+{
+  auto ptr = meta.createNode(meta);
   ptr->setSelf(dataSources.emplace(ptr));
   return ptr->getSelf();
 }
@@ -97,7 +99,7 @@ uint32_t Terra::getSemantic(std::string_view from)
   return (uint32_t)semantics.size() - 1;
 }
 
-std::shared_ptr<Pipeline> Terra::createPipeline() const 
+std::shared_ptr<Pipeline> Terra::createPipeline() const
 {
   if (pipelineType == PipelineType::eGPU)
   {
@@ -111,13 +113,13 @@ std::shared_ptr<Pipeline> Terra::createPipeline() const
   }
 }
 
-void DisplayInfo::from(std::string_view iname) 
+void DisplayInfo::from(std::string_view iname)
 {
   name = get().localizationProvider(iname);
   std::string tt{iname};
   tt += ".help";
   help = get().localizationProvider(tt);
-  tt = iname;
+  tt   = iname;
   tt += ".tip";
   tooltip = get().localizationProvider(tt);
 }

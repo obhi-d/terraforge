@@ -19,7 +19,114 @@ namespace terra
 class Terra;
 
 using Parameter = std::variant<ScalarValue, Source>;
-using TaskKey   = uint64_t;
+
+inline bool store(Parameter& s, Parameter param)
+{
+  s = param;
+  return true;
+}
+
+inline bool store(Source& s, Parameter param)
+{
+  if (std::holds_alternative<Source>(param))
+  {
+    s = std::get<Source>(param);
+    return true;
+  }
+  return false;
+}
+
+inline bool store(dshandle& s, Parameter param)
+{
+  if (std::holds_alternative<Source>(param))
+  {
+    s = std::get<Source>(param).source;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(float& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).value;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(int& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).ivalue;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(bool& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).bvalue;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(vec2& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).value2;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(ivec2& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).ivalue2;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(Angle& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).value;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(Unorm& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).value;
+    return true;
+  }
+  return false;
+}
+
+inline bool store(Snorm& s, Parameter param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    s = std::get<ScalarValue>(param).value;
+    return true;
+  }
+  return false;
+}
+
+using TaskKey = uint64_t;
 enum class Result
 {
   eFinished,
@@ -27,8 +134,11 @@ enum class Result
   eAbort
 };
 
-// using ParamSetter = void (*)(Node&, Parameter&&);
-// using ParamGetter = Parameter const& (*)(Node const&);
+class NodeMeta;
+struct ParameterMeta;
+using CreateNode  = std::shared_ptr<Node> (*)(NodeMeta const&);
+using ParamSetter = void (*)(Node&, Parameter);
+using ParamGetter = Parameter (*)(Node const&);
 
 template <DataType Type, DataType Scalar = DataType::eFloat>
 struct FmtVal
@@ -77,6 +187,36 @@ struct FmtEnum
   }
 };
 
+template <typename MembPtr>
+inline auto DeriveFormat()
+{
+
+  if constexpr (std::is_same_v<typename MembPtr::member_t, dshandle>)
+    return FmtVal<DataType::ePostProcess>();
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, Parameter> ||
+                     std::is_same_v<typename MembPtr::member_t, Source>)
+    return FmtVal<DataType::eBuffer>(0.0f, -std::numeric_limits<float>::infinity(),
+                                     std::numeric_limits<float>::infinity());
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, bool>)
+    return FmtVal<DataType::eBool>();
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, float>)
+    return FmtVal<DataType::eFloat>(0.0f, -std::numeric_limits<float>::infinity(),
+                                    std::numeric_limits<float>::infinity());
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, int>)
+    return FmtVal<DataType::eInt>(0, -std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, vec2>)
+    return FmtVal<DataType::eFloat2>(0.0f, -std::numeric_limits<float>::infinity(),
+                                     std::numeric_limits<float>::infinity());
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, ivec2>)
+    return FmtVal<DataType::eInt2>(0, -std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, Angle>)
+    return FmtVal<DataType::eFloat>(0.0f, -180.f, 180.f);
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, Unorm>)
+    return FmtVal<DataType::eFloat>(0.0f, 0.f, 1.f, 0.01f);
+  else if constexpr (std::is_same_v<typename MembPtr::member_t, Snorm>)
+    return FmtVal<DataType::eFloat>(0.0f, -1.f, 1.f, 0.05f);
+}
+
 struct ParameterMeta
 {
   enum ValueType
@@ -97,8 +237,8 @@ struct ParameterMeta
   DataValue                       values[ValueType::eCount] = {};
   std::vector<std::u8string_view> enumValues                = {};
 
-  // ParamSetter setter = nullptr;
-  // ParamGetter getter = nullptr;
+  ParamSetter setter = nullptr;
+  ParamGetter getter = nullptr;
 
   ParameterMeta()                                         = default;
   ParameterMeta(ParameterMeta const&)                     = default;
@@ -106,10 +246,31 @@ struct ParameterMeta
   ParameterMeta& operator=(ParameterMeta const&) noexcept = default;
   ParameterMeta& operator=(ParameterMeta&&) noexcept      = default;
 
-  template <typename Fmt>
-  ParameterMeta(Fmt format, std::string_view iname, Semantic semantic = Semantic::eNone,
+  template <typename MembPtr>
+  ParameterMeta(MembPtr, std::string_view iname, Semantic semantic = Semantic::eNone,
                 DrawHint idrawhint = DrawHint::eDefault)
-      : format(Fmt::get()), drawHint(idrawhint)
+      : ParameterMeta(MembPtr(), iname, DeriveFormat<MembPtr>(), semantic, idrawhint)
+  {}
+
+  template <typename MembPtr, typename Fmt>
+  ParameterMeta(MembPtr, std::string_view iname, Fmt format, Semantic semantic = Semantic::eNone,
+                DrawHint idrawhint = DrawHint::eDefault)
+      : format(Fmt::get()), drawHint(idrawhint), setter(
+                                                   [](Node& node, Parameter param)
+                                                   {
+                                                     using T       = typename MembPtr::class_t;
+                                                     auto  pmember = MembPtr::pmem;
+                                                     auto& cnode   = static_cast<T&>(node);
+                                                     store(cnode.*pmember, param);
+                                                   }),
+        getter(
+          [](Node const& node) -> Parameter
+          {
+            using T       = typename MembPtr::class_t;
+            auto  pmember = MembPtr::pmem;
+            auto& cnode   = static_cast<T const&>(node);
+            return Parameter(cnode.*pmember);
+          })
   {
     displayInfo.from(iname);
     values[ValueType::eDefault] = format.defaultVal;
@@ -155,10 +316,11 @@ public:
   DisplayInfo                displayInfo;
   std::u8string_view         category;
   std::string_view           style;
-  std::vector<ParameterMeta> parameterDef    = {ParameterMeta(FmtVal<DataType::eInput>(), "@domain")};
+  std::vector<ParameterMeta> parameterDef;
   uint32_t                   outputUpscale   = 1; // multiplier
   uint32_t                   outputDownscale = 1; // divisor for reduction algo
   DataFormat                 format          = DataFormat(DataType::eBuffer);
+  CreateNode                 createNode      = nullptr;
 
   // derived
   uint32_t id;
@@ -169,7 +331,19 @@ public:
   bool attribIteration       = false;
   //
 
-  NodeMeta()                                    = default;
+  template <typename N>
+  void as()
+  {
+    createNode = [](NodeMeta const& param) -> std::shared_ptr<Node>
+    {
+      return std::static_pointer_cast<Node>(std::make_shared<N>(param));
+    };
+  }
+
+  void addDomain();
+
+  NodeMeta(NoDomain) {}
+  NodeMeta();
   NodeMeta(NodeMeta const&)                     = default;
   NodeMeta(NodeMeta&&) noexcept                 = default;
   NodeMeta& operator=(NodeMeta const&) noexcept = default;

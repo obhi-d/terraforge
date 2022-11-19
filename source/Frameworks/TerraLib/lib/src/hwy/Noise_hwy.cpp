@@ -3,6 +3,7 @@
 #define HWY_TARGET_INCLUDE "Noise_hwy.cpp"
 
 #include "Common.h"
+#include "Icons.h"
 #include "Node.h"
 #include <hwy/foreach_target.h>
 
@@ -259,8 +260,9 @@ void openSimplex2(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   finish(node, pipe, threadGroupId);
 }
 
-void ridgedNoise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+void ridgedNoise(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
+  auto&     node = (RidgedNoiseNode&)inode;
   const V_t vtag{};
   const I_t itag{};
 
@@ -275,9 +277,9 @@ void ridgedNoise(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
   auto inp_y_data = inp.y.data();
   auto seed       = hn::Set(itag, pipe.seed(threadGroupId));
 
-  NodeMeta_hwy::write(node.param(1), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.ridgedOffset, pipe, threadGroupId, lanes);
   auto& out_b = pipe.pushOutput(threadGroupId, lanes);
-  NodeMeta_hwy::write(node.param(2), pipe, threadGroupId, lanes);
+  NodeMeta_hwy::write(node.source, pipe, threadGroupId, lanes);
   auto out_b_data = out_b.data();
   for (uint32_t i = 0; i < out_b.size(); i += lanes)
   {
@@ -658,7 +660,7 @@ void multiFractal_end(Node& node, Pipeline_hwy& pipe)
   mf.amp *= gain;
   mf.seed += seed;
   if (pipe.getIteration() < octaves)
-    pipe.reissue();
+    pipe.reissue(node.getSelf());
 }
 
 void dnoiseFractal_prepare(Node& node, Pipeline_hwy& pipe)
@@ -685,86 +687,88 @@ void dnoiseFractal_end(Node& node, Pipeline_hwy& pipe)
   mf.amp *= gain;
   mf.seed += seed;
   if (pipe.getIteration() < octaves)
-    pipe.reissue();
+    pipe.reissue(node.getSelf());
 }
 
 void Noise_hwy()
 {
-  constexpr auto min = -std::numeric_limits<float>::infinity();
-  constexpr auto max = std::numeric_limits<float>::infinity();
+  auto builder = buildMeta<NodeMeta_hwy>("@Noise"_ls, "noise");
 
-  // Common
-  NodeMeta_hwy meta;
-  meta.category = "@Noise"_ls;
-  meta.style    = "noise";
+  {
+    builder.add<Node>("@openSimplex2", IconOpenSimplex2);
+    builder.fn(HWY_DYNAMIC_DISPATCH(openSimplex2));
+    builder.done();
+  }
 
-  // openSimplex
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(openSimplex2);
-  get().addMeta("@openSimplex", meta);
+  {
+    builder.add<Node>("@simplex", IconSimplex);
+    builder.fn(HWY_DYNAMIC_DISPATCH(simplex));
+    builder.done();
+  }
 
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(simplex);
-  get().addMeta("@simplex", meta);
+  {
+    builder.add<Node>("@noise", IconNoise);
+    builder.fn(HWY_DYNAMIC_DISPATCH(noise));
+    builder.done();
+  }
 
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(noise);
-  get().addMeta("@noise", meta);
+  {
+    builder.add<RidgedNoiseNode>("@ridgedNoise", IconRidgedNoise);
+    builder.fn(HWY_DYNAMIC_DISPATCH(ridgedNoise));
+    builder.param<&RidgedNoiseNode::ridgedOffset>("@ridgedOffset");
+    builder.param<&RidgedNoiseNode::source>("@source");
+    builder.done();
+  }
 
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(ridgedNoise);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@ridgeOffset");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source");
-  get().addMeta("@ridgedNoise", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<WorlyNode>("@worlyNoise", IconWorlyNoise);
+    builder.fn(HWY_DYNAMIC_DISPATCH(worlyNoise));
+    builder.param<&WorlyNode::source>("@source");
+    builder.param<&WorlyNode::falloff>("@falloff");
+    builder.done();
+  }
 
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(worlyNoise);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@falloff");
-  get().addMeta("@worlyNoise", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<FlowNode>("@flowNoise", IconWorlyNoise);
+    builder.fn(HWY_DYNAMIC_DISPATCH(flowNoise));
+    builder.param<&FlowNode::angle>("@angle");
+    builder.done();
+  }
 
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(flowNoise);
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.0f, -180.0f, 180.f), "@angle");
-  get().addMeta("@flowNoise", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<MultiFractalNode>("@multiFractal", IconWorlyNoise);
+    builder.fn(HWY_DYNAMIC_DISPATCH(multiFractal));
+    builder.prepare(multiFractal_prepare);
+    builder.end(multiFractal_end);
+    builder.param<&MultiFractalNode::source>("@source");
+    builder.param<&MultiFractalNode::octaves>("@octaves");
+    builder.param<&MultiFractalNode::lacunarity>("@lacunarity");
+    builder.param<&MultiFractalNode::gain>("@gain");
+    builder.param<&MultiFractalNode::seedOffset>("@seedOffset");
+    builder.done();
+  }
 
-  meta.icon    = "\xef\x87\xbe";
-  meta.fn      = HWY_DYNAMIC_DISPATCH(multiFractal);
-  meta.prepare = &multiFractal_prepare;
-  meta.endIt   = &multiFractal_end;
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@source");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 256), "@octaves");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(2.0f, min, max), "@lacunarity");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.5f, 0.f, 0.99f), "@gain");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1), "@seedOffset");
-  get().addMeta("@multiFractal", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<DerivFractalNode>("@dnoiseFractal", IconDerivFractal);
+    builder.fn(HWY_DYNAMIC_DISPATCH(dnoiseFractal));
+    builder.prepare(dnoiseFractal_prepare);
+    builder.end(dnoiseFractal_end);
+    builder.param<&DerivFractalNode::octaves>("@octaves");
+    builder.param<&DerivFractalNode::lacunarity>("@lacunarity");
+    builder.param<&DerivFractalNode::gain>("@gain");
+    builder.param<&DerivFractalNode::seedOffset>("@seedOffset");
+    builder.done();
+  }
 
-  meta.icon    = "\xef\x87\xbe";
-  meta.fn      = HWY_DYNAMIC_DISPATCH(dnoiseFractal);
-  meta.prepare = &dnoiseFractal_prepare;
-  meta.endIt   = &dnoiseFractal_end;
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1, 1, 256), "@octaves");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(2.0f, min, max), "@lacunarity");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(0.5f, 0.f, .99f), "@gain");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(1), "@seedOffset");
-  get().addMeta("@dnoiseFractal", meta);
-  meta.parameterDef.resize(1);
-
-  meta.icon    = "\xef\x87\xbe";
-  meta.fn      = HWY_DYNAMIC_DISPATCH(cellularValue);
-  meta.prepare = nullptr;
-  meta.endIt   = nullptr;
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(), "@jitter");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eInt>(0, 0, 3), "@returnType");
-  meta.parameterDef.emplace_back(
-    FmtEnum(0, {"@eucledian"_ls, "@eucledianSquared"_ls, "@manhattan"_ls, "@hybrid"_ls, "@maxAxis"_ls}),
-    "@distanceType");
-  get().addMeta("@cellularValue", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<CellularValueNode>("@cellularValue", IconCellular);
+    builder.fn(HWY_DYNAMIC_DISPATCH(cellularValue));
+    builder.param<&CellularValueNode::jitter>("@jitter");
+    builder.param<&CellularValueNode::returnType>("@return", FmtVal<DataType::eInt>(0, 0, 3));
+    builder.param<&CellularValueNode::distanceType>(
+      "@type", FmtEnum(0, {"@eucledian"_ls, "@eucledianSquared"_ls, "@manhattan"_ls, "@hybrid"_ls, "@maxAxis"_ls}));
+    builder.done();
+  }
 }
 
 } // namespace terra

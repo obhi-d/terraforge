@@ -175,4 +175,13 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
   }
 }
 
+NodeMeta::NodeMeta()
+{
+  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataType::eInput>());
+}
+
+void NodeMeta::addDomain()
+{
+  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataType::eInput>());
+}
 } // namespace terra

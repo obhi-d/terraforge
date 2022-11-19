@@ -8,33 +8,29 @@ namespace terra
 class Node : public DataSource
 {
 public:
-    
-  acl::dynamic_array<Parameter> parameters;
-
+  Source          domain;
   std::u8string   name;
   NodeMeta const& meta;
 
-  Node(NodeMeta const& m);
-  
   uint32 getNumParams() const
   {
     return (uint32)meta.parameterDef.size();
   }
 
-  Parameter const& param(uint32_t i) const
+  Parameter param(uint32_t i) const
   {
-    return parameters[i];
+    return meta.parameterDef[i].getter(*this);
   }
 
-  void state(uint32_t i, ScalarValue sv) 
+  void state(uint32_t i, ScalarValue sv)
   {
-    parameters[i] = sv;
+    meta.parameterDef[i].setter(*this, sv);
   }
 
-  Parameter param(uint32_t i, Parameter&& sv)
+  Parameter param(uint32_t i, Parameter sv)
   {
-    auto old = parameters[i];
-    parameters[i] = std::move(sv);
+    auto old = meta.parameterDef[i].getter(*this);
+    meta.parameterDef[i].setter(*this, sv);
     dshandle oldSrc, newSrc;
     if (std::holds_alternative<Source>(old))
       oldSrc = std::get<Source>(old).source;
@@ -64,8 +60,10 @@ public:
   void beginIteration(Pipeline&) final;
   void endIteration(Pipeline&) final;
 
-  void accept(dshandle source, Event) override;
+  void     accept(dshandle source, Event) override;
   HelpInfo getHelpInfo(HelpType type, int param = -1) const final;
+
+  Node(NodeMeta const& m);
 };
 
-}
+} // namespace terra

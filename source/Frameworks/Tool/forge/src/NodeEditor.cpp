@@ -590,7 +590,7 @@ void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair e
 {
   auto& dst    = get().get<Node>(end.first);
   Color color  = col.dsLink;
-  auto  oldSrc = dst.param(end.second - 1, Source(dshandle(start.first), 0));
+  auto  oldSrc = dst.param(end.second - 1, Source(dshandle(start.first)));
   if (std::holds_alternative<Source>(oldSrc))
   {
     auto        oldSrcHandle = std::get<Source>(oldSrc).source;

@@ -198,6 +198,11 @@ void Pipeline_hwy::popInput(uint32_t thread)
 
 void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 {
+
+  tileDatas.emplace_back();
+  TileData& data   = tileDatas.back();
+  data.params      = envParams;
+  data.threadStart = (uint32)threadDatas.size();
   // auto div = N * lanes();
   constexpr bool SingleThreaded = false;
   if constexpr (SingleThreaded)
@@ -205,13 +210,14 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
     threadDatas.emplace_back();
     auto& threadData           = threadDatas.back();
     threadData.params          = envParams;
-    threadData.width           = threadData.params.tileRegion.size[0] + 2;
-    threadData.height          = threadData.params.tileRegion.size[1] + 2;
+    threadData.width           = threadData.params.tileRegion.size[0];
+    threadData.height          = threadData.params.tileRegion.size[1];
     threadData.thread          = (uint32_t)threadDatas.size() - 1;
     threadData.uv.recipSize[0] = 1.f / (envParams.frequency * (float)envParams.tileSize[0]);
     threadData.uv.recipSize[1] = 1.f / (envParams.frequency * (float)envParams.tileSize[1]);
     threadData.uv.offset[0]    = envParams.startxy[0] * envParams.frequency;
     threadData.uv.offset[1]    = envParams.startxy[1] * envParams.frequency;
+    threadData.tileIdx         = (uint32)tileDatas.size() - 1;
   }
   else
   {
@@ -246,19 +252,24 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
           threadData.params.tileRegion.size[1] = dy;
           threadData.params.region.size[0]     = dx;
           threadData.params.region.size[1]     = dy;
-          threadData.width                     = dx + 2;
-          threadData.height                    = dy + 2;
+          threadData.width                     = dx;
+          threadData.height                    = dy;
           threadData.thread                    = (uint32_t)threadDatas.size() - 1;
           threadData.uv.recipSize[0]           = 1.f / (envParams.frequency * (float)envParams.tileSize[0]);
           threadData.uv.recipSize[1]           = 1.f / (envParams.frequency * (float)envParams.tileSize[1]);
           threadData.uv.offset[0]              = threadData.params.startxy[0] * envParams.frequency;
           threadData.uv.offset[1]              = threadData.params.startxy[1] * envParams.frequency;
+          threadData.tileIdx                   = (uint32)tileDatas.size() - 1;
         }
         else
           threadDatas.pop_back();
       }
     }
   }
+
+  data.threadCount = (uint32)threadDatas.size() - data.threadStart;
+  data.buffer.resize(envParams.tileSize[0] * envParams.tileSize[1]);
+
   if (envParams.seed != (int)constants.seed)
   {
     constants.seed = (uint64_t)envParams.seed;
@@ -271,6 +282,7 @@ void Pipeline_hwy::launch()
 {
   if (threadDatas.empty())
     return;
+  reissueNode = {};
   if (iteration == 0)
     DataSource::prepareGeneration(getActor(), *this);
   onLaunch();
@@ -284,9 +296,18 @@ void Pipeline_hwy::launch()
       {
         auto& back  = data.outputs.back();
         data.minMax = HWY_DYNAMIC_DISPATCH(getMinMax)(back.data(), back.pitch(), back.width(), back.height());
+
+        uint32 x = data.params.region.offset[0];
+        uint32 y = data.params.region.offset[1];
+        for (uint32 i = 0; i < back.height(); ++i, ++y)
+        {
+          auto offset = tileDatas[data.tileIdx].buffer.data() + (y * params().tileSize[0]) + x;
+          assert((y * params().tileSize[0]) + x + (data.params.region.size[0]) <=
+                 tileDatas[data.tileIdx].buffer.size());
+          std::memcpy(offset, back.data() + i * back.pitch(), data.params.region.size[0] * sizeof(float));
+        }
       }
-    },
-    waiters);
+    });
   DataSource::endIteration(getActor(), *this);
   if (hasMoreIterations())
     iteration++;
@@ -302,30 +323,42 @@ std::size_t Pipeline_hwy::hasResults()
   return 0;
 }
 
-void Pipeline_hwy::getResults(float* ready, uint32_t size, float& min, float& max)
+void Pipeline_hwy::getResults(float* ready, size_t nbFloats, float& min, float& max)
 {
   min            = std::numeric_limits<float>::infinity();
   max            = -std::numeric_limits<float>::infinity();
   auto const& ls = launchSize();
   auto const& lo = launchOffset();
+  auto const& ts = params().tileSize;
   // auto        ready = std::unique_ptr<float[]>(new float[ls[0] * ls[1]]);
+  if (tileDatas.size() == 1)
+  {
+    assert(nbFloats == tileDatas[0].buffer.size());
+    std::memcpy(ready, tileDatas[0].buffer.data(), nbFloats * sizeof(float));
+  }
+  else
+  {
+    for (auto& td : tileDatas)
+    {
+      if (!td.buffer.empty())
+      {
+        uint32 x   = td.params.region.offset[0];
+        uint32 y   = td.params.region.offset[1];
+        auto   src = td.buffer.data();
+        for (uint32 i = 0; i < (uint32)ts[1]; ++i, ++y)
+        {
+          auto offset = ready + (y * ls[0]) + x;
+          assert((y * ls[0]) + x + (td.params.region.size[0]) < nbFloats);
+          std::memcpy(offset, src + i * ts[0], td.params.region.size[0] * sizeof(float));
+        }
+      }
+    }
+  }
+
   for (auto& td : threadDatas)
   {
-    if (!td.outputs.empty())
-    {
-      uint32 x    = td.params.region.offset[0];
-      uint32 y    = td.params.region.offset[1];
-      auto&  back = td.outputs.back();
-      for (uint32 i = 1; i < back.height() - 1; ++i, ++y)
-      {
-        auto offset = ready + (y * ls[0]) + x;
-        assert((y * ls[0]) + x + (td.params.region.size[0] * sizeof(float)) < size);
-        std::memcpy(offset, back.data() + i * back.pitch() + 1, td.params.region.size[0] * sizeof(float));
-      }
-
-      min = std::min(min, td.minMax[0]);
-      max = std::max(max, td.minMax[1]);
-    }
+    min = std::min(min, td.minMax[0]);
+    max = std::max(max, td.minMax[1]);
   }
 
   if (hasMoreIterations())
@@ -338,6 +371,9 @@ void Pipeline_hwy::wait() {}
 void Pipeline_hwy::cleanup()
 {
   threadDatas.clear();
+  tileDatas.clear();
+  cacheData.clear();
+  Pipeline::cleanup();
 }
 
 } // namespace terra

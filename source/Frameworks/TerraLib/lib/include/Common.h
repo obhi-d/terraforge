@@ -40,6 +40,62 @@
 namespace terra
 {
 
+namespace detail
+{
+template <typename T>
+struct function_traits : public function_traits<decltype(&T::operator())>
+{};
+
+template <typename ClassType, typename ReturnType, typename... Args>
+struct function_traits<ReturnType (ClassType::*)(Args...) const>
+// we specialize for pointers to member function
+{
+  enum
+  {
+    arity = sizeof...(Args)
+  };
+  // arity is the number of arguments.
+
+  using result_type = ReturnType;
+
+  template <size_t i>
+  struct arg
+  {
+    using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
+    // the i-th argument is equivalent to the i-th tuple element of a tuple
+    // composed of those arguments.
+  };
+
+  template <size_t i>
+  using arg_t = typename arg<i>::type;
+};
+
+template <typename ReturnType, typename... Args>
+struct function_traits<ReturnType(Args...)>
+// we specialize for pointers to member function
+{
+  enum
+  {
+    arity = sizeof...(Args)
+  };
+  // arity is the number of arguments.
+
+  using result_type = ReturnType;
+
+  template <size_t i>
+  struct arg
+  {
+    using type = typename std::tuple_element<i, std::tuple<Args...>>::type;
+    // the i-th argument is equivalent to the i-th tuple element of a tuple
+    // composed of those arguments.
+  };
+
+  template <size_t i>
+  using arg_t = typename arg<i>::type;
+};
+
+} // namespace detail
+
 namespace consts
 {
 static constexpr int32_t X     = 501125321;
@@ -69,23 +125,6 @@ struct MemberPtr<P>
   static inline auto constexpr pmem = P;
   using class_t                     = std::decay_t<T>;
   using member_t                    = std::decay_t<M>;
-};
-
-union ScalarValue
-{
-  ivec2 ivalue2 = {0, 0};
-  vec2  value2;
-  float value;
-  int   ivalue;
-  bool  bvalue;
-
-  inline ScalarValue(int a, int b) : ivalue2{a, b} {}
-  inline ScalarValue(ivec2 v) : ivalue2(v) {}
-  inline ScalarValue() {}
-  inline ScalarValue(vec2 v) : value2(v) {}
-  inline ScalarValue(float v) : value(v) {}
-  inline ScalarValue(int v) : ivalue(v) {}
-  inline ScalarValue(bool v) : bvalue(v) {}
 };
 
 struct Content
@@ -235,6 +274,7 @@ enum class DataType
   eInput,
   eCurveData,
   eBool,
+  ePostProcess,
   eEnum
 };
 
@@ -337,6 +377,10 @@ struct Source
 {
   dshandle source;
   uint32_t secondary = 0;
+
+  inline Source() noexcept = default;
+  inline Source(dshandle d) : source(d) {}
+  inline Source(dshandle d, uint32_t v) : source(d), secondary(v) {}
 };
 
 inline uintptr_t pack(uint32_t first, uint32_t sec)
@@ -472,4 +516,85 @@ constexpr inline float radians(float deg)
   return deg * 0.0174533f;
 }
 
+struct NoDomain
+{};
+
+struct Angle
+{
+  Angle() = default;
+  Angle(float v) : degrees(v) {}
+
+  float to_radians() const
+  {
+    return radians(degrees);
+  }
+
+  void clamp()
+  {
+    degrees = std::clamp(degrees, -180.f, 180.f);
+  }
+
+  operator float() const
+  {
+    return degrees;
+  }
+
+  float degrees = {};
+};
+
+struct Unorm
+{
+  Unorm() = default;
+  Unorm(float v) : value(v) {}
+
+  void clamp()
+  {
+    value = std::clamp(value, 0.f, 1.f);
+  }
+
+  operator float() const
+  {
+    return value;
+  }
+
+  float value = {};
+};
+
+struct Snorm
+{
+  Snorm() = default;
+  Snorm(float v) : value(v) {}
+
+  void clamp()
+  {
+    value = std::clamp(value, -1.f, 1.f);
+  }
+
+  operator float() const
+  {
+    return value;
+  }
+
+  float value = {};
+};
+
+union ScalarValue
+{
+  ivec2 ivalue2 = {0, 0};
+  vec2  value2;
+  float value;
+  int   ivalue;
+  bool  bvalue;
+
+  inline ScalarValue(Angle val) : value(val) {}
+  inline ScalarValue(Unorm val) : value(val) {}
+  inline ScalarValue(Snorm val) : value(val) {}
+  inline ScalarValue(int a, int b) : ivalue2{a, b} {}
+  inline ScalarValue(ivec2 v) : ivalue2(v) {}
+  inline ScalarValue() {}
+  inline ScalarValue(vec2 v) : value2(v) {}
+  inline ScalarValue(float v) : value(v) {}
+  inline ScalarValue(int v) : ivalue(v) {}
+  inline ScalarValue(bool v) : bvalue(v) {}
+};
 } // namespace terra

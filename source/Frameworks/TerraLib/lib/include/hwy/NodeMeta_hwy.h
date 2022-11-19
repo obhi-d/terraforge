@@ -10,13 +10,16 @@ class Pipeline_hwy;
 class NodeMeta_hwy : public NodeMeta
 {
 public:
-  using Fn = void (*)(Node& node, Pipeline_hwy&, uint32_t thread);
+  inline NodeMeta_hwy() = default;
+  inline NodeMeta_hwy(NoDomain) : NodeMeta(NoDomain{}) {}
+
+  using Fn  = void (*)(Node& node, Pipeline_hwy&, uint32_t thread);
   using Pfn = void (*)(Node& node, Pipeline_hwy&);
 
   Pfn prepare = nullptr;
-  Pfn beginIt   = nullptr;
-  Pfn endIt    = nullptr;
-  Fn fn = nullptr;
+  Pfn beginIt = nullptr;
+  Pfn endIt   = nullptr;
+  Fn  fn      = nullptr;
 
   void prepareGeneration(Node&, Pipeline&) const final;
   void beginIteration(Node&, Pipeline&) const final;

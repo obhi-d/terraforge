@@ -60,7 +60,6 @@ public:
       auto& ptr = dataSources.at(at);
       if (ptr && ptr->getSelf() == at)
         return static_cast<As*>(ptr.get());
-        
     }
     return nullptr;
   }
@@ -86,7 +85,6 @@ public:
   {
     metaMap[name] = (uint32_t)nodeMetaTable.size();
     nodeMetaTable.push_back(std::static_pointer_cast<NodeMeta>(std::make_shared<Meta>(meta)));
-    nodeMetaTable.back()->displayInfo.from(name);
   }
 
   inline NodeMeta* getNodeMeta(std::string_view name)
@@ -184,4 +182,102 @@ inline const char* operator""_lsc(const char* input, std::size_t len)
 {
   return (const char*)get().localizationProvider(std::string_view(input, len)).data();
 }
+
+template <typename Meta>
+struct MetaBuilder
+{
+  std::string_view   name;
+  std::u8string_view category;
+  std::string_view   style;
+  Meta               dummy;
+  DataFormat         output = DataFormat(DataType::eBuffer);
+
+  void clear()
+  {
+    dummy.parameterDef.clear();
+  }
+
+  template <typename NodeT>
+  Meta& add(std::string_view name, std::string_view icon)
+  {
+    this->name = name;
+    dummy      = Meta();
+    dummy.displayInfo.from(name);
+    dummy.icon     = icon;
+    dummy.category = category;
+    dummy.style    = style;
+    dummy.format   = output;
+    dummy.as<NodeT>();
+    return dummy;
+  }
+
+  void outputs(DataFormat fmt)
+  {
+    output = fmt;
+  }
+
+  template <typename NodeT>
+  Meta& add(NoDomain, std::string_view name, std::string_view icon)
+  {
+    this->name = name;
+    dummy      = Meta(NoDomain{});
+    dummy.displayInfo.from(name);
+    dummy.icon     = icon;
+    dummy.category = category;
+    dummy.style    = style;
+    dummy.format   = output;
+    dummy.as<NodeT>();
+    return dummy;
+  }
+
+  template <typename Fn>
+  void fn(Fn f)
+  {
+    dummy.fn = f;
+  }
+
+  template <typename Fn>
+  void prepare(Fn f)
+  {
+    dummy.prepare = f;
+  }
+
+  template <typename Fn>
+  void begin(Fn f)
+  {
+    dummy.beginIt = f;
+  }
+
+  template <typename Fn>
+  void end(Fn f)
+  {
+    dummy.endIt = f;
+  }
+
+  void domain()
+  {
+    dummy.addDomain();
+  }
+
+  template <auto M, typename... Args>
+  void param(Args... args)
+  {
+    dummy.parameterDef.emplace_back(MemberPtr<M>(), std::forward<Args>(args)...);
+  }
+
+  void done()
+  {
+    get().addMeta(name, dummy);
+  }
+};
+
+template <typename Meta>
+MetaBuilder<Meta> buildMeta(std::u8string_view cat, std::string_view style)
+{
+  MetaBuilder<Meta> builder;
+  builder.category = cat;
+  builder.style    = style;
+  return builder;
+}
+
 } // namespace terra

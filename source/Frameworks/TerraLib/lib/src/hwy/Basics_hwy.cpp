@@ -4,10 +4,12 @@
 
 #include "Common.h"
 #include "CurveData.h"
+#include "Icons.h"
 #include "Image.h"
 #include "Node.h"
 #include <hwy/foreach_target.h>
 
+#include "hwy/Basics_hwy.h"
 #include "hwy/NodeMeta_hwy.h"
 #include "hwy/Pipeline_hwy.h"
 #include "hwy/Utility_hwy.h"
@@ -304,64 +306,72 @@ HWY_EXPORT(sin);
 HWY_EXPORT(distance);
 HWY_EXPORT(curve);
 HWY_EXPORT(imageMask);
+
+uint32_t lanes();
+
+void constant(Node& node, Pipeline_hwy& pipe, uint32_t threadGroupId)
+{
+  auto& out = pipe.getOutput(threadGroupId, lanes());
+  out.fill(((ConstantNode&)node).value);
+}
+
 void Basics_hwy()
 {
-  constexpr auto min = -std::numeric_limits<float>::infinity();
-  constexpr auto max = std::numeric_limits<float>::infinity();
+  auto builder = buildMeta<NodeMeta_hwy>("@Basics"_ls, "basics");
 
-  // Common
-  NodeMeta_hwy meta;
-  meta.category = "@Basics"_ls;
-  meta.style    = "basics";
+  {
+    builder.add<ConstantNode>(NoDomain(), "@constant", IconBasicChecker);
+    builder.fn(constant);
+    builder.param<&ConstantNode::value>("@value");
+    builder.done();
+  }
 
-  // checkerBoard
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat>(1.f, min, max), "@cbsize");
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(checkerBoard);
-  get().addMeta("@checkerBoard", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<CheckerNode>("@checkerBoard", IconBasicChecker);
+    builder.fn(HWY_DYNAMIC_DISPATCH(checkerBoard));
+    builder.param<&CheckerNode::size>("@source");
+    builder.done();
+  }
 
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(1.0f, min, max), "@amplitude");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, -180.f, 180.f), "@phase");
-  meta.icon = "\xef\x87\xbe";
-  meta.fn   = HWY_DYNAMIC_DISPATCH(sin);
-  get().addMeta("@sin", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<SinNode>("@sin", IconBasicSin);
+    builder.fn(HWY_DYNAMIC_DISPATCH(sin));
+    builder.param<&SinNode::amplitude>("@amplitude");
+    builder.param<&SinNode::phase>("@phase");
+    builder.done();
+  }
 
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@fromX");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBuffer>(0.0f, min, max), "@fromY");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBool>(1), "@modulateByFreq");
-  meta.parameterDef.emplace_back(
-    FmtEnum(0, {"@eucledian"_ls, "@eucledianSquared"_ls, "@manhattan"_ls, "@hybrid"_ls, "@maxAxis"_ls}),
-    "@distanceType");
-  meta.icon                  = "\xef\x87\xbe";
-  meta.fn                    = HWY_DYNAMIC_DISPATCH(distance);
-  meta.attribTileConstrained = true;
-  get().addMeta("@distance", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<DistanceNode>("@distance", IconBasicDistance);
+    builder.fn(HWY_DYNAMIC_DISPATCH(distance));
+    builder.param<&DistanceNode::fromX>("@fromX");
+    builder.param<&DistanceNode::fromY>("@fromY");
+    builder.param<&DistanceNode::modulateByFreq>("@modulateByFreq");
+    builder.param<&DistanceNode::distanceType>(
+      "@distanceType",
+      FmtEnum(0, {"@eucledian"_ls, "@eucledianSquared"_ls, "@manhattan"_ls, "@hybrid"_ls, "@maxAxis"_ls}));
+    builder.done();
+  }
 
-  meta.parameterDef.emplace_back(FmtVal<DataType::eImage>(), "@mask");
-  meta.parameterDef.emplace_back(FmtEnum(0, {"@x1"_ls, "@x2"_ls, "@x3"_ls, "@x4"_ls}), "@sampling");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(0.0f, min, max), "@offset");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(1.0f, min, max), "@scale");
-  meta.icon                  = "\xef\x87\xbe";
-  meta.fn                    = HWY_DYNAMIC_DISPATCH(imageMask);
-  meta.attribTileConstrained = true;
-  get().addMeta("@imageMask", meta);
-  meta.parameterDef.resize(1);
+  {
+    builder.add<MaskNode>("@imageMask", IconBasicMask);
+    builder.fn(HWY_DYNAMIC_DISPATCH(imageMask));
+    builder.param<&MaskNode::source>("@source", FmtVal<DataType::eImage>());
+    builder.param<&MaskNode::sampler>("@sampling", FmtEnum(0, {"@x1"_ls, "@x2"_ls, "@x3"_ls, "@x4"_ls}));
+    builder.param<&MaskNode::offset>("@offset");
+    builder.param<&MaskNode::scale>("@scale");
+    builder.done();
+  }
 
-  meta.attribTileConstrained = false;
-
-  meta.parameterDef.emplace_back(FmtVal<DataType::eCurveData>(), "@curve");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBool>(), "@applyX");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eBool>(), "@applyY");
-  meta.parameterDef.emplace_back(FmtVal<DataType::eFloat2>(1.0f, min, max), "@strength");
-  meta.icon                  = "\xef\x87\xbe";
-  meta.fn                    = HWY_DYNAMIC_DISPATCH(curve);
-  meta.attribTileConstrained = true;
-  get().addMeta("@curve", meta);
-  meta.parameterDef.resize(1);
-  meta.attribTileConstrained = false;
+  {
+    builder.add<CurveNode>("@curve", IconBasicCurve);
+    builder.fn(HWY_DYNAMIC_DISPATCH(curve));
+    builder.param<&CurveNode::source>("@source", FmtVal<DataType::eCurveData>());
+    builder.param<&CurveNode::applyX>("@applyX");
+    builder.param<&CurveNode::applyY>("@applyY");
+    builder.param<&CurveNode::strength>("@strength");
+    builder.done();
+  }
 }
 
 } // namespace terra
