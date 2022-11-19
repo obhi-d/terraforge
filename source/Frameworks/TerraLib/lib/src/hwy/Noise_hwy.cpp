@@ -661,6 +661,8 @@ void multiFractal_end(Node& node, Pipeline_hwy& pipe)
   mf.seed += seed;
   if (pipe.getIteration() < octaves)
     pipe.reissue(node.getSelf());
+  else if (pipe.wasReissued(node.getSelf()))
+    pipe.resetLastIssued();
 }
 
 void dnoiseFractal_prepare(Node& node, Pipeline_hwy& pipe)

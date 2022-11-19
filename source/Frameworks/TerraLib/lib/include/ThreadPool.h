@@ -28,11 +28,13 @@ struct block_range
     return end_;
   }
 
-  block_range(It b, size_t c) : begin_(b), end_(b + c) {}
+  block_range(It b, size_t c) : begin_(b), end_((It)(b + c)) {}
 
   It begin_;
   It end_;
 };
+
+constexpr bool SingleThreadedDebug = true;
 
 class ThreadPool
 {
@@ -60,6 +62,17 @@ public:
   template <typename Iter, typename L>
   auto for_each(Iter beg, Iter end, L&& lambda)
   {
+    if constexpr (SingleThreadedDebug)
+    {
+      for (auto i = beg; i != end; ++i)
+      {
+        if constexpr (std::is_integral_v<Iter>)
+          lambda(i);
+        else
+          lambda(*i);
+      }
+      return;
+    }
     auto           last = end - 1;
     std::ptrdiff_t nb   = 0;
 
@@ -80,9 +93,8 @@ public:
       return;
     }
 
-    auto     l    = std::latch(nb - 1);
-    uint32_t task = 0;
-    for (auto i = beg; i != end; ++i, ++task)
+    auto l = std::latch(nb - 1);
+    for (auto i = beg; i != end; ++i)
     {
       if (i == last)
       {
@@ -123,6 +135,18 @@ public:
   template <typename Iter, typename L>
   auto for_each(Iter beg, Iter end, uint32_t granularity, L&& lambda)
   {
+    if constexpr (SingleThreadedDebug)
+    {
+      for (auto i = beg; i != end; ++i)
+      {
+        if constexpr (std::is_integral_v<Iter>)
+          lambda(i);
+        else
+          lambda(*i);
+      }
+      return;
+    }
+
     std::ptrdiff_t nb = 0;
 
     if constexpr (std::is_integral_v<Iter>)

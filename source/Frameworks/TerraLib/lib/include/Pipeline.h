@@ -42,13 +42,24 @@ public:
 
   bool reissue(dshandle node)
   {
-    continueIter = true;
+    iterationRequests++;
     if (!reissueNode)
     {
       reissueNode = node;
       return true;
     }
-    return false;
+    return reissueNode == node;
+  }
+
+  void resetIteration()
+  {
+    iterationRequests = 0;
+    reissueNode       = {};
+  }
+
+  void resetLastIssued()
+  {
+    reissueNode = {};
   }
 
   bool wasReissued(dshandle c)
@@ -94,12 +105,12 @@ public:
 protected:
   void onLaunch()
   {
-    continueIter = false;
+    iterationRequests = 0;
   }
 
   bool hasMoreIterations()
   {
-    return continueIter;
+    return iterationRequests != 0;
   }
 
   bool isPrimary(dshandle h) const
@@ -114,7 +125,7 @@ protected:
   // main actor
   dshandle     reissueNode;
   dshandle     actor;
-  bool         continueIter = false;
+  int          iterationRequests = 0;
   LaunchParams launchParams;
   ivec2        start;
   ivec2        size;

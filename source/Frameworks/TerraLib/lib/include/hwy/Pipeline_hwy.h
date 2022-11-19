@@ -33,7 +33,7 @@ public:
     EnvParams params;
     int32_t   width   = 0;
     int32_t   height  = 0;
-    vec2      minMax  = {-1.0f, 1.0f};
+    vec2      minMax  = {std::numeric_limits<float>::infinity(), -std::numeric_limits<float>::infinity()};
     uint32_t  thread  = 0;
     uint32_t  tileIdx = 0;
     UVMeter   uv;
@@ -54,15 +54,12 @@ public:
     std::vector<float> buffer;
     uint32_t           threadStart = 0;
     uint32_t           threadCount = 0;
+    float              min         = std::numeric_limits<float>::infinity();
+    float              max         = -std::numeric_limits<float>::infinity();
 
-    float sample(uint32_t x, uint32_t y) const
+    inline bool isInBounds(int x, int y)
     {
-      return buffer[(x % params.tileSize[0]) + (y % params.tileSize[1]) * params.tileSize[0]];
-    }
-
-    float& sample(uint32_t x, uint32_t y)
-    {
-      return buffer[(x % params.tileSize[0]) + (y % params.tileSize[1]) * params.tileSize[0]];
+      return x >= 0 && x < params.tileSize[0] && y >= 0 && y < params.tileSize[1];
     }
   };
 

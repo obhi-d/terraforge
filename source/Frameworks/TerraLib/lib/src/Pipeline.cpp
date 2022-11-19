@@ -11,8 +11,8 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
 
   wait();
   cleanup();
+  resetIteration();
 
-  this->continueIter = false;
   this->actor        = h;
   this->launchParams = params;
   this->iteration    = 0;
@@ -51,8 +51,8 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
       {
         // envParams.textureOffset[0] = envParams.tileOffset[0] - start[0];
         // envParams.textureOffset[1] = envParams.tileOffset[1] - start[1];
-        envParams.frequency  = params.frequency;
-        envParams.seed       = params.seed;
+        envParams.frequency = params.frequency;
+        envParams.seed      = params.seed;
         // envParams.bufferArraySize  = (envParams.size[0] + 2) * (envParams.size[1] + 2);
         pushTileTask(envParams);
       }
@@ -62,8 +62,6 @@ void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec
   launch();
 }
 
-
 void Pipeline::cleanup() {}
-
 
 } // namespace terra

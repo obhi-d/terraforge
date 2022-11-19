@@ -69,22 +69,25 @@ struct Image : public DataSource
 
   inline float sample_val(int x, int y) const
   {
-    switch (format)
+    if ((uint32_t)x < width && (uint32_t)y < height)
     {
-    case ImageFormat::eFloat:
-      return (float)get<float>(x, y);
-    case ImageFormat::eUnorm8:
-      return (float)get<std::uint8_t>(x, y) / 255.f;
-    case ImageFormat::eSnorm16:
-    case ImageFormat::eUnorm16:
-      return (float)((float)get<std::uint16_t>(x, y) / (float)std::numeric_limits<std::uint16_t>::max());
-    case ImageFormat::eRgba8:
-    case ImageFormat::eSrgb8Alpha8:
-    {
-      auto rgb = get<rgba>(x, y);
-      return (float)(.299f * ((float)rgb.r / 255.f) + .587f * ((float)rgb.g / 255.f) + .114f * ((float)rgb.b / 255.f));
-    }
-      
+      switch (format)
+      {
+      case ImageFormat::eFloat:
+        return (float)get<float>(x, y);
+      case ImageFormat::eUnorm8:
+        return (float)get<std::uint8_t>(x, y) / 255.f;
+      case ImageFormat::eSnorm16:
+      case ImageFormat::eUnorm16:
+        return (float)((float)get<std::uint16_t>(x, y) / (float)std::numeric_limits<std::uint16_t>::max());
+      case ImageFormat::eRgba8:
+      case ImageFormat::eSrgb8Alpha8:
+      {
+        auto rgb = get<rgba>(x, y);
+        return (float)(.299f * ((float)rgb.r / 255.f) + .587f * ((float)rgb.g / 255.f) +
+                       .114f * ((float)rgb.b / 255.f));
+      }
+      }
     }
     return 0.f;
   }
@@ -123,9 +126,9 @@ struct Image : public DataSource
     return data != nullptr;
   }
 
-  void        unload();
-  bool        load();
-  void        reload()
+  void unload();
+  bool load();
+  void reload()
   {
     unload();
     load();

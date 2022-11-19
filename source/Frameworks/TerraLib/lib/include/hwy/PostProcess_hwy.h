@@ -16,25 +16,44 @@ struct PostProcessNode : public Node
 struct ErosionNode : public PostProcessNode
 {
   ErosionNode(NodeMeta const& m) : PostProcessNode(m) {}
-  int     iteration       = 1000;
-  float   density         = 1.f;
-  float   evaporationRate = 0.001f;
-  float   depositRate     = 0.1f;
-  float   minVolume       = 0.01f;
-  float   friction        = 0.05f;
-  Unorm   effectRadius    = 0.5f;
-  int32_t minParticles    = 5;
-  vec2    relativePos     = {0.5f, 0.5f};
+  vec2    relativePos  = {0.5f, 0.5f};
+  Unorm   effectRadius = 0.5f;
+  int32_t minParticles = 5;
+  int32_t maxParticles = 1000;
+  int     iteration    = 1000;
+
+  Unorm   baseInertia     = 0.4f;
+  Unorm   inertiaJitter   = 0.1f;
+  float   maxCapacity     = 32.1f;
+  float   dropletVolume   = 0.1f;
+  float   minSlope        = 0.001f;
+  Unorm   depositRate     = 0.1f;
+  Unorm   erosionRate     = 0.1f;
+  float   erodeRadius     = 1.f;
+  Unorm   evaporationRate = 0.001f;
+  float   gravity         = 9.8f;
+  float   minSediment     = 0.0f;
+  int32_t randomizer      = 0x5522;
+  Source  erosionMask;
+
+  Unorm blurFactor = 0.1f;
+  bool  blur       = true;
 };
 
 struct Particle
 {
-  ivec2 pos      = {0, 0};
-  vec2  velocity = {0.0f, 0.0f};
-  float volume   = 1.0f;
+  inline static float constexpr minGradient = 0.00001f;
+  vec2  prevPos                             = {0, 0};
+  vec2  pos                                 = {0.f, 0.f};
+  vec2  dir                                 = {0.0f, 0.0f};
+  float velocity                            = 0.1f;
+  float inertia                             = 0.0f;
+
+  float water    = 1.0f;
   float sediment = 0.0f;
   float deposit  = 0.0f;
   bool  dead     = false;
+  bool  erode    = false;
 };
 
 struct ErosionTileData
@@ -60,7 +79,11 @@ struct ErosionTileData
 struct ErosionCacheData
 {
   acl::dynamic_array<ErosionTileData> data;
-  uint64_t                            seed = 0;
+  uint64_t                            seed        = 0;
+  bool                                erosionMask = false;
+  std::vector<ivec2>                  erodeKernel;
+  std::vector<float>                  erodeKernelWeights;
+  int32_t                             iteration = 0;
 };
 
 } // namespace terra

@@ -280,9 +280,10 @@ void Pipeline_hwy::pushTileTask(EnvParams const& envParams)
 
 void Pipeline_hwy::launch()
 {
-  if (threadDatas.empty())
+  if (!DataSource::isValid(getActor()))
     return;
-  reissueNode = {};
+  if (threadDatas.empty() && tileDatas.empty())
+    return;
   if (iteration == 0)
     DataSource::prepareGeneration(getActor(), *this);
   onLaunch();
@@ -307,7 +308,18 @@ void Pipeline_hwy::launch()
           std::memcpy(offset, back.data() + i * back.pitch(), data.params.region.size[0] * sizeof(float));
         }
       }
+      data.outputs.clear();
+      data.inputs.clear();
     });
+
+  for (auto& data : threadDatas)
+  {
+    if (tileDatas[data.tileIdx].min > data.minMax[0])
+      tileDatas[data.tileIdx].min = data.minMax[0];
+    if (tileDatas[data.tileIdx].max < data.minMax[1])
+      tileDatas[data.tileIdx].max = data.minMax[1];
+  }
+
   DataSource::endIteration(getActor(), *this);
   if (hasMoreIterations())
     iteration++;
@@ -315,7 +327,7 @@ void Pipeline_hwy::launch()
 
 std::size_t Pipeline_hwy::hasResults()
 {
-  if (!threadDatas.empty() && !threadDatas[0].outputs.empty())
+  if (!tileDatas.empty() && !tileDatas[0].buffer.empty())
   {
     auto const& ls = launchSize();
     return (size_t)ls[0] * (size_t)ls[1];
@@ -335,6 +347,8 @@ void Pipeline_hwy::getResults(float* ready, size_t nbFloats, float& min, float& 
   {
     assert(nbFloats == tileDatas[0].buffer.size());
     std::memcpy(ready, tileDatas[0].buffer.data(), nbFloats * sizeof(float));
+    min = std::min(tileDatas[0].min, min);
+    max = std::max(tileDatas[0].max, max);
   }
   else
   {
@@ -352,13 +366,9 @@ void Pipeline_hwy::getResults(float* ready, size_t nbFloats, float& min, float& 
           std::memcpy(offset, src + i * ts[0], td.params.region.size[0] * sizeof(float));
         }
       }
+      min = std::min(td.min, min);
+      max = std::max(td.max, max);
     }
-  }
-
-  for (auto& td : threadDatas)
-  {
-    min = std::min(min, td.minMax[0]);
-    max = std::max(max, td.minMax[1]);
   }
 
   if (hasMoreIterations())

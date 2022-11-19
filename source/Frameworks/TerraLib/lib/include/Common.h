@@ -597,4 +597,27 @@ union ScalarValue
   inline ScalarValue(int v) : ivalue(v) {}
   inline ScalarValue(bool v) : bvalue(v) {}
 };
+
+inline float distanceSq(vec2 a, vec2 b)
+{
+  a[0] -= b[0];
+  a[1] -= b[1];
+  return a[0] * a[0] + a[1] * a[1];
+}
+
+inline vec2 scale(float a, vec2 b)
+{
+  return vec2{a * b[0], a * b[1]};
+}
+
+inline vec2 add(vec2 a, vec2 b)
+{
+  return vec2{a[0] + b[0], a[0] + b[1]};
+}
+
+inline vec2 sub(vec2 a, vec2 b)
+{
+  return vec2{a[0] - b[0], a[0] - b[1]};
+}
+
 } // namespace terra
