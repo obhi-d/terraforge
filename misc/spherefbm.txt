@@ -1,0 +1,615 @@
+// Copyright Inigo Quilez, 2019 - https://iquilezles.org/
+// I am the sole copyright owner of this Work.
+// You cannot host, display, distribute or share this Work neither
+// as it is or altered, here on Shadertoy or anywhere else, in any
+// form including physical and digital. You cannot use this Work in any
+// commercial or non-commercial product, website or project. You cannot
+// sell this Work and you cannot mint an NFTs of it or train a neural
+// network with it without permission. I share this Work for educational
+// purposes, and you can link to it, through an URL, proper attribution
+// and unmodified screenshot, as part of your educational material. If
+// these conditions are too restrictive please contact me and we'll
+// definitely work it out.
+
+// This is an experiment on creating a terrain using only sphere
+// SDFs, without using noise, displacement or heightmaps. Instead
+// the terrain is a true volumetric SDF; no approximations and no
+// reduced marching steps needed, even for concave areas.
+//
+// The article that explains this technique can be found here:
+//
+//     https://iquilezles.org/articles/fbmsdf
+//
+// A video render can be found here:
+//
+//     https://www.youtube.com/watch?v=mCdlfdpN-AM
+//
+// A subtractive synthesis example of this technique, here: 
+//
+//     https://www.shadertoy.com/view/3dGSWR
+
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    vec3 col = texelFetch( iChannel0, ivec2(fragCoord), 0 ).xyz;
+
+    // grading
+    col = max(col*1.4-0.17,0.0);
+    col.y *= 1.04;
+    col.z += 0.01;
+
+    // vignette
+    vec2 p = fragCoord/iResolution.xy;
+    col *= 0.5 + 0.5*pow( 16.0*p.x*p.y*(1.0-p.x)*(1.0-p.y), 0.1 );
+         
+    // cheap dithering
+    col += sin(fragCoord.x*114.0)*sin(fragCoord.y*211.1)/512.0;
+    
+    fragColor = vec4( col, 1.0 );
+}
+
+
+
+// Created by inigo quilez - iq/2019
+// I share this piece (art and code) here in Shadertoy and through its Public API, only for educational purposes. 
+// You cannot use, sell, share or host this piece or modifications of it as part of your own commercial or non-commercial product, website or project.
+// You can share a link to it or an unmodified screenshot of it provided you attribute "by Inigo Quilez, @iquilezles and iquilezles.org". 
+// If you are a teacher, lecturer, educator or similar and these conditions are too restrictive for your needs, please contact me and we'll work it out.
+
+
+//#define USE_SUN_LIGHT 
+#define USE_REPROJECTION
+#define USE_RAYDIFFS
+
+// https://iquilezles.org/articles/smin
+float smin( float a, float b, float k )
+{
+    float h = max(k-abs(a-b),0.0);
+    return min(a, b) - h*h*0.25/k;
+}
+
+// https://iquilezles.org/articles/smin
+float smax( float a, float b, float k )
+{
+    float h = max(k-abs(a-b),0.0);
+    return max(a, b) + h*h*0.25/k;
+}
+
+// https://iquilezles.org/articles/fbmsdf
+float sph( vec3 i, vec3 f, vec3 c )
+{
+    // random radius at grid vertex i+c (please replace this hash by
+    // something better if you plan to use this for a real application)
+    vec3  p = 17.0*fract( (i+c)*0.3183099+vec3(0.11,0.17,0.13) );
+    float w = fract( p.x*p.y*p.z*(p.x+p.y+p.z) );
+    float r = 0.7*w*w;
+    // distance to sphere at grid vertex i+c
+    return length(f-c) - r; 
+}
+
+// https://iquilezles.org/articles/fbmsdf
+float sdBase( in vec3 p )
+{
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    return min(min(min(sph(i,f,vec3(0,0,0)),
+                       sph(i,f,vec3(0,0,1))),
+                   min(sph(i,f,vec3(0,1,0)),
+                       sph(i,f,vec3(0,1,1)))),
+               min(min(sph(i,f,vec3(1,0,0)),
+                       sph(i,f,vec3(1,0,1))),
+                   min(sph(i,f,vec3(1,1,0)),
+                       sph(i,f,vec3(1,1,1)))));
+}
+
+// https://iquilezles.org/articles/fbmsdf
+vec2 sdFbm( in vec3 p, in float th, in float d )
+{
+    // rotation and 2x scale matrix
+    const mat3 m = mat3( 0.00,  1.60,  1.20,
+                        -1.60,  0.72, -0.96,
+                        -1.20, -0.96,  1.28 );
+    vec3  q = p;
+    float t = 0.0;
+	float s = 1.0;
+    const int ioct = 11;
+    for( int i=0; i<ioct; i++ )
+    {
+        if( d>s*0.866 ) break; // early exit
+        if( s<th ) break;      // lod
+        
+        float n = s*sdBase(q);
+        n = smax(n,d-0.1*s,0.3*s);
+        d = smin(n,d      ,0.3*s);
+        q = m*q;
+        s = 0.415*s;
+
+        t += d; 
+        q.z += -4.33*t*s; // deform things a bit
+    }
+    return vec2( d, t );
+}    
+
+// https://iquilezles.org/articles/intersectors
+float sphIntersect( in vec3 ro, in vec3 rd, in vec4 sph )
+{
+	vec3 oc = ro - sph.xyz;
+	float b = dot( oc, rd );
+	float c = dot( oc, oc ) - sph.w*sph.w;
+	float h = b*b - c;
+	return -b + sqrt( h );
+}
+
+// https://iquilezles.org/articles/filteringrm
+void calcDpDxy( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy, in float t, in vec3 nor, out vec3 dpdx, out vec3 dpdy )
+{
+    dpdx = t*(rdx*dot(rd,nor)/dot(rdx,nor) - rd);
+    dpdy = t*(rdy*dot(rd,nor)/dot(rdy,nor) - rd);
+}
+
+// https://iquilezles.org/articles/dontflip/dontflip.htm
+vec3 refVector( in vec3 v, in vec3 n )
+{
+    float k = dot(v,n);
+    return (k>0.0) ? v : v-2.0*n*k;
+}
+
+// https://iquilezles.org/articles/fbm
+float fbm( in vec2 p )
+{
+    float f = 0.0;
+    float s = 0.5;
+    for( int i=0; i<9; i++ )
+    {
+        float n = texture(iChannel1,p).x;
+        f += s*n;
+        p *= 2.01*mat2(4.0,-3.0,3.0,4.0)/5.0;
+        s *= 0.55;
+    }
+    return f;
+}
+
+mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
+{
+	vec3 cw = normalize(ta-ro);
+	vec3 cp = vec3(0.0, cos(cr),sin(cr));
+	vec3 cu = normalize( cross(cw,cp) );
+	vec3 cv = normalize( cross(cu,cw) );
+    return mat3( cu, cv, cw );
+}
+
+//=========================================
+
+const float precis = 0.0005;
+
+float gLakeHei = 0.03;
+
+vec2 map( in vec3 p, in float dis )
+{
+    // ground
+    float d = length(p-vec3(0.0,-250.0,0.0))-250.0;
+    
+    // terrain
+    vec2 dt = sdFbm( p, dis*precis, d );
+        
+    // lakes
+    float dp = p.y-gLakeHei;
+    dp = max( dp, length(p.xz)-5.0);
+    if( dp<dt.x ) { dt.y=-abs(dp-dt.x+0.00001*sin(iTime)); dt.x=dp; }
+    
+    return dt;
+}
+
+vec3 raycast( in vec3 ro, in vec3 rd )
+{
+    float tmin = 0.0;
+    float tmax = 15.0;
+    
+    // bounding plane    
+    #if 1
+    float tp = (0.25-ro.y)/rd.y;
+    if( tp>0.0 )
+    {
+        if( ro.y<0.25 ) tmax = min(tmax,tp);
+        else tmin = max(tmin,tp);
+	}
+    #endif
+
+    // raymarch
+    float t = tmin;
+    vec2 h = vec2(0.0,0.0);
+	for( int i=0; i<512; i++ )
+	{
+        vec3 pos = ro + t*rd;
+		h = map( pos, t );
+        if( abs(h.x)<(precis*t) || t>tmax ) break;
+		t += h.x   * 1.5; // overstepping
+	}
+
+	return (t<tmax) ? vec3(t,abs(h.y),(h.y<0.0)?2.0:1.0) : vec3(-1.0);
+}
+
+// https://iquilezles.org/articles/normalsSDF
+vec3 calcNormal( in vec3 pos, in float t )
+{
+    vec2 e = vec2(1.0,-1.0)*0.5773*precis*t;
+    return normalize( e.xyy*map( pos + e.xyy, t ).x + 
+					  e.yyx*map( pos + e.yyx, t ).x + 
+					  e.yxy*map( pos + e.yxy, t ).x + 
+					  e.xxx*map( pos + e.xxx, t ).x );
+}
+
+// https://iquilezles.org/articles/rmshadows
+float calcSoftShadow(vec3 ro, vec3 rd, float tmin, float tmax, float w, float dis)
+{
+    // bounding volume    
+    #if 1
+    float tp = (0.25-ro.y)/rd.y;
+    if( tp>0.0 )
+    {
+        //if( ro.y<0.25 ) 
+        tmax = min(tmax,tp);
+        //else tmin = max(tmin,tp);
+	}
+    #endif
+    
+    float minStep = clamp(0.025*dis,0.005,0.05);
+    
+    float t = tmin;
+    float res = 1.0;
+    for( int i=0; i<256; i++ )
+    {
+     	float h = map(ro + t*rd, 50.0*t).x;
+        res = min( res, h/(w*t) );
+    	t += max(h*t, minStep);
+        if( res<-1.0 || t>tmax ) break;
+        
+    }
+    res = max(res,-1.0);
+    return 0.25*(1.0+res)*(1.0+res)*(2.0-res); // smoothstep, in [-1,1]
+}
+
+// https://iquilezles.org/articles/rmshadows
+float calcSoftShadow2(vec3 ro, vec3 rd, float tmin, float tmax, float w, float dis)
+{
+    // bounding volume    
+    #if 1
+    float tp = (0.25-ro.y)/rd.y;
+    if( tp>0.0 )
+    {
+        //if( ro.y<0.25 ) 
+        tmax = min(tmax,tp);
+        //else tmin = max(tmin,tp);
+	}
+    #endif
+    
+    float minStep = clamp(0.025*dis,0.005,0.05);
+    
+    float t = tmin;
+    float res = 1.0;
+    for( int i=0; i<256; i++ )
+    {
+     	float h = map(ro + t*rd, 50.0*t).x;
+        res = min( res, h/(w*t) );
+    	t += max(h*t, minStep);
+        if( res<0.0 || t>tmax ) break;
+        
+    }
+    res = max(res,0.0);
+    return res*res*(3.0-2.0*res);
+}
+
+// https://iquilezles.org/www/material/nvscene2008/nvscene2008.htm
+const float X4 = 1.1673039782614187; const vec4  H4 = vec4(  1.0/X4, 1.0/(X4*X4), 1.0/(X4*X4*X4), 1.0/(X4*X4*X4*X4) );
+float calcOcclusion( in vec3 pos, in vec3 nor )
+{
+    float kk; vec3 kk2;
+	float ao = 0.0;
+    float off = textureLod(iChannel1,gl_FragCoord.xy/256.0,0.0).x;
+    vec4 k = vec4(0.7012912,0.3941462,0.8294585,0.109841)+off+iTime*0.1;
+    for( int i=0; i<8; i++ )
+    {
+		k = fract(k + H4);
+        vec3 ap = normalize(-1.0+2.0*k.xyz);
+        float h = k.w*0.0015;
+        ap = (nor+ap)*h;
+        float d = map( pos+ap, 1.0 ).x;
+        ao += max(0.0,h-d)*1024.0;
+        if( ao>8.0 ) break;
+    }
+	ao /= 8.0;
+    return clamp( 1.0-ao, 0.0, 1.0 );
+}
+
+// https://iquilezles.org/articles/fog
+vec3 fog( in vec3 col, float t )
+{
+     vec3 fo = exp2(-1.0*t*vec3(0.8,1.0,1.4));
+     col *= fo;
+     col += 0.18*(1.0-fo)*(1.0-fo)*vec3(0.8,1.1,1.6);
+     return col;
+}
+
+void sceneSetup( out vec3 ro, out vec3 ta, out float cr, out float fl,
+                 out float rtime,
+                 in float time )
+{
+    time = mod( time, 75.0 );
+    if( time<15.0 )
+    {
+        rtime = time - 0.0;
+
+        float an = 0.0035*rtime-0.05;
+        ro = vec3( -1.5+an, 0.21, 0.1+an*0.7 );
+        ta = vec3( -1.7, -0.04, 0.7 );
+        fl = 2.5;
+        cr = -0.02;
+        gLakeHei = 0.0075;
+        ta += 0.001*sin(1.8*rtime*vec3(1.0,1.1,1.3)+vec3(0,2,4));
+    }
+    else if( time<30.0 )
+    {
+        rtime = time - 15.0;
+        float an = 0.002*rtime;
+        ta = vec3( 1.5+an, -0.17, 1.5 );
+        ro = ta + vec3( 1.0, 0.3, 0.0 );
+        fl = 2.5;
+        cr = 0.01*sin(rtime*0.1);
+        gLakeHei = -0.01;
+        ta += 0.002*sin(1.8*rtime*vec3(1.0,1.1,1.3)+vec3(0,2,4));
+    }
+    else if( time<45.0 )
+    {
+        rtime = time - 30.0;
+        float an = -0.001*rtime+2.0;
+        ro = 2.4*vec3( cos(an), 0.09, sin(an) );
+        ta = vec3( 0.0, -0.3, 0.0 );
+        fl = 3.5;
+        cr = 0.0;
+        gLakeHei = 0.03;
+        ta += 0.005*sin(1.8*rtime*vec3(1.0,1.1,1.3)+vec3(0,2,4));
+    }
+    else if( time<60.0 )
+    {
+        rtime = time - 45.0;
+    	float an = 0.015*rtime;
+        ta = vec3( 1.0, -0.2, 1.5 );
+        ro = vec3( 2.7-an, 0.2-an*0.05, 1.8-0.3*an );
+    	fl = 3.0;
+        cr = 0.1*sin(an);
+        gLakeHei = 0.03;
+        ta += 0.002*sin(1.8*rtime*vec3(1.0,1.1,1.3)+vec3(0,2,4));    
+    }
+    else //if( time<75.0 )
+    {
+        rtime = time - 60.0;
+        float an = 0.01*rtime;
+        ro = vec3( 2.8+cos(an), 0.32, -0.2+sin(an) );
+        ta = vec3( 2.8, 0.05, -0.2 );
+        fl = 6.0;
+        cr = 0.0;
+        gLakeHei = 0.03;
+        ta += 0.001*sin(1.8*rtime*vec3(1.0,1.1,1.3)+vec3(0,2,4));
+    }
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    #ifdef USE_REPROJECTION
+    int  fr = iFrame & 63; 
+    vec2 of = vec2(fr&7,fr>>3)/8.0 - 0.5;
+    of += 0.5*sin(iTime+vec2(0,1))/8.0;
+    #else
+    vec2 of = vec2(0.0);
+    #endif
+    
+    vec2 p = (2.0*(fragCoord+of)-iResolution.xy)/ iResolution.y;
+
+    float time = iTime;
+
+	// scene setup
+    vec3 ro, ta;
+    float cr, fl, fad;
+	sceneSetup( ro, ta, cr, fl, fad, time );
+    
+    // camera matrix	
+    mat3 ca = setCamera( ro, ta, cr );
+    vec3 rd = ca * normalize( vec3(p.xy,fl));
+    #ifdef USE_RAYDIFFS
+    // ray differentials
+    vec2 px = (-iResolution.xy+2.0*(fragCoord.xy+vec2(1.0,0.0)))/iResolution.y;
+    vec2 py = (-iResolution.xy+2.0*(fragCoord.xy+vec2(0.0,1.0)))/iResolution.y;
+    vec3 rdx = normalize( ca * vec3(px,fl) );
+    vec3 rdy = normalize( ca * vec3(py,fl) );
+    vec3 drddx = rdx - rd;
+    vec3 drddy = rdy - rd;
+    #endif
+    
+    // render
+    
+    // sky
+    vec3 col = vec3(0.32,0.34,0.4)*0.8;
+    // clouds
+    {
+      float tc = sphIntersect( ro, rd, vec4(0.0,-19.0,0.0,20.0) );
+      vec3 uv = ro + rd*tc;
+      float nn = fbm(uv.xz*0.001);
+      nn = smoothstep(0.5,0.9,nn);
+      col = mix(col,vec3(0.02,0.1,0.2)*0.8,nn*exp2(-0.05*tc));
+    }
+    // horizon
+    col += 0.06*exp2(-48.0*max(rd.y,0.0) );
+    
+    // terrain
+    vec3 tom = raycast( ro, rd );
+    float t = tom.x;
+    if( t>0.0 )
+    {
+        vec3 pos = ro + t*rd;
+        // https://iquilezles.org/articles/normalsSDF
+        vec3 nor = calcNormal( pos, t );
+        // https://iquilezles.org/articles/dontflip/dontflip.htm                
+        nor = refVector(nor,-rd);
+        // https://iquilezles.org/articles/filteringrm
+        #ifdef USE_RAYDIFFS
+        vec3 dposdx = t*drddx;
+        vec3 dposdy = t*drddy;
+        calcDpDxy( ro, rd, rdx, rdy, t, nor, dposdx, dposdy );
+        #endif
+
+        // add waves to lakes
+        float waves = smoothstep(0.3,0.35,texture(iChannel2,pos.xz*0.1).x);
+        if( tom.z>1.5 )
+        {
+        nor.xz += (0.3+0.7*waves)*0.05*(-1.0+2.0*texture(iChannel2,pos.xz*2.0*vec2(7.0,1.0)).xy);
+        nor = normalize(nor);            
+        }
+                
+        float occ = 1.0;
+        vec3  ref = reflect(rd,nor);
+        float fre = clamp(1.0+dot(nor,rd),0.0,1.0);
+        float roc = calcOcclusion(pos+nor*0.0001,nor);
+
+        // material
+        vec3 mate; float ks;
+ 
+        #ifdef USE_RAYDIFFS
+        vec3 te1 = textureGrad(iChannel2,1.0*pos.xz,1.0*dposdx.xz,1.0*dposdy.xz).xyz;
+        vec3 te2 = textureGrad(iChannel2,6.0*pos.xz,6.0*dposdx.xz,6.0*dposdy.xz).xyz;
+        #endif
+        // terrain
+        if( tom.z<1.5 ) 
+        {
+            tom.y = smoothstep(0.0,0.1,tom.y);
+            occ = 0.3 + 0.7*tom.y;
+        
+            float ff = smoothstep(0.0,0.006,abs(gLakeHei-pos.y));
+
+            vec3 soil = 0.15*vec3(0.8,0.4,0.15);
+            #ifndef USE_RAYDIFFS
+            vec3 te1 = texture( iChannel2, pos.xz ).xyz;
+            #endif
+            soil += 0.1*te1;
+            mate = mix( soil*0.7, vec3(0.05), tom.y );
+            mate = mix( vec3(0.02), mate, ff );
+            ks = 0.2+tom.y*te1.x+0.5*(1.0-ff);
+
+            // grass
+            float grass = ff*smoothstep(0.9+0.05*tom.y,1.0,nor.y);
+            mate = mix( mate, 0.7*vec3(0.075,0.055,0.01)+0.1*vec3(1.2,1.1,0.9)*fre*fre*fre, grass);
+            ks *= 1.0-0.95*grass;
+
+            // texture
+            #ifndef USE_RAYDIFFS
+            vec3 te2 = texture(iChannel2,6.0*pos.xz).xyz;
+            #endif
+            mate *= te2*2.0;
+            ks *= te2.x*2.0;
+            
+            mate *= 0.5+0.5*ff;
+            ks += 0.1*(1.0-ff);
+        }
+        // water
+        else
+        {
+            mate = vec3(0.1,0.125,0.13)*0.1;
+            ks = 0.4;
+            roc = 0.9+0.1*roc;
+            ks *= 0.95+0.05*(1.0-waves);
+            // deph based hue
+            mate += 0.1*vec3(0.0,0.1,0.12)*exp2(-1024.0*tom.y);
+            // foam
+            mate += 0.02*(1.0-smoothstep(0.0,0.0002,tom.y-0.05*nor.x));
+        }
+
+
+        // lighting
+        col = vec3(0.0);
+
+        // sky
+        {
+        float dif = clamp(0.5+0.5*nor.y,0.0,1.0);
+        float bsha = roc*(0.5+occ);
+        if( bsha>0.001 ) bsha *= 0.75+0.25*calcSoftShadow2(pos+nor*0.0001, vec3(0,1,0), 0.001, 1.0, 0.12, t);
+        dif *= bsha;
+        col += mate*0.5*vec3(0.8,0.9,1.0)*dif;
+        float spe = roc*ks*(0.04+0.96*pow(fre,5.0))*smoothstep(-0.15,-0.1,ref.y);
+        if(spe>0.001 ) spe *= calcSoftShadow(pos+nor*0.00001, ref, 0.0001, 1.0, 0.015, t);
+        col += 0.5*spe*vec3(0.8,0.9,1.0);
+        }
+
+        #ifdef USE_SUN_LIGHT
+        // sun
+        {
+        col *= 0.75;
+        vec3 lig = normalize(vec3(-0.5,0.3,-1.1));
+        float dif = dot(lig,nor);
+        if( dif>0.0 )
+        dif *= calcSoftShadow(pos+nor*0.0001,lig,0.001,1.0,0.003, t);
+        dif = max(dif,0.0);
+        col += mate*dif*vec3(1.3,1.1,0.7)*0.5;
+        vec3 hal =normalize(lig-rd);
+        col += ks*vec3(1.2)*pow(clamp(dot(nor,hal),0.0,1.0),4.0)*dif*(0.04+0.96*pow(clamp(1.0-dot(hal,lig),0.0,1.0),5.0));
+        }
+        #endif        
+
+        col *= 4.5;
+               
+        col = fog(col,t);
+    }
+	else
+    {
+        t = 1000.0;
+    }
+
+
+    // gamma
+    col = clamp(col,0.0,1.0);
+    col = pow(col,vec3(0.4545));
+    
+    // color grading
+    col = col*col*(3.0-2.0*col);
+
+    //------------------------------------------
+	// reproject from previous frame and average
+    //------------------------------------------
+#ifdef USE_REPROJECTION
+    mat4 oldCam = mat4( textureLod(iChannel0,vec2(0.5,0.5)/iResolution.xy, 0.0),
+                        textureLod(iChannel0,vec2(1.5,0.5)/iResolution.xy, 0.0),
+                        textureLod(iChannel0,vec2(2.5,0.5)/iResolution.xy, 0.0),
+                        0.0, 0.0, 0.0, 1.0 );
+    
+    float asr = iResolution.y/iResolution.x;
+    vec4 wpos = vec4(ro + rd*t,1.0);        // world space
+    vec3 cpos = (wpos*oldCam).xyz;          // camera space (note inverse multiply)
+    vec2 npos = fl*cpos.xy/cpos.z;          // ndc space
+    vec2 spos = 0.5+0.5*npos*vec2(asr,1.0); // screen space
+    spos -= of/iResolution.xy;              // undo dither offset
+    vec2 rpos = spos*iResolution.xy;        // raster space
+    
+    if( rpos.y<1.0 && rpos.x<3.0 )
+    {
+    }
+	else
+    {
+        vec3 ocol = textureLod( iChannel0, spos, 0.0 ).xyz;
+    	if( iFrame==0 ) ocol = col;
+        col = mix( ocol, col, 0.25 );
+    }
+                           
+	if( fragCoord.y<1.0 && fragCoord.x<3.0 )
+    {
+        if( abs(fragCoord.x-2.5)<0.5 ) fragColor = vec4( ca[2], -dot(ca[2],ro) );
+        if( abs(fragCoord.x-1.5)<0.5 ) fragColor = vec4( ca[1], -dot(ca[1],ro) );
+        if( abs(fragCoord.x-0.5)<0.5 ) fragColor = vec4( ca[0], -dot(ca[0],ro) );
+    }
+    else
+    {
+    	col *= smoothstep(0.0,1.0,fad);
+        fragColor = vec4( col, 1.0 );
+    }
+#else
+    col *= smoothstep(0.0,1.0,fad);
+    fragColor = vec4( col, 1.0 );
+#endif
+}

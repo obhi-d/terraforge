@@ -34,7 +34,7 @@ struct block_range
   It end_;
 };
 
-constexpr bool SingleThreadedDebug = true;
+constexpr bool SingleThreadedDebug = false;
 
 class ThreadPool
 {

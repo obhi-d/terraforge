@@ -52,7 +52,9 @@ struct Sampler2D
   inline void add(float value, int x, int y)
   {
     if (x >= 0 && x < width && y >= 0 && y < height)
+    {
       buffer[pixelId(x, y)] += value;
+    }
   }
 
   inline void remove(float value, int x, int y)

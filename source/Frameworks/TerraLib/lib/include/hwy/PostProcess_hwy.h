@@ -18,22 +18,19 @@ struct ErosionNode : public PostProcessNode
   ErosionNode(NodeMeta const& m) : PostProcessNode(m) {}
   vec2    relativePos     = {0.5f, 0.5f};
   Unorm   effectRadius    = 0.5f;
-  int32_t minParticles    = 5;
-  int32_t maxParticles    = 1000;
-  int     iteration       = 1000;
-  int     lifetime        = 100;
-  Unorm   baseInertia     = 0.1f;
-  Unorm   inertiaJitter   = 0.01f;
-  float   maxCapacity     = 32.1f;
-  Unorm   dropletVolume   = 1.0f;
-  float   minSlope        = 0.001f;
-  Unorm   depositRate     = 0.1f;
+  int32_t particleCount   = 600000;
+  int     iteration       = 21000;
+  int     lifetime        = 30;
+  Unorm   inertia         = 0.1f;
+  float   maxCapacity     = 10.1f;
+  float   minCapacity     = 1.f;
+  float   minSlope        = 0.0001f;
+  Unorm   depositRate     = 1.0f;
   Unorm   erosionRate     = 0.1f;
-  float   erodeRadius     = 1.f;
-  Unorm   evaporationRate = 0.001f;
-  float   gravity         = 9.8f;
+  float   erodeRadius     = 2.f;
+  Unorm   evaporationRate = 0.1f;
+  float   gravity         = 4.0f;
   float   minSediment     = 0.0f;
-  int32_t randomizer      = 0x5522;
   Source  erosionMask;
 
   Unorm blurFactor = 0.1f;
@@ -47,29 +44,35 @@ struct Particle
   vec2  pos                                 = {0.f, 0.f};
   vec2  dir                                 = {0.0f, 0.0f};
   float velocity                            = 0.1f;
-  float inertia                             = 0.0f;
 
-  float water    = 1.0f;
-  float sediment = 0.0f;
-  float deposit  = 0.0f;
-  int   life     = 100;
+  float    water    = 1.0f;
+  float    sediment = 0.0f;
+  float    deposit  = 0.0f;
+  int      age      = 0;
+  uint64_t seed     = 3145739;
+
+  Particle() = default;
+  Particle(uint64_t seed, int age, vec2 center, float radius, float variation);
 };
 
 struct ErosionTileData
 {
   std::vector<Particle> particles;
-  ivec2                 min;
-  ivec2                 max;
+  float                 radius;
+  float                 variation;
+  vec2                  center;
+  vec2                  min;
+  vec2                  max;
 
   inline bool isInBounds(int x, int y) const
   {
-    if (x <= min[0])
+    if (x <= min.x)
       return false;
-    if (x >= max[0])
+    if (x >= max.x)
       return false;
-    if (y <= min[1])
+    if (y <= min.y)
       return false;
-    if (y >= max[1])
+    if (y >= max.y)
       return false;
     return true;
   }

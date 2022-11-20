@@ -14,6 +14,22 @@ namespace terra
 {
 uint32_t lanes();
 
+Particle::Particle(uint64_t sseed, int startAge, vec2 center, float range, float variation)
+{
+  seed         = sseed;
+  float radius = wysnorm(&seed) * range + wysnorm(&seed) * variation;
+  float angle  = wysnorm(&seed) * consts::pi;
+  pos.x        = center.x + radius * std::sin(angle);
+  pos.y        = center.y + radius * std::cos(angle);
+  prevPos      = pos;
+  velocity     = 0.f;
+  water        = 1.f;
+  age          = startAge;
+  deposit      = 0.f;
+  dir          = {0.0f, 0.0f};
+  sediment     = 0.0f;
+}
+
 void postProcessPassthrough(Node& inode, Pipeline_hwy& pipe, uint32_t threadGroupId)
 {
   auto& node = (PostProcessNode&)inode;
@@ -53,43 +69,24 @@ void hydraulicErosion_prepare(Node& inode, Pipeline_hwy& pipe)
     data.data = acl::dynamic_array<ErosionTileData>(numTiles);
     for (uint32_t i = 0; i < numTiles; ++i)
     {
-      // TODO spawn particles on the tile, and init position within
-      // effect radius
       auto&    tile   = pipe.getTileData(i);
       auto&    ed     = data.data[i];
-      uint32_t minX   = (uint32_t)std::floor(tile.params.tileSize[0] * node.relativePos[0]);
-      uint32_t minY   = (uint32_t)std::floor(tile.params.tileSize[1] * node.relativePos[1]);
-      uint32_t dx     = (uint32_t)std::floor(std::min(tile.params.tileSize[0] - minX, minX) * (.1 + node.effectRadius));
-      uint32_t dy     = (uint32_t)std::floor(std::min(tile.params.tileSize[1] - minY, minY) * (.1 + node.effectRadius));
-      uint32_t nbMin  = (uint32_t)std::min(node.minParticles, node.maxParticles);
-      uint32_t nbCnt  = (uint32_t)std::max(node.minParticles, node.maxParticles) - nbMin + 1;
-      uint32_t nbPart = nbMin + (wyrand(&data.seed) % nbCnt);
+      uint32_t nbPart = (((uint64_t)node.particleCount) * (uint64_t)node.lifetime) / node.iteration;
       // DEBUG TODO
-      nbPart = 1;
+      ed.radius =
+        std::sqrt((node.effectRadius * tile.params.tileSize.x) * (node.effectRadius * tile.params.tileSize.y) * .25f);
+      ed.variation = node.effectRadius * std::max(tile.params.tileSize.x, tile.params.tileSize.y) * .05f;
+      ed.center.x  = node.relativePos.x * tile.params.tileSize.x;
+      ed.center.y  = node.relativePos.y * tile.params.tileSize.y;
+      ed.min       = ed.center - glm::vec2(ed.radius);
+      ed.max       = ed.center + glm::vec2(ed.radius);
       ed.particles.resize(nbPart);
-      minX -= dx;
-      minY -= dy;
-      ed.min = ivec2{std::max(0, (int)minX), std::max(0, (int)minY)};
-      dx <<= 1;
-      dy <<= 1;
-      ed.max =
-        ivec2{std::min(tile.params.tileSize[0], (int)(minX + dx)), std::min(tile.params.tileSize[0], (int)(minY + dy))};
-      dx = ed.max[0] - ed.min[0];
-      dy = ed.max[1] - ed.min[1];
+      for (auto& p : ed.particles)
+      {
+        p.seed = wyrand(&data.seed);
+        p      = Particle(p.seed, node.lifetime, ed.center, ed.radius, ed.variation);
+      }
       // select kernel
-
-      get().pool().for_each((uint32_t)0, nbPart, 16,
-                            [&, fx = (float)dx, fy = (float)dy](uint32_t p)
-                            {
-                              auto&    particle = ed.particles[p];
-                              uint64_t seed     = data.seed + p * node.randomizer;
-                              particle.pos[0] = (float)(ed.min[0]) + (((uint32_t)wyrand(&seed) % 10000) / 10000.f) * fx;
-                              particle.pos[1] = (float)(ed.min[1]) + (((uint32_t)wyrand(&seed) % 10000) / 10000.f) * fy;
-                              particle.inertia = node.baseInertia +
-                                                 (node.inertiaJitter * (float)((uint32_t)wyrand(&seed) % 255) / 255.f);
-                              particle.velocity = 0.f;
-                              particle.water    = node.dropletVolume;
-                            });
     }
     data.erosionMask = (node.erosionMask.source && DataSource::isValid(node.erosionMask.source));
   }
@@ -115,106 +112,82 @@ void hydraulicErosion_end(Node& inode, Pipeline_hwy& pipe)
   // spawn particles
   uint32_t numTiles = pipe.getNumTiles();
 
-  constexpr std::array<ivec2, 8> indices = {{
-    {-1, -1},
-    {0, -1},
-    {1, -1},
-    {-1, 0},
-    {1, 0},
-    {-1, 1},
-    {0, 1},
-    {1, 1},
-  }};
-
   for (uint32_t tileIdx = 0; tileIdx < numTiles; ++tileIdx)
   {
     auto& tile = pipe.getTileData(tileIdx);
     auto& ed   = data.data[tileIdx];
 
     auto sampler = Sampler2D(tile.buffer.data(), tile.params.tileSize[0], tile.params.tileSize[1]);
-    auto respawn = [&](Particle& particle, uint32_t p)
+    auto respawn = [&](Particle& particle)
     {
-      uint64_t seed     = data.seed + p * node.randomizer;
-      particle.pos.x    = (float)(ed.min[0]) + (((uint32_t)wyrand(&seed) % 10000) / 10000.f) * (ed.max[0] - ed.min[0]);
-      particle.pos.x    = (float)(ed.min[1]) + (((uint32_t)wyrand(&seed) % 10000) / 10000.f) * (ed.max[1] - ed.min[1]);
-      particle.inertia  = node.baseInertia + (node.inertiaJitter * (float)((uint32_t)wyrand(&seed) % 255) / 255.f);
-      particle.velocity = 0.f;
-      particle.water    = node.dropletVolume;
-      particle.life     = node.lifetime;
-      particle.deposit  = 0.f;
+      particle = Particle(particle.seed, node.lifetime, ed.center, ed.radius, ed.variation);
     };
 
-    get().pool().for_each(ed.particles.begin(), ed.particles.end(), 8,
-                          [&](Particle& p)
-                          {
-                            uint32_t ix = (uint32_t)p.pos.x;
-                            uint32_t iy = (uint32_t)p.pos.y;
-                            if (!ed.isInBounds(ix, iy) || --p.life <= 0)
-                            {
-                              respawn(p, ix * iy);
-                              return;
-                            }
-                            auto g      = sampler.heightGradientAt(p.pos);
-                            auto ndir   = sub(scale(p.inertia, p.dir), scale(1.f - p.inertia, g));
-                            auto length = std::sqrt(ndir.x * ndir.x + ndir.y * ndir.y);
-                            if (length == 0.f)
-                            {
-                              respawn(p, ix * iy);
-                              return;
-                            }
-                            length    = 1 / length;
-                            p.dir     = length * ndir;
-                            p.prevPos = p.pos;
-                            p.pos += p.dir;
-                            ix = (uint32_t)p.pos.x;
-                            iy = (uint32_t)p.pos.y;
-                            if (!sampler.isInBounds(ix, iy))
-                            {
-                              respawn(p, ix * iy);
-                              return;
-                            }
-                            float hold  = sampler.bisample(p.prevPos.x, p.prevPos.y);
-                            float hnew  = sampler.bisample(p.pos.x, p.pos.y);
-                            float hdiff = hnew - hold;
-                            if (hdiff > 0.f)
-                            {
-                              float maxDrop = std::min(hdiff, p.sediment);
-                              assert(maxDrop >= 0.0f);
-                              p.deposit = maxDrop;
-                              assert(p.sediment - p.deposit >= 0.0f);
-                              p.sediment -= p.deposit;
-                            }
-                            else
-                            {
-                              float capacity =
-                                std::max(-hdiff, node.minSlope) * p.velocity * p.water * node.maxCapacity;
-                              if (p.sediment > capacity)
-                              {
-                                float maxDrop = (p.sediment - capacity) * node.depositRate;
-                                assert(maxDrop >= 0.0f);
-                                p.deposit = maxDrop;
-                                assert(p.sediment - p.deposit >= 0.0f);
-                                p.sediment -= p.deposit;
-                              }
-                              else
-                              {
-                                p.deposit = std::min((capacity - p.sediment) * node.erosionRate, -hdiff);
-                                assert(p.deposit >= 0.0f);
-                                if (data.erosionMask)
-                                {
-                                  auto const& image = get().get<Image>(node.erosionMask.source);
-                                  p.deposit *=
-                                    image.sample(p.pos.x / tile.params.tileSize.x, p.pos.y / tile.params.tileSize.y);
-                                }
-                                assert(p.sediment + p.deposit >= 0.0f);
-                                p.sediment += p.deposit;
-                                p.deposit = -p.deposit;
-                              }
-                            }
+    get().pool().for_each(
+      ed.particles.begin(), ed.particles.end(), 8,
+      [&](Particle& p)
+      {
+        uint32_t ix = (uint32_t)p.pos.x;
+        uint32_t iy = (uint32_t)p.pos.y;
+        if (!(p.age--) || p.water < std::numeric_limits<float>::epsilon())
+        {
+          respawn(p);
+          return;
+        }
 
-                            p.velocity = std::sqrt(std::max(0.f, p.velocity * p.velocity + hdiff * node.gravity));
-                            p.water *= (1.f - node.evaporationRate);
-                          });
+        auto g    = sampler.heightGradientAt(p.pos);
+        auto ndir = sub(scale(node.inertia, p.dir), scale(1.f - node.inertia, g));
+        if (ndir.x == 0.f && ndir.y == 0.f)
+        {
+          // give it random direction
+          float angle = wysnorm(&p.seed) * consts::pi;
+          ndir.x      = std::sin(angle);
+          ndir.y      = std::cos(angle);
+        }
+        p.dir     = glm::normalize(ndir);
+        p.prevPos = p.pos;
+        p.pos += p.dir;
+        ix = (uint32_t)p.pos.x;
+        iy = (uint32_t)p.pos.y;
+        if (!sampler.isInBounds(ix, iy))
+        {
+          respawn(p);
+          return;
+        }
+        float hold  = sampler.bisample(p.prevPos.x, p.prevPos.y);
+        float hnew  = sampler.bisample(p.pos.x, p.pos.y);
+        float hdiff = hnew - hold;
+        if (hdiff > 0.f)
+        {
+          p.deposit = std::min(hdiff, p.sediment);
+          p.sediment -= p.deposit;
+        }
+        else
+        {
+          float capacity =
+            std::max(std::max(-hdiff, node.minSlope) * p.velocity * p.water * node.maxCapacity, node.minCapacity);
+          if (p.sediment > capacity)
+          {
+            p.deposit = (p.sediment - capacity) * node.depositRate;
+            p.sediment -= p.deposit;
+          }
+          else
+          {
+            p.deposit = std::min((capacity - p.sediment) * node.erosionRate, -hdiff);
+            if (data.erosionMask)
+            {
+              auto const& image = get().get<Image>(node.erosionMask.source);
+              p.deposit *= image.sample(p.pos.x / tile.params.tileSize.x, p.pos.y / tile.params.tileSize.y);
+            }
+            p.sediment += p.deposit;
+            p.deposit = -p.deposit;
+          }
+        }
+
+        p.velocity = std::sqrt(p.velocity * p.velocity + std::abs(hdiff) * node.gravity);
+        p.water *= (1.f - node.evaporationRate);
+        assert(p.sediment >= 0.f);
+      });
 
     for (auto& p : ed.particles)
     {
@@ -230,7 +203,7 @@ void hydraulicErosion_end(Node& inode, Pipeline_hwy& pipe)
           if (sampler.isInBounds(sx, sy))
           {
             data.erodeKernelWeights[ek] =
-              std::max(0.f, node.erodeRadius - std::sqrt(distanceSq(p.pos, vec2{(float)sx, (float)sy})));
+              std::max(0.f, node.erodeRadius - std::sqrt(distanceSq(p.prevPos, vec2{(float)sx, (float)sy})));
             weightSum += data.erodeKernelWeights[ek];
           }
         }
@@ -249,10 +222,10 @@ void hydraulicErosion_end(Node& inode, Pipeline_hwy& pipe)
       }
       else
       {
-        int   px = (int)std::floor(p.pos.x);
-        int   py = (int)std::floor(p.pos.y);
-        float u  = (p.pos.x - std::floor(p.pos.x));
-        float v  = (p.pos.y - std::floor(p.pos.y));
+        int   px = (int)std::floor(p.prevPos.x);
+        int   py = (int)std::floor(p.prevPos.y);
+        float u  = (p.prevPos.x - std::floor(p.prevPos.x));
+        float v  = (p.prevPos.y - std::floor(p.prevPos.y));
 
         sampler.add((p.deposit * (1 - u) * (1 - v)), px, py);
         sampler.add((p.deposit * u * (1 - v)), px + 1, py);
@@ -308,21 +281,19 @@ void PostProcess_hwy()
   }
 
   {
-    builder.add<ErosionNode>(NoDomain(), "@erosion", IconOpErosion);
+    builder.add<ErosionNode>(NoDomain(), "@hydraulicParticleErosion", IconOpErosion);
     builder.fn(postProcessPassthrough);
     builder.prepare(hydraulicErosion_prepare);
     builder.end(hydraulicErosion_end);
     builder.param<&ErosionNode::source>("@source", FmtVal<DataType::ePostProcess>());
     builder.param<&ErosionNode::relativePos>("@relativePos", FmtVal<DataType::eFloat2>(0.5f, 0.1f, 1.0f, 0.01f));
     builder.param<&ErosionNode::effectRadius>("@effectRadius");
-    builder.param<&ErosionNode::minParticles>("@minParticles", FmtVal<DataType::eInt>(5, 4, 100000, 1));
-    builder.param<&ErosionNode::maxParticles>("@maxParticles", FmtVal<DataType::eInt>(5, 4, 100000, 1));
+    builder.param<&ErosionNode::particleCount>("@particleCount", FmtVal<DataType::eInt>());
     builder.param<&ErosionNode::iteration>("@iteration", FmtVal<DataType::eInt>(0, std::numeric_limits<int>::max()));
     builder.param<&ErosionNode::lifetime>("@lifetime");
-    builder.param<&ErosionNode::baseInertia>("@baseInertia");
-    builder.param<&ErosionNode::inertiaJitter>("@inertiaJitter");
+    builder.param<&ErosionNode::inertia>("@inertia");
+    builder.param<&ErosionNode::minCapacity>("@minCapacity");
     builder.param<&ErosionNode::maxCapacity>("@maxCapacity");
-    builder.param<&ErosionNode::dropletVolume>("@dropletVolume");
     builder.param<&ErosionNode::minSlope>("@minSlope");
     builder.param<&ErosionNode::depositRate>("@depositRate");
     builder.param<&ErosionNode::erosionRate>("@erosionRate");
@@ -330,7 +301,6 @@ void PostProcess_hwy()
     builder.param<&ErosionNode::evaporationRate>("@evaporationRate");
     builder.param<&ErosionNode::gravity>("@gravity");
     builder.param<&ErosionNode::minSediment>("@minSediment");
-    builder.param<&ErosionNode::randomizer>("@randomizer");
     builder.param<&ErosionNode::erosionMask>("@erosionMask", FmtVal<DataType::eImage>());
     builder.param<&ErosionNode::blur>("@applyBlur");
     builder.param<&ErosionNode::blurFactor>("@blurFactor");
