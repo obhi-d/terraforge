@@ -16,16 +16,16 @@ struct PostProcessNode : public Node
 struct ErosionNode : public PostProcessNode
 {
   ErosionNode(NodeMeta const& m) : PostProcessNode(m) {}
-  vec2    relativePos  = {0.5f, 0.5f};
-  Unorm   effectRadius = 0.5f;
-  int32_t minParticles = 5;
-  int32_t maxParticles = 1000;
-  int     iteration    = 1000;
-
-  Unorm   baseInertia     = 0.4f;
-  Unorm   inertiaJitter   = 0.1f;
+  vec2    relativePos     = {0.5f, 0.5f};
+  Unorm   effectRadius    = 0.5f;
+  int32_t minParticles    = 5;
+  int32_t maxParticles    = 1000;
+  int     iteration       = 1000;
+  int     lifetime        = 100;
+  Unorm   baseInertia     = 0.1f;
+  Unorm   inertiaJitter   = 0.01f;
   float   maxCapacity     = 32.1f;
-  float   dropletVolume   = 0.1f;
+  Unorm   dropletVolume   = 1.0f;
   float   minSlope        = 0.001f;
   Unorm   depositRate     = 0.1f;
   Unorm   erosionRate     = 0.1f;
@@ -52,8 +52,7 @@ struct Particle
   float water    = 1.0f;
   float sediment = 0.0f;
   float deposit  = 0.0f;
-  bool  dead     = false;
-  bool  erode    = false;
+  int   life     = 100;
 };
 
 struct ErosionTileData

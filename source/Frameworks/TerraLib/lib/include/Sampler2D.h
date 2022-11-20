@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Common.h"
+
 namespace terra
 {
 
@@ -7,6 +9,35 @@ template <typename G>
 struct Sampler2D
 {
   Sampler2D(G* d, int w, int h) : width(w), height(h), buffer(d) {}
+
+  vec2 gradientAt(int x, int y) const
+  {
+    int idx = y * width + x;
+    // int right = y * hmap->width + min(x, hmap->width - 2);
+    // int below = min(y, hmap->height - 2) * hmap->width + x;
+    int  right = idx + ((x > width - 2) ? 0 : 1);
+    int  below = idx + ((y > height - 2) ? 0 : width);
+    vec2 g;
+    g[0] = buffer[right] - buffer[idx];
+    g[1] = buffer[below] - buffer[idx];
+    return g;
+  }
+
+  vec2 heightGradientAt(vec2 pos) const
+  {
+    int   x_i      = (int)pos[0];
+    int   y_i      = (int)pos[1];
+    float u        = pos[0] - (float)x_i;
+    float v        = pos[1] - (float)y_i;
+    auto  ul       = gradientAt(x_i, y_i);
+    auto  ur       = gradientAt(x_i + 1, y_i);
+    auto  ll       = gradientAt(x_i, y_i + 1);
+    auto  lr       = gradientAt(x_i + 1, y_i + 1);
+    auto  ipl_l    = terra::add(scale(1 - v, ul), scale(v, ll));
+    auto  ipl_r    = terra::add(scale(1 - v, ur), scale(v, lr));
+    auto  gradient = terra::add(scale(1 - u, ipl_l), scale(u, ipl_r));
+    return gradient;
+  }
 
   inline int pixelIdWarped(int x, int y) const
   {
@@ -22,6 +53,12 @@ struct Sampler2D
   {
     if (x >= 0 && x < width && y >= 0 && y < height)
       buffer[pixelId(x, y)] += value;
+  }
+
+  inline void remove(float value, int x, int y)
+  {
+    if (x >= 0 && x < width && y >= 0 && y < height)
+      buffer[pixelId(x, y)] -= value;
   }
 
   inline void madd(float value, float scale, int x, int y)

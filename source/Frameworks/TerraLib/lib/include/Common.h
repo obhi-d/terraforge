@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <functional>
 #include <future>
+#include <glm/glm.hpp>
 #include <memory>
 #include <mimalloc-2.0/mimalloc.h>
 #include <optional>
@@ -110,11 +111,11 @@ static constexpr float   pi    = 3.141592653589793238462643383279502884f;
 using uint32 = std::uint32_t;
 using uint   = uint32;
 using int32  = std::int32_t;
-using vec2   = std::array<float, 2>;
-using vec4   = std::array<float, 4>;
-using ivec4  = std::array<int, 4>;
-using ivec2  = std::array<int, 2>;
-using uvec2  = std::array<uint32, 2>;
+using vec2   = glm::vec2;
+using vec4   = glm::vec4;
+using ivec4  = glm::ivec2;
+using ivec2  = glm::ivec2;
+using uvec2  = glm::uvec2;
 
 template <auto>
 struct MemberPtr;
@@ -600,24 +601,23 @@ union ScalarValue
 
 inline float distanceSq(vec2 a, vec2 b)
 {
-  a[0] -= b[0];
-  a[1] -= b[1];
-  return a[0] * a[0] + a[1] * a[1];
+  auto v = a - b;
+  return v.x * v.x + v.y * v.y;
 }
 
 inline vec2 scale(float a, vec2 b)
 {
-  return vec2{a * b[0], a * b[1]};
+  return a * b;
 }
 
 inline vec2 add(vec2 a, vec2 b)
 {
-  return vec2{a[0] + b[0], a[0] + b[1]};
+  return a + b;
 }
 
 inline vec2 sub(vec2 a, vec2 b)
 {
-  return vec2{a[0] - b[0], a[0] - b[1]};
+  return a - b;
 }
 
 } // namespace terra

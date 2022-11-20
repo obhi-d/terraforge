@@ -696,11 +696,11 @@ void Noise_hwy()
 {
   auto builder = buildMeta<NodeMeta_hwy>("@Noise"_ls, "noise");
 
-  {
+  /*{
     builder.add<Node>("@openSimplex2", IconOpenSimplex2);
     builder.fn(HWY_DYNAMIC_DISPATCH(openSimplex2));
     builder.done();
-  }
+  }*/
 
   {
     builder.add<Node>("@simplex", IconSimplex);

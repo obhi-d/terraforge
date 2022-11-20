@@ -147,7 +147,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
   case DataType::eInt2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt2(def.displayInfo.getName(), v.ivalue2.data(), 1.0f, def.values[ParameterMeta::eMin].ival,
+    if (ImGui::DragInt2(def.displayInfo.getName(), &v.ivalue2.x, 1.0f, def.values[ParameterMeta::eMin].ival,
                         def.values[ParameterMeta::eMax].ival))
       return true;
   }
@@ -163,7 +163,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
   case DataType::eFloat2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat2(def.displayInfo.getName(), v.value2.data(), def.values[ParameterMeta::eStep].fval,
+    if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.values[ParameterMeta::eStep].fval,
                           def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
       return true;
   }
