@@ -230,8 +230,6 @@ struct ParameterMeta
 
   DataFormat format;
   DrawHint   drawHint = DrawHint::eDefault;
-
-  Semantic    semantic = Semantic::eNone;
   DisplayInfo displayInfo;
 
   DataValue                       values[ValueType::eCount] = {};

@@ -289,12 +289,15 @@ struct DataFormat
 {
   DataType type          = DataType::eInvalid;
   DataType scalarSubType = DataType::eInvalid;
+  Semantic semantic      = Semantic::eNone;
+  uint32_t index         = 0;
 
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
   constexpr DataFormat() = default;
-  constexpr DataFormat(DataType itype, DataType iscalarSubType = DataType::eFloat)
-      : type(itype), scalarSubType(iscalarSubType)
+  constexpr DataFormat(DataType itype, DataType iscalarSubType = DataType::eFloat, Semantic isem = Semantic::eNone,
+    uint32_t iindex = 0)
+      : type(itype), scalarSubType(iscalarSubType), semantic(isem), index(iindex)
   {}
   static bool isCompatible(DataFormat const& from, DataFormat const& to);
 };

@@ -13,24 +13,7 @@ namespace terra
 
 bool DataFormat::isCompatible(DataFormat const& from, DataFormat const& to)
 {
-  switch (from.type)
-  {
-  case DataType::eInt2:
-  case DataType::eFloat2:
-  case DataType::eInt:
-  case DataType::eFloat:
-  case DataType::eCurveData:
-  case DataType::eBool:
-  case DataType::eEnum:
-    return from.type == to.type;
-  // case DataType::eImageSource:
-  case DataType::eImage:
-    return (to.type == DataType::eImage) && from.scalarSubType == to.scalarSubType;
-  case DataType::eInput:
-  case DataType::eBuffer:
-    return from.type == to.type && from.scalarSubType == to.scalarSubType;
-  }
-  return false;
+  return from == to;
 }
 
 std::string_view typeToString(DataType type)
