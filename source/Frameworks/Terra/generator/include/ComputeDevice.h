@@ -82,6 +82,13 @@ struct ComputeDevice
   virtual void             syncFence(GfxFence::handle) = 0;
 
   /// @brief Create a ShaderBuilder for a specific shader
-  virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) = 0;
+  virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang)                                  = 0;
+  virtual void                           bindResources(GfxDescriptorSet::handle descriptorSet)            = 0;
+  virtual GfxMesh::handle                createMeshLayout(GfxMesh::Layout const&)                         = 0;
+  virtual void                           destroy(GfxMesh::handle)                                         = 0;
+  virtual void                           draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material) = 0;
+  virtual void                           flushStates()                                                    = 0;
+  virtual void                           clearBackbuffer(glm::vec4 color, bool depth = false)             = 0;
+  virtual void                           setState(GlGfxState const&)                                      = 0;
 };
 } // namespace terra

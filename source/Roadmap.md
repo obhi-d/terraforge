@@ -17,3 +17,5 @@
       - [ ] Thermal erosion
       - [ ] Plate tectonics
   - [ ] Load save
+  - [ ] Change color to dark theme (Gaea)
+  - [ ] Collapse nodes and only show input and output pins

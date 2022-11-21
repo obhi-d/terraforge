@@ -317,10 +317,9 @@ public:
   std::u8string_view         category;
   std::string_view           style;
   std::vector<ParameterMeta> parameterDef;
-  uint32_t                   outputUpscale   = 1; // multiplier
-  uint32_t                   outputDownscale = 1; // divisor for reduction algo
-  DataFormat                 format          = DataFormat(DataType::eBuffer);
-  CreateNode                 createNode      = nullptr;
+
+  std::vector<DataFormat> outputs    = {DataFormat(DataType::eBuffer)};
+  CreateNode              createNode = nullptr;
 
   // derived
   uint32_t id;

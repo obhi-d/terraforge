@@ -5,11 +5,12 @@
 namespace terra
 {
 
+class Pipeline_gpu;
 class NodeMeta_gpu : public NodeMeta
 {
-  using Run = void (*)(Node& node, Pipeline&);
 
-  Run run   = nullptr;
+  virtual bool isCompute() const            = 0;
+  virtual void execute(Pipeline_gpu&) const = 0;
 };
 
 } // namespace terra

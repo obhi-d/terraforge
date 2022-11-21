@@ -599,6 +599,127 @@ union ScalarValue
   inline ScalarValue(bool v) : bvalue(v) {}
 };
 
+struct Rect
+{
+  glm::ivec2 offset = glm::vec2(0, 0);
+  glm::ivec2 size   = glm::vec2(1, 1);
+
+  inline bool operator==(Rect const&) const noexcept = default;
+  inline bool operator!=(Rect const&) const noexcept = default;
+};
+
+struct Rotation
+{
+  // https://en.wikipedia.org/wiki/Spherical_coordinate_system
+  float theta = 0.0f;   // 0 to 180
+  float phi   = 180.0f; // 0 to 360
+
+  Rotation() = default;
+  Rotation(float the) : theta(the) {}
+
+  void thetaAdd(float dt)
+  {
+    theta = std::clamp(theta + dt, 1.f, 179.f);
+  }
+
+  void phiAdd(float dt)
+  {
+    phi = std::clamp(phi + dt, 0.f, 360.f);
+  }
+
+  glm::vec3 toDir() const
+  {
+    auto theta    = glm::radians(this->theta);
+    auto phi      = glm::radians(this->phi);
+    auto sinTheta = std::sin(theta);
+    auto cosTheta = std::cos(theta);
+    auto sinPhi   = std::sin(phi);
+    auto cosPhi   = std::cos(phi);
+    return glm::normalize(glm::vec3(sinTheta * cosPhi, cosTheta, sinTheta * sinPhi));
+  }
+};
+// Color is ABGR, because of imgui
+class Color
+{
+public:
+  inline Color() = default;
+  inline Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+  {
+    color.r = r; // Extract the RR byte
+    color.g = g; // Extract the GG byte
+    color.b = b; // Extract the GG byte
+    color.a = a; // Extract the BB byte
+  }
+
+  inline Color(uint32_t hexValue)
+  {
+    color.a = uint8_t((hexValue >> 24) & 0xFF); // Extract the RR byte
+    color.b = uint8_t((hexValue >> 16) & 0xFF); // Extract the GG byte
+    color.g = uint8_t((hexValue >> 8) & 0xFF);  // Extract the GG byte
+    color.r = uint8_t((hexValue)&0xFF);         // Extract the BB byte
+  }
+
+  inline Color(ImVec4 f4)
+  {
+    color.r = (uint8_t)(f4.x * 255.f); // Extract the RR byte
+    color.g = (uint8_t)(f4.y * 255.f); // Extract the GG byte
+    color.b = (uint8_t)(f4.z * 255.f); // Extract the GG byte
+    color.a = (uint8_t)(f4.w * 255.f); // Extract the BB byte
+  }
+
+  inline Color(glm::vec4 f4)
+  {
+    color.r = (uint8_t)(f4.x * 255.f); // Extract the RR byte
+    color.g = (uint8_t)(f4.y * 255.f); // Extract the GG byte
+    color.b = (uint8_t)(f4.z * 255.f); // Extract the GG byte
+    color.a = (uint8_t)(f4.w * 255.f); // Extract the BB byte
+  }
+
+  inline operator uint32_t() const
+  {
+    return uint32_t{color.a} << 24 | uint32_t{color.b} << 16 | uint32_t{color.g} << 8 | uint32_t{color.r};
+  }
+
+  inline operator glm::vec4() const
+  {
+    return tovec4<glm::vec4>();
+  }
+
+  inline operator ImVec4() const
+  {
+    return tovec4<ImVec4>();
+  }
+
+  inline float r() const
+  {
+    return color.r / 255.f;
+  }
+
+  inline float g() const
+  {
+    return color.g / 255.f;
+  }
+
+  inline float b() const
+  {
+    return color.b / 255.f;
+  }
+
+  inline float a() const
+  {
+    return color.a / 255.f;
+  }
+
+private:
+  template <typename T>
+  T tovec4() const
+  {
+    return T{color.r / 255.f, color.g / 255.f, color.b / 255.f, color.a / 255.f};
+  }
+
+  glm::u8vec4 color = glm::u8vec4(255, 255, 255, 255);
+};
+
 inline float distanceSq(vec2 a, vec2 b)
 {
   auto v = a - b;

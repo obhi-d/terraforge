@@ -10,15 +10,15 @@ public:
     "External.glm",
     "External.glbinding",
     "External.neoscript",    
-    "TerraLib.lib"
+    "Terra.generator"
   ];
 
 }
 
 references: [
-  "Tool.gl",
-  "Tool.imne",
-  "Tool.imgfd",
-  "Tool.imgui"
+  "Terra.gl",
+  "Terra.imne",
+  "Terra.imgfd",
+  "Terra.imgui"
 ];
 

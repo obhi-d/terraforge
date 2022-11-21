@@ -1,7 +1,7 @@
 #pragma once
+#include "ComputeDevice.h"
 #include "GfxDeviceObjects.h"
 #include "GlGfx.h"
-#include "ComputeDevice.h"
 
 namespace terra
 {
@@ -12,8 +12,8 @@ public:
   {
     init();
   }
-  void clearBackbuffer(glm::vec4 color, bool depth = false);
-  void setState(GlGfxState const&);
+  void clearBackbuffer(glm::vec4 color, bool depth = false) override;
+  void setState(GlGfxState const&) override;
 
   GfxBuffer::handle  createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
   void               destroy(GfxBuffer::handle) override;
@@ -22,7 +22,7 @@ public:
                                  uint32 mipLevels = 1) override;
   GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
                                       std::span<std::byte const*> data = {}, GfxImage2D::Swizzle swizzle = {},
-                                 uint32 mipLevels = 1) override;
+                                      uint32 mipLevels = 1) override;
   void               destroy(GfxImage2D::handle) override;
   GfxSampler::handle createSampler(ImageSampling) override;
   void               destroy(GfxSampler::handle) override;
@@ -50,8 +50,8 @@ public:
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&);
   virtual void            destroy(GfxMesh::handle);
   virtual void            draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material);
-  virtual void                   flushStates();
-  Caps getCaps() const
+  virtual void            flushStates();
+  Caps                    getCaps() const
   {
     return features;
   }
