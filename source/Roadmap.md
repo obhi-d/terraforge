@@ -7,3 +7,13 @@
       - [ ] Map generation
       - [ ] Simulation
       - [ ] Post processing
+  - [ ] Terrain layers
+      - [ ] Water
+      - [ ] Vegetation
+      - [ ] Foilage
+      - [ ] Mountain Generation
+  - [ ] Simulations
+      - [ ] Hydraulic erosion/Water map generation
+      - [ ] Thermal erosion
+      - [ ] Plate tectonics
+  - [ ] Load save

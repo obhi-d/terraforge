@@ -57,6 +57,19 @@ public:
     float              min         = std::numeric_limits<float>::infinity();
     float              max         = -std::numeric_limits<float>::infinity();
 
+    inline uint32_t size() const
+    {
+      return (uint32_t)params.tileSize.x * (uint32_t)params.tileSize.y;
+    }
+    inline int32_t width() const
+    {
+      return params.tileSize.x;
+    }
+    inline int32_t height() const
+    {
+      return params.tileSize.y;
+    }
+
     inline bool isInBounds(int x, int y)
     {
       return x >= 0 && x < params.tileSize[0] && y >= 0 && y < params.tileSize[1];

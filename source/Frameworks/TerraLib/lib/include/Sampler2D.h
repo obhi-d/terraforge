@@ -39,6 +39,20 @@ struct Sampler2D
     return gradient;
   }
 
+  vec2 heightGradientAt(int x_i, int y_i) const
+  {
+    constexpr float u        = 0.5f;
+    constexpr float v        = 0.5f;
+    auto            ul       = gradientAt(x_i, y_i);
+    auto            ur       = gradientAt(x_i + 1, y_i);
+    auto            ll       = gradientAt(x_i, y_i + 1);
+    auto            lr       = gradientAt(x_i + 1, y_i + 1);
+    auto            ipl_l    = terra::add(scale(1 - v, ul), scale(v, ll));
+    auto            ipl_r    = terra::add(scale(1 - v, ur), scale(v, lr));
+    auto            gradient = terra::add(scale(1 - u, ipl_l), scale(u, ipl_r));
+    return gradient;
+  }
+
   inline int pixelIdWarped(int x, int y) const
   {
     return ((unsigned int)x % width) + ((unsigned int)y % height) * width;
