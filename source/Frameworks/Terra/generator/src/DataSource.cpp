@@ -1,13 +1,14 @@
 
-#include "Terra.h"
 #include "DataSource.h"
+#include "Terra.h"
 
 namespace terra
 {
 
-void DataSource::propagate(Event ev) 
+void DataSource::propagate(Event ev)
 {
-  forEachDependent([ev, self = this->self](dshandle d) 
+  forEachDependent(
+    [ev, self = this->self](dshandle d)
     {
       if (DataSource::isValid(d))
       {
@@ -19,7 +20,7 @@ void DataSource::propagate(Event ev)
     });
 }
 
-void DataSource::onParamChange(dshandle oldValue, dshandle newValue) 
+void DataSource::onParamChange(uint32_t i, dshandle oldValue, dshandle newValue)
 {
   if (oldValue && get().isValid(oldValue))
   {
@@ -31,6 +32,7 @@ void DataSource::onParamChange(dshandle oldValue, dshandle newValue)
     auto& newData = get().get<DataSource>(newValue);
     newData.add(self);
   }
+  onParamChangeImpl(i, oldValue, newValue);
   updateVersion();
 }
 
@@ -45,7 +47,7 @@ bool DataSource::setParamSource(uint32_t paramIdx, Source value)
   return false;
 }
 
-bool DataSource::isValid(dshandle ds) 
+bool DataSource::isValid(dshandle ds)
 {
   return get().isValid(ds);
 }
@@ -55,13 +57,13 @@ bool DataSource::isNode(dshandle ds)
   return isValid(ds) && get().get<DataSource>(ds).getType() == Type::eNode;
 }
 
-void DataSource::accept(dshandle source, Event ev) 
+void DataSource::accept(dshandle source, Event ev)
 {
   if (ev == Event::eValueModified || ev == Event::eNodeDeleted)
     version++;
 }
 
-void DataSource::prepareGeneration(dshandle ds, Pipeline& pipe) 
+void DataSource::prepareGeneration(dshandle ds, Pipeline& pipe)
 {
   auto p = get().getIf<DataSource>(ds);
   if (p)
@@ -82,4 +84,4 @@ void DataSource::endIteration(dshandle ds, Pipeline& pipe)
     p->endIteration(pipe);
 }
 
-}
+} // namespace terra

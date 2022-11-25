@@ -5,9 +5,7 @@
 namespace terra
 {
 
-class Pipeline_gpu : public Pipeline
-{
-
-};
+class HybridPipeline : public Pipeline
+{};
 
 } // namespace terra

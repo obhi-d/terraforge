@@ -88,7 +88,7 @@ public:
     set.emplace(self);
     getSourcesImpl(set);
   }
-    
+
   virtual HelpInfo getHelpInfo(HelpType, int param = -1) const = 0;
 
   virtual void prepareGeneration(Pipeline&) {}
@@ -100,7 +100,7 @@ public:
   static void endIteration(dshandle, Pipeline&);
 
   void propagate(Event);
-  void onParamChange(dshandle oldValue, dshandle newValue);
+  void onParamChange(uint32_t i, dshandle oldValue, dshandle newValue);
   bool setParamSource(uint32_t paramIdx, Source);
 
   static bool isValid(dshandle);
@@ -122,6 +122,7 @@ public:
   }
 
 protected:
+  virtual void        onParamChangeImpl(uint32_t i, dshandle oldValue, dshandle newValue) {}
   virtual void        getSourcesImpl(SourceSet&) const = 0;
   inline virtual bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
   {

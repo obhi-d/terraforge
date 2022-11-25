@@ -89,6 +89,6 @@ struct ComputeDevice
   virtual void                           draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material) = 0;
   virtual void                           flushStates()                                                    = 0;
   virtual void                           clearBackbuffer(glm::vec4 color, bool depth = false)             = 0;
-  virtual void                           setState(GlGfxState const&)                                      = 0;
+  virtual void                           setState(GfxState const&)                                        = 0;
 };
 } // namespace terra

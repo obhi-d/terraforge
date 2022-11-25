@@ -56,7 +56,7 @@ void GfxDevice43::flushStates()
 {
   state.flush = true;
 }
-void GfxDevice43::setState(GlGfxState const& newState)
+void GfxDevice43::setState(GfxState const& newState)
 {
   if (newState.cullMode != state.cullMode || state.flush)
   {

@@ -296,7 +296,7 @@ struct DataFormat
 
   constexpr DataFormat() = default;
   constexpr DataFormat(DataType itype, DataType iscalarSubType = DataType::eFloat, Semantic isem = Semantic::eNone,
-    uint32_t iindex = 0)
+                       uint32_t iindex = 0)
       : type(itype), scalarSubType(iscalarSubType), semantic(isem), index(iindex)
   {}
   static bool isCompatible(DataFormat const& from, DataFormat const& to);
@@ -662,12 +662,12 @@ public:
     color.r = uint8_t((hexValue)&0xFF);         // Extract the BB byte
   }
 
-  inline Color(ImVec4 f4)
+  inline Color(float x, float y, float z, float w)
   {
-    color.r = (uint8_t)(f4.x * 255.f); // Extract the RR byte
-    color.g = (uint8_t)(f4.y * 255.f); // Extract the GG byte
-    color.b = (uint8_t)(f4.z * 255.f); // Extract the GG byte
-    color.a = (uint8_t)(f4.w * 255.f); // Extract the BB byte
+    color.r = (uint8_t)(x * 255.f); // Extract the RR byte
+    color.g = (uint8_t)(y * 255.f); // Extract the GG byte
+    color.b = (uint8_t)(z * 255.f); // Extract the GG byte
+    color.a = (uint8_t)(w * 255.f); // Extract the BB byte
   }
 
   inline Color(glm::vec4 f4)

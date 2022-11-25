@@ -13,7 +13,7 @@ public:
     init();
   }
   void clearBackbuffer(glm::vec4 color, bool depth = false) override;
-  void setState(GlGfxState const&) override;
+  void setState(GfxState const&) override;
 
   GfxBuffer::handle  createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
   void               destroy(GfxBuffer::handle) override;

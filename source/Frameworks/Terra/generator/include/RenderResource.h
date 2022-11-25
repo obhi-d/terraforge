@@ -195,8 +195,8 @@ struct GfxState
   BlendMode     blend           = BlendMode::eDisabled;
   DepthTestMode depthTest       = DepthTestMode::eDisabled;
   bool          scissorsEnabled = false;
-  GlRect        viewport;
-  GlRect        scissor;
+  Rect          viewport;
+  Rect          scissor;
   bool          flush = false;
 };
 
@@ -294,5 +294,21 @@ inline uint32_t getMipLevels(uint32_t width, uint32_t height)
     lvl++;
   }
   return lvl;
+}
+
+inline uint32_t getBaseSize(ImageFormat format)
+{
+  switch (format)
+  {
+  case ImageFormat::eSrgb8Alpha8:
+  case ImageFormat::eRgba8:
+  case ImageFormat::eFloat:
+    return 4;
+  case ImageFormat::eUnorm16:
+  case ImageFormat::eSnorm16:
+    return 2;
+  case ImageFormat::eUnorm8:
+    return 1;
+  }
 }
 } // namespace terra

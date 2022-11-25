@@ -36,7 +36,7 @@ public:
       oldSrc = std::get<Source>(old).source;
     if (std::holds_alternative<Source>(sv))
       newSrc = std::get<Source>(sv).source;
-    onParamChange(oldSrc, newSrc);
+    onParamChange(i, oldSrc, newSrc);
     return old;
   }
 
