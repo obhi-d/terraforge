@@ -148,6 +148,11 @@ public:
 
   std::shared_ptr<Pipeline> createPipeline() const;
 
+  ComputeDevice& getDevice()
+  {
+    return *device.get();
+  }
+
 private:
   static Terra instance;
 

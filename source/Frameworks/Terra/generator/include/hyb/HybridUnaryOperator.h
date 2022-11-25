@@ -8,19 +8,24 @@ namespace terra
 
 struct HybridUnaryOperator : public ClassicHybridNode
 {
-  enum Operator
+  enum Operator : int32_t
   {
     eAbs,
     eExp,
     eLn,
     eNegate,
     eRecip,
-    eSquare
+    eSquare,
+    eRoot,
+    eSin,
+    eCos
   };
 
+  Operator  op;
+  Parameter offsetScale;
   Parameter source;
 
-  virtual void execute(HybridPipeline&) const;
+  void execute(HybridPipeline&) const override;
 };
 
 } // namespace terra
