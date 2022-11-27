@@ -181,7 +181,7 @@ void GfxDevice43::destroy(GfxBuffer::handle h)
   resources.buffers.erase(h);
 }
 GfxImage2D::handle GfxDevice43::createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                            ImageFormat format, std::byte const* data, GfxImage2D::Swizzle swizzle,
+                                            ImageFormat format, ubyte_t const* data, GfxImage2D::Swizzle swizzle,
                                             uint32 mipLevels)
 {
   auto  h     = resources.images.emplace();
@@ -206,7 +206,7 @@ GfxImage2D::handle GfxDevice43::createImage(GfxStorageClass storage, uint32_t wi
   return h;
 }
 GfxImage2D::handle GfxDevice43::createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                                 ImageFormat format, std::span<std::byte const*> data,
+                                                 ImageFormat format, std::span<ubyte_t const*> data,
                                                  GfxImage2D::Swizzle swizzle, uint32 mipLevels)
 {
   assert(false);
@@ -333,13 +333,15 @@ void GfxDevice43::syncFence(GfxFence::handle h)
   gl43::glWaitSync(res.sync, 0, gl43::GL_TIMEOUT_IGNORED);
   resources.fences.erase(h);
 }
-GfxProgram::handle GfxDevice43::createProgram(ShaderOptions const& options, ShaderBuilder const& sources)
+GfxProgram::handle GfxDevice43::createProgram(std::span<ShaderOptions> options, ShaderBuilder const& sources)
 {
   std::string optionStr = fmt::format("#version {}\n", this->features.version);
-  for (uint32_t i = 0; i < options.names.size(); ++i)
+  for (auto& option : options)
   {
-    fmt::format_to(std::back_inserter(optionStr), "#define {} {}\n", options.names[i],
-                   (uint32_t)((options.bitMask & (1ull << i)) != 0));
+    for (uint32_t i = 0; i < option.size(); ++i)
+    {
+      fmt::format_to(std::back_inserter(optionStr), "#define {} {}\n", option.name(i), option.value(i));
+    }
   }
 
   auto&                            sb = (GfxShaderBuilder&)sources;
@@ -496,21 +498,21 @@ void GfxDevice43::destroy(GfxMesh::handle h)
     resources.meshes.erase(h);
   }
 }
-std::byte* GfxDevice43::mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size)
+ubyte_t* GfxDevice43::mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size)
 {
   auto& res = resources.buffers.at(buffer);
   assert(offset + size <= res.size);
   gl43::glBindBuffer(res.target, res.glhandle);
-  return (std::byte*)gl43::glMapBufferRange(res.target, offset, size,
-                                            gl43::MapBufferAccessMask::GL_MAP_WRITE_BIT |
-                                              gl43::MapBufferAccessMask::GL_MAP_INVALIDATE_RANGE_BIT);
+  return (ubyte_t*)gl43::glMapBufferRange(res.target, offset, size,
+                                          gl43::MapBufferAccessMask::GL_MAP_WRITE_BIT |
+                                            gl43::MapBufferAccessMask::GL_MAP_INVALIDATE_RANGE_BIT);
 }
 void GfxDevice43::unmapBuffer(GfxBuffer::handle buffer)
 {
   auto& res = resources.buffers.at(buffer);
   gl43::glUnmapBuffer(res.target);
 }
-void GfxDevice43::updateImage(GfxImage2D::handle image, std::span<std::byte const> data)
+void GfxDevice43::updateImage(GfxImage2D::handle image, std::span<ubyte_t const> data)
 {
   auto& res = resources.images.at(image);
   gl43::glActiveTexture(gl43::GL_TEXTURE0);
@@ -523,13 +525,13 @@ void GfxDevice43::updateDescriptorSet(GfxDescriptorSet::handle h, std::span<GfxD
   auto& res = resources.descriptorSets.at(h);
   std::memcpy(res.values.get(), handles.data(), handles.size_bytes());
 }
-void GfxDevice43::readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<std::byte> out)
+void GfxDevice43::readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<ubyte_t> out)
 {
   auto& res = resources.buffers.at(buffer);
   gl43::glBindBuffer(res.target, res.glhandle);
   gl43::glGetBufferSubData(res.target, offset, out.size_bytes(), out.data());
 }
-void GfxDevice43::readImage(GfxImage2D::handle buffer, std::span<std::byte> out)
+void GfxDevice43::readImage(GfxImage2D::handle buffer, std::span<ubyte_t> out)
 {
   auto& res = resources.images.at(buffer);
   gl43::glActiveTexture(gl43::GL_TEXTURE0);

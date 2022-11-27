@@ -8,28 +8,28 @@ namespace terra
 void DataSource::propagate(Event ev)
 {
   forEachDependent(
-    [ev, self = this->self](dshandle d)
+    [ev, self = this->self](Source d)
     {
-      if (DataSource::isValid(d))
+      if (DataSource::isValid(d.source))
       {
-        get().get<DataSource>(d).accept(self, ev);
+        get().get<DataSource>(d.source).accept(self, ev);
         // Even if node is deleted we just want to inform that value has
         // been modified to decendants
-        get().get<DataSource>(d).propagate(Event::eValueModified);
+        get().get<DataSource>(d.source).propagate(Event::eValueModified);
       }
     });
 }
 
-void DataSource::onParamChange(uint32_t i, dshandle oldValue, dshandle newValue)
+void DataSource::onParamChange(uint32_t i, Source oldValue, Source newValue)
 {
-  if (oldValue && get().isValid(oldValue))
+  if (oldValue.source && get().isValid(oldValue.source))
   {
-    auto& oldData = get().get<DataSource>(oldValue);
+    auto& oldData = get().get<DataSource>(oldValue.source);
     oldData.remove(self);
   }
-  if (newValue && get().isValid(newValue))
+  if (newValue.source && get().isValid(newValue.source))
   {
-    auto& newData = get().get<DataSource>(newValue);
+    auto& newData = get().get<DataSource>(newValue.source);
     newData.add(self);
   }
   onParamChangeImpl(i, oldValue, newValue);
@@ -41,43 +41,43 @@ bool DataSource::setParamSource(uint32_t paramIdx, Source value)
   auto [old, accept] = setParamSourceImpl(paramIdx, value);
   if (accept)
   {
-    onParamChange(old, value.source);
+    onParamChange(paramIdx, old, value.source);
     return true;
   }
   return false;
 }
 
-bool DataSource::isValid(dshandle ds)
+bool DataSource::isValid(HDataSource ds)
 {
   return get().isValid(ds);
 }
 
-bool DataSource::isNode(dshandle ds)
+bool DataSource::isNode(HDataSource ds)
 {
   return isValid(ds) && get().get<DataSource>(ds).getType() == Type::eNode;
 }
 
-void DataSource::accept(dshandle source, Event ev)
+void DataSource::accept(Source source, Event ev)
 {
   if (ev == Event::eValueModified || ev == Event::eNodeDeleted)
     version++;
 }
 
-void DataSource::prepareGeneration(dshandle ds, Pipeline& pipe)
+void DataSource::prepareGeneration(HDataSource ds, Pipeline& pipe)
 {
   auto p = get().getIf<DataSource>(ds);
   if (p)
     p->prepareGeneration(pipe);
 }
 
-void DataSource::beginIteration(dshandle ds, Pipeline& pipe)
+void DataSource::beginIteration(HDataSource ds, Pipeline& pipe)
 {
   auto p = get().getIf<DataSource>(ds);
   if (p)
     p->beginIteration(pipe);
 }
 
-void DataSource::endIteration(dshandle ds, Pipeline& pipe)
+void DataSource::endIteration(HDataSource ds, Pipeline& pipe)
 {
   auto p = get().getIf<DataSource>(ds);
   if (p)

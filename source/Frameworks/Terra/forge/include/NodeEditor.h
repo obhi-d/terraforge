@@ -54,7 +54,7 @@ public:
     pendingAction.node   = pin;
   }
 
-  void changeImage(dshandle id);
+  void changeImage(HDataSource id);
 
 private:
   void createLink(ImThemeColors const&, uintpair start, uintpair end);
@@ -66,7 +66,7 @@ private:
   void createCurveEditor(TerraMainApp&, ImVec2);
   void createImageNode(TerraMainApp&, std::filesystem::path, ImVec2);
   void executePendingAction(TerraMainApp&);
-  void setNextDataSource(ImThemeColors const& col, dshandle node, imne::PinId src);
+  void setNextDataSource(ImThemeColors const& col, HDataSource node, imne::PinId src);
   void openImage(TerraMainApp& app);
 
   enum class Action
@@ -96,14 +96,14 @@ private:
   {
     Action      action;
     ImVec2      position;
-    dshandle    node;
+    HDataSource    node;
     imne::PinId linkTo;
   };
 
   FileOpen   fileOpenData;
   ActionData pendingAction;
 
-  dshandle previewNode;
+  HDataSource previewNode;
   uint32_t previewNodeVersion = 0;
   uint32_t previewNodeStyle   = 0;
 

@@ -137,7 +137,7 @@ bool NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
           imne::NodeId id;
           if (imne::GetSelectedNodes(&id, 1) > 0 && id)
           {
-            dshandle nid = (uint32_t)(size_t)id;
+            HDataSource nid = (uint32_t)(size_t)id;
             if (nid != previewNode && DataSource::isNode(nid))
             {
               nodeRegenRequired = true;
@@ -557,7 +557,7 @@ void NodeEditor::createImageNode(TerraMainApp& app, std::filesystem::path path, 
   drawableNodes.emplace_back(std::make_unique<DrawableNode>(app, get().getImage(std::move(path)), pos));
 }
 
-void NodeEditor::changeImage(dshandle id)
+void NodeEditor::changeImage(HDataSource id)
 {
   pendingAction.action = Action::eChangeImage;
   pendingAction.node   = id.um_index();
@@ -577,7 +577,7 @@ void NodeEditor::deleteNode(imne::NodeId node)
 {
   for (auto dn = drawableNodes.begin(); dn != drawableNodes.end(); dn++)
   {
-    if ((*dn)->is(dshandle((uint32_t)node.Get())))
+    if ((*dn)->is(HDataSource((uint32_t)node.Get())))
     {
       drawableNodes.erase(dn);
       break;
@@ -590,7 +590,7 @@ void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair e
 {
   auto& dst    = get().get<Node>(end.first);
   Color color  = col.dsLink;
-  auto  oldSrc = dst.param(end.second - 1, Source(dshandle(start.first)));
+  auto  oldSrc = dst.param(end.second - 1, Source(HDataSource(start.first)));
   if (std::holds_alternative<Source>(oldSrc))
   {
     auto        oldSrcHandle = std::get<Source>(oldSrc).source;
@@ -632,7 +632,7 @@ void NodeEditor::deleteLink(imne::LinkId l)
   links.erase(addr);
 }
 
-void NodeEditor::setNextDataSource(ImThemeColors const& col, dshandle id, imne::PinId src)
+void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imne::PinId src)
 {
   auto&       node    = get().get<Node>(id);
   auto const& meta    = node.meta;

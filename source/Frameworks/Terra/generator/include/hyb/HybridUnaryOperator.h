@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "HybridBuffer.h"
 #include "HybridNode.h"
 
 namespace terra
@@ -8,8 +9,14 @@ namespace terra
 
 struct HybridUnaryOperator : public ClassicHybridNode
 {
+  struct Data
+  {
+    HHybridBuffer buffer;
+  };
+
   enum Operator : int32_t
   {
+    eNone,
     eAbs,
     eExp,
     eLn,
@@ -21,7 +28,7 @@ struct HybridUnaryOperator : public ClassicHybridNode
     eCos
   };
 
-  Operator  op;
+  Operator  op = eNone;
   Parameter offsetScale;
   Parameter source;
 

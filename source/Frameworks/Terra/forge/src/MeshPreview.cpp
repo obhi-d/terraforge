@@ -39,7 +39,7 @@ void MeshPreview::deinit(TerraMainApp& app)
   app.getDevice()->destroy(GfxImage2D::handle(heightTexPath->image));
 }
 
-void MeshPreview::regenerate(TerraMainApp const& app, dshandle iactor)
+void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
 {
   AppSettings const& settings = app.getSettings();
   if (!generated)

@@ -21,7 +21,7 @@ public:
   {
     regenerate(app, actor);
   }
-  void regenerate(TerraMainApp const&, dshandle);
+  void regenerate(TerraMainApp const&, HDataSource);
 
   void update(glm::ivec2 viewportSize, MouseState& ms)
   {
@@ -56,7 +56,7 @@ private:
   Camera                    camera;
   LaunchParams              params;
   std::shared_ptr<Pipeline> pipeline;
-  dshandle                  actor;
+  HDataSource                  actor;
   GfxBuffer::handle         vertex;
   GfxBuffer::handle         index;
   GfxBuffer::handle         ubo;

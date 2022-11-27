@@ -1,4 +1,5 @@
 #pragma once
+#include <acl/dynamic_array.hpp>
 #include <map>
 #include <string>
 #include <unordered_map>
@@ -36,7 +37,7 @@ inline bool store(Source& s, Parameter param)
   return false;
 }
 
-inline bool store(dshandle& s, Parameter param)
+inline bool store(HDataSource& s, Parameter param)
 {
   if (std::holds_alternative<Source>(param))
   {
@@ -175,11 +176,11 @@ struct FmtEnum
 
   static inline constexpr bool is_enum = true;
 
-  DataValue                       defaultVal = {};
-  std::vector<std::u8string_view> enumVals   = {};
+  DataValue                     defaultVal = {};
+  std::vector<std::string_view> enumVals   = {};
 
   FmtEnum() = default;
-  FmtEnum(int iDef, std::initializer_list<std::u8string_view> enums) : defaultVal(iDef), enumVals(enums) {}
+  FmtEnum(int iDef, std::initializer_list<std::string_view> enums) : defaultVal(iDef), enumVals(enums) {}
 
   static inline constexpr auto get()
   {
@@ -191,7 +192,7 @@ template <typename MembPtr>
 inline auto DeriveFormat()
 {
 
-  if constexpr (std::is_same_v<typename MembPtr::member_t, dshandle>)
+  if constexpr (std::is_same_v<typename MembPtr::member_t, HDataSource>)
     return FmtVal<DataType::ePostProcess>();
   else if constexpr (std::is_same_v<typename MembPtr::member_t, Parameter> ||
                      std::is_same_v<typename MembPtr::member_t, Source>)
@@ -228,13 +229,19 @@ struct ParameterMeta
     eCount
   };
 
-  DataFormat format;
-  DrawHint   drawHint = DrawHint::eDefault;
-  DisplayInfo displayInfo;
+  DataFormat       format;
+  DrawHint         drawHint = DrawHint::eDefault;
+  std::string_view name;
+  DisplayInfo      displayInfo;
 
-  DataValue                       values[ValueType::eCount] = {};
-  std::vector<std::u8string_view> enumValues                = {};
-
+  DataValue                           values[ValueType::eCount] = {};
+  std::unique_ptr<std::string_view[]> enumNames                 = {};
+  std::unique_ptr<DisplayInfo[]>      enumDisplayInfo           = {};
+  union
+  {
+    uint32_t maxEnum = 1;
+    uint32_t maxOption;
+  };
   ParamSetter setter = nullptr;
   ParamGetter getter = nullptr;
 
@@ -253,14 +260,14 @@ struct ParameterMeta
   template <typename MembPtr, typename Fmt>
   ParameterMeta(MembPtr, std::string_view iname, Fmt format, Semantic semantic = Semantic::eNone,
                 DrawHint idrawhint = DrawHint::eDefault)
-      : format(Fmt::get()), drawHint(idrawhint), setter(
-                                                   [](Node& node, Parameter param)
-                                                   {
-                                                     using T       = typename MembPtr::class_t;
-                                                     auto  pmember = MembPtr::pmem;
-                                                     auto& cnode   = static_cast<T&>(node);
-                                                     store(cnode.*pmember, param);
-                                                   }),
+      : format(Fmt::get()), name(iname), drawHint(idrawhint), setter(
+                                                                [](Node& node, Parameter param)
+                                                                {
+                                                                  using T       = typename MembPtr::class_t;
+                                                                  auto  pmember = MembPtr::pmem;
+                                                                  auto& cnode   = static_cast<T&>(node);
+                                                                  store(cnode.*pmember, param);
+                                                                }),
         getter(
           [](Node const& node) -> Parameter
           {
@@ -274,7 +281,14 @@ struct ParameterMeta
     values[ValueType::eDefault] = format.defaultVal;
     if constexpr (Fmt::is_enum)
     {
-      enumValues = std::move(format.enumVals);
+      maxEnum = (uint32)format.enumVals.size();
+      enumNames.reset(new std::string_view[maxEnum]);
+      enumDisplayInfo.reset(new DisplayInfo[maxEnum]);
+      for (uint32_t i = 0; i < maxEnum; ++i)
+      {
+        enumNames[i] = format.enumVals[i];
+        enumDisplayInfo[i].from(enumNames[i]);
+      }
     }
     else
     {
@@ -346,6 +360,7 @@ public:
   NodeMeta& operator=(NodeMeta const&) noexcept = default;
   NodeMeta& operator=(NodeMeta&&) noexcept      = default;
 
+  virtual void prepare() {}
   virtual void prepareGeneration(Node&, Pipeline&) const = 0;
   virtual void beginIteration(Node&, Pipeline&) const    = 0;
   virtual void endIteration(Node&, Pipeline&) const      = 0;

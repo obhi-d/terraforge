@@ -4,7 +4,7 @@
 namespace terra
 {
 
-void Pipeline::compute(dshandle h, LaunchParams const& params, ivec2 start, ivec2 size)
+void Pipeline::compute(HDataSource h, LaunchParams const& params, ivec2 start, ivec2 size)
 {
   assert(start[0] >= 1);
   assert(start[1] >= 1);

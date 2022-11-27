@@ -88,7 +88,7 @@ bool CurveData::getBuffer(ComputeDevice& dev, uint32& bufferVer, GfxBuffer::hand
     handle = dev.createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::Usage::fStorage, size);
     if (!handle)
       return false;
-    std::byte* data = dev.mapBuffer(handle, 0, size);
+    ubyte_t* data = dev.mapBuffer(handle, 0, size);
     if (!data)
       return false;
     auto     nbpts  = (uint32_t)spline.get_x().size();

@@ -31,7 +31,7 @@ public:
   {
     auto old = meta.parameterDef[i].getter(*this);
     meta.parameterDef[i].setter(*this, sv);
-    dshandle oldSrc, newSrc;
+    HDataSource oldSrc, newSrc;
     if (std::holds_alternative<Source>(old))
       oldSrc = std::get<Source>(old).source;
     if (std::holds_alternative<Source>(sv))
@@ -50,9 +50,9 @@ public:
     return Type::eNode;
   }
 
-  virtual DataFormat getFormat() const
+  DataFormat getFormat(uint32_t i) const override
   {
-    return meta.format;
+    return meta.outputs[i];
   }
 
   void getSourcesImpl(SourceSet&) const final;
@@ -60,7 +60,7 @@ public:
   void beginIteration(Pipeline&) final;
   void endIteration(Pipeline&) final;
 
-  void     accept(dshandle source, Event) override;
+  void     accept(Source source, Event) override;
   HelpInfo getHelpInfo(HelpType type, int param = -1) const final;
 
   Node(NodeMeta const& m);

@@ -14,29 +14,29 @@ struct CurveData : public DataSource
 {
   struct Edit
   {
-    std::vector<float>        cx         = {0.0f, 0.5f, 1.0f};
-    std::vector<float>        cy         = {0.0f, 0.5f, 1.0f};
-    tk::spline<>::spline_type type       = tk::spline<>::spline_type::cspline_hermite;
-    tk::spline<>::bd_type     left       = tk::spline<>::second_deriv;
-    tk::spline<>::bd_type     right      = tk::spline<>::first_deriv;
-    float                     leftValue  = 0;
-    float                     rightValue = 1.0f;
-    int                       dragged    = -1;
-    bool                      popupType  = false;
-    bool                      popupLeftBound = false;
+    std::vector<float>        cx              = {0.0f, 0.5f, 1.0f};
+    std::vector<float>        cy              = {0.0f, 0.5f, 1.0f};
+    tk::spline<>::spline_type type            = tk::spline<>::spline_type::cspline_hermite;
+    tk::spline<>::bd_type     left            = tk::spline<>::second_deriv;
+    tk::spline<>::bd_type     right           = tk::spline<>::first_deriv;
+    float                     leftValue       = 0;
+    float                     rightValue      = 1.0f;
+    int                       dragged         = -1;
+    bool                      popupType       = false;
+    bool                      popupLeftBound  = false;
     bool                      popupRightBound = false;
-    bool                      monotonic  = true;
-    bool                      edited     = false;
-    bool                      dirty      = false;
-    bool                      firstEdit  = true;
-    bool                      liveUpdate = false;
+    bool                      monotonic       = true;
+    bool                      edited          = false;
+    bool                      dirty           = false;
+    bool                      firstEdit       = true;
+    bool                      liveUpdate      = false;
     tk::spline<>              spline;
   };
 
   std::u8string name = u8"CurveData";
-  tk::spline<> spline;
-  Edit         edits;
-  uint32       version = 0;
+  tk::spline<>  spline;
+  Edit          edits;
+  uint32        version = 0;
 
   CurveData()
   {
@@ -77,7 +77,7 @@ struct CurveData : public DataSource
     if (edits.dirty)
     {
       edits.spline = tk::spline<>(edits.cx, edits.cy, edits.type, edits.monotonic, edits.left, edits.leftValue,
-                                          edits.right, edits.rightValue);
+                                  edits.right, edits.rightValue);
     }
     if ((edits.liveUpdate || apply) && edits.edited && edits.dirty)
     {
@@ -106,23 +106,23 @@ struct CurveData : public DataSource
     return Type::eCurve;
   }
 
-  inline DataFormat getFormat() const final
+  inline DataFormat getFormat(uint32) const final
   {
     return DataFormat(DataType::eCurveData);
   }
 
-  inline std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, Source) final
+  inline exchange setParamSourceImpl(uint32_t paramIdx, Source) final
   {
-    return std::make_pair<dshandle, bool>({}, false);
+    return exchange({}, false);
   }
 
   // bool isEnabled(Pipeline const&) const final;
 
-  inline void accept(dshandle source, Event) final {}
+  inline void accept(Source source, Event) final {}
 
-  void getSourcesImpl(SourceSet& s) const final {}
-  bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
-  void toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
+  void     getSourcesImpl(SourceSet& s) const final {}
+  bool     fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
+  void     toDataStreamImpl(std::vector<uint8_t>& dataStream) const final;
   HelpInfo getHelpInfo(HelpType, int param = -1) const final;
 };
 

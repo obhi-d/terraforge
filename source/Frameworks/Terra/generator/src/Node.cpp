@@ -5,7 +5,7 @@ namespace terra
 {
 Node::Node(NodeMeta const& m) : meta(m), name(m.displayInfo.name) {}
 
-void Node::accept(dshandle source, Event ev)
+void Node::accept(Source source, Event ev)
 {
   if (ev == Event::eNodeDeleted)
   {
@@ -14,7 +14,7 @@ void Node::accept(dshandle source, Event ev)
       auto p = param(i);
       if (std::holds_alternative<Source>(p))
       {
-        if (std::get<Source>(p).source == source)
+        if (std::get<Source>(p) == source)
           p = meta.parameterDef[i].getDefault();
       }
     }

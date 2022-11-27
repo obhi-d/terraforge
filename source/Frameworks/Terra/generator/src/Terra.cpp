@@ -4,7 +4,6 @@
 #include "Logger.h"
 #include "ResourceUtils.h"
 
-#include "gpu/Pipeline_gpu.h"
 #include "hwy/Pipeline_hwy.h"
 
 #include <fmt/format.h>
@@ -51,9 +50,9 @@ void Terra::destroy()
   // computeThread.shutdown();
 }
 
-dshandle Terra::getImage(std::filesystem::path path)
+HDataSource Terra::getImage(std::filesystem::path path)
 {
-  dshandle found;
+  HDataSource found;
   dataSources.for_each(
     [&found, &path](auto& image)
     {
@@ -74,14 +73,14 @@ dshandle Terra::getImage(std::filesystem::path path)
   return ptr->getSelf();
 }
 
-dshandle Terra::createNode(NodeMeta const& meta)
+HDataSource Terra::createNode(NodeMeta const& meta)
 {
   auto ptr = meta.createNode(meta);
   ptr->setSelf(dataSources.emplace(ptr));
   return ptr->getSelf();
 }
 
-dshandle Terra::createCurve()
+HDataSource Terra::createCurve()
 {
   auto ptr = std::make_shared<CurveData>();
   ptr->setSelf(dataSources.emplace(ptr));

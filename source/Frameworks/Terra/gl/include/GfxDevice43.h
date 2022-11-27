@@ -18,10 +18,10 @@ public:
   GfxBuffer::handle  createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
   void               destroy(GfxBuffer::handle) override;
   GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
-                                 std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
+                                 ubyte_t const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
                                  uint32 mipLevels = 1) override;
   GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
-                                      std::span<std::byte const*> data = {}, GfxImage2D::Swizzle swizzle = {},
+                                      std::span<ubyte_t const*> data = {}, GfxImage2D::Swizzle swizzle = {},
                                       uint32 mipLevels = 1) override;
   void               destroy(GfxImage2D::handle) override;
   GfxSampler::handle createSampler(ImageSampling) override;
@@ -33,14 +33,14 @@ public:
   void                     destroy(GfxDescriptorSet::handle) override;
   GfxFence::handle         createFence() override;
   void                     syncFence(GfxFence::handle) override;
-  GfxProgram::handle       createProgram(ShaderOptions const& options, ShaderBuilder const& sources) override;
+  GfxProgram::handle       createProgram(std::span<ShaderOptions> options, ShaderBuilder const& sources) override;
   void                     destroy(GfxProgram::handle) override;
-  std::byte*               mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size) override;
+  ubyte_t*                 mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size) override;
   void                     unmapBuffer(GfxBuffer::handle buffer) override;
-  void                     updateImage(GfxImage2D::handle image, std::span<std::byte const> data) override;
+  void                     updateImage(GfxImage2D::handle image, std::span<ubyte_t const> data) override;
   void updateDescriptorSet(GfxDescriptorSet::handle, std::span<GfxDescriptorSet::rhandle> handles) override;
-  void readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<std::byte> out) override;
-  void readImage(GfxImage2D::handle image, std::span<std::byte> out) override;
+  void readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<ubyte_t> out) override;
+  void readImage(GfxImage2D::handle image, std::span<ubyte_t> out) override;
   void dispatchCompute(GfxProgram::handle shader, GfxDescriptorSet::handle descriptorSet, uint32_t numGroupX,
                        uint32_t numGroupY) override;
   void barrier(GfxBarrierFlags flags) override;

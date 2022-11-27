@@ -26,8 +26,8 @@ public:
   void endIteration(Node&, Pipeline&) const final;
 
   static void domain(Parameter const& param, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
-  static void run(dshandle, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
-  static void end(dshandle, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
+  static void run(HDataSource, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
+  static void end(HDataSource, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
   static void fill(float, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
   static void write(Parameter const&, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes);
 };

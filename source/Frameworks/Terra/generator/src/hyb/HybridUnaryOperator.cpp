@@ -4,9 +4,6 @@
 namespace terra
 {
 
-void HybridUnaryOperator::execute(HybridPipeline& pipe) const
-{
-  pipe.getCurrentOutput();
-}
+void HybridUnaryOperator::execute(HybridPipeline& pipe) const {}
 
 } // namespace terra

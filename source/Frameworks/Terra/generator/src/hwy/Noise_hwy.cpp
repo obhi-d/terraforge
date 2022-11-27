@@ -768,7 +768,7 @@ void Noise_hwy()
     builder.param<&CellularValueNode::jitter>("@jitter");
     builder.param<&CellularValueNode::returnType>("@return", FmtVal<DataType::eInt>(0, 0, 3));
     builder.param<&CellularValueNode::distanceType>(
-      "@type", FmtEnum(0, {"@eucledian"_ls, "@eucledianSquared"_ls, "@manhattan"_ls, "@hybrid"_ls, "@maxAxis"_ls}));
+      "@type", FmtEnum(0, {"@eucledian", "@eucledianSquared", "@manhattan", "@hybrid", "@maxAxis"}));
     builder.done();
   }
 }

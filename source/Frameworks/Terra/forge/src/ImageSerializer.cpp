@@ -165,7 +165,7 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
 
   rowbytes = png_get_rowbytes(png_ptr, info_ptr);
   channels = png_get_channels(png_ptr, info_ptr);
-  data.data     = std::make_unique<std::byte[]>(rowbytes * data.height);
+  data.data     = std::make_unique<ubyte_t[]>(rowbytes * data.height);
   if (!data.data.get())
     goto error;
   row_pointers.resize(data.height);
@@ -181,7 +181,7 @@ done:
   return ok;
 }
 
-void ImageSerializer::loadImageRgba(std::span<std::byte*> rows, uint32_t xwidth, uint32_t xheight,
+void ImageSerializer::loadImageRgba(std::span<ubyte_t*> rows, uint32_t xwidth, uint32_t xheight,
                                     std::filesystem::path path)
 {
   int           bitDepth        = 0;
@@ -267,7 +267,7 @@ void ImageSerializer::loadImageRgba(std::span<std::byte*> rows, uint32_t xwidth,
   return;
 }
 
-void ImageSerializer::loadImageGray(std::span<std::byte*> rows, uint32_t xwidth, uint32_t xheight,
+void ImageSerializer::loadImageGray(std::span<ubyte_t*> rows, uint32_t xwidth, uint32_t xheight,
                                     std::filesystem::path path)
 {
   int           bitDepth        = 0;

@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "Common.h"
 #include "ComputeDevice.h"
 #include "Image.h"
 #include "Sampler2D.h"
@@ -11,12 +12,15 @@ namespace terra
 class HybridBuffer
 {
 public:
+  using handle                      = acl::link<HybridBuffer>;
+  using hasher                      = LinkHash<handle>;
   HybridBuffer(HybridBuffer const&) = delete;
   HybridBuffer(HybridBuffer&&) noexcept;
   HybridBuffer() = default;
-  HybridBuffer(uint32_t width, uint32_t height, ImageFormat type = ImageFormat::eFloat, bool isImage = true);
+  HybridBuffer(Source owner, uint32_t width, uint32_t height, ImageFormat type = ImageFormat::eFloat,
+               bool isImage = true);
 
-  HybridBuffer& operator=(HybridBuffer& const) = delete;
+  HybridBuffer& operator=(HybridBuffer const&) = delete;
   HybridBuffer& operator=(HybridBuffer&&) noexcept;
 
   template <typename T>
@@ -25,54 +29,78 @@ public:
     return Sampler2D<T>(reinterpret_cast<T*>(offload()), width, height);
   }
 
-  void       ensure();
-  std::byte* offload();
-  void       upload();
-  void       sync();
+  std::span<ubyte_t> ensureHost();
+  void               ensureDev();
+  bool               offload();
+  bool               upload();
 
-  // lock for writing
-  void lockHost()
+  void use(uint32_t now)
   {
-    hostVersion++;
+    useCount = now;
+    flags |= fUsed;
   }
 
-  void lockDevice()
+  void read(uint32_t now)
   {
-    devVersion++;
-    locked = true;
+    use(now);
+    readCount++;
   }
 
-  void unlock()
+  GfxBuffer::handle getBuffer() const
   {
-    locked = false;
+    return buffer;
   }
 
-  bool isLocked() const
+  GfxImage2D::handle getImage() const
   {
-    return locked;
+    return image;
   }
 
-  void use(uint16_t now)
+  ubyte_t const* getData() const
   {
-    useCount = use;
+    return data.get();
   }
+
+  uint32_t lastUsed() const
+  {
+    return useCount;
+  }
+
+  size_t size() const
+  {
+    return height * width * getBaseSize(format);
+  }
+
+  bool isDetached() const
+  {
+    return (readCount >= readers);
+  }
+
+  void clear();
 
 private:
-  std::unique_ptr<std::byte[]> data;
+  std::unique_ptr<ubyte_t[]> data;
+  enum Flags : uint16_t
+  {
+    fLocked = 1 << 0,
+    fUsed   = 1 << 1,
+    fImage  = 1 << 2
+  };
   union
   {
-    GfxBuffer::handle  buffer;
+    GfxBuffer::handle  buffer = GfxBuffer::handle{};
     GfxImage2D::handle image;
   };
 
-  uint32_t    width       = 0;
-  uint32_t    height      = 0;
-  ImageFormat format      = ImageFormat::eFloat;
-  uint16_t    hostVersion = 0;
-  uint16_t    devVersion  = 0;
-  uint16_t    useCount    = 0;
-  bool        locked      = false;
-  bool        isImage     = false;
+  HDataSource owner;
+
+  uint32_t    width     = 0;
+  uint32_t    height    = 0;
+  uint32_t    useCount  = 0;
+  uint32_t    readCount = 0;
+  uint32_t    readers   = 0;
+  ImageFormat format    = ImageFormat::eFloat;
+  uint16_t    flags     = 0;
 };
 
 } // namespace terra

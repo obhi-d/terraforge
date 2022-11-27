@@ -1,18 +1,12 @@
 
 #pragma once
+#include "ShaderOptions.h"
 #include <cstdint>
 #include <span>
 #include <string>
 
 namespace terra
 {
-
-using Options = uint64_t;
-struct ShaderOptions
-{
-  std::span<std::string const> names;
-  Options                      bitMask = {};
-};
 
 struct ShaderBuilder
 {

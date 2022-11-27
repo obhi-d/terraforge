@@ -1,7 +1,7 @@
 #pragma once
-#include <unordered_set>
-#include <algorithm>
 #include "Common.h"
+#include <algorithm>
+#include <unordered_set>
 
 namespace terra
 {
@@ -11,17 +11,17 @@ class Terra;
 class Dependency
 {
 public:
-  Dependency() = default;
-  Dependency(Dependency&&) noexcept = default;
-  Dependency(Dependency const&) = delete;
+  Dependency()                                  = default;
+  Dependency(Dependency&&) noexcept             = default;
+  Dependency(Dependency const&)                 = delete;
   Dependency&  operator=(Dependency&&) noexcept = default;
-  Dependency&  operator=(Dependency const&) = delete;
-  virtual void add(dshandle node)
+  Dependency&  operator=(Dependency const&)     = delete;
+  virtual void add(Source node)
   {
     dependents.emplace(node);
   }
 
-  virtual void remove(dshandle node)
+  virtual void remove(Source node)
   {
     dependents.erase(node);
   }
@@ -37,11 +37,19 @@ public:
     std::for_each(dependents.begin(), dependents.end(), lambda);
   }
 
-  static void replace(ghandle o);
+  uint32_t countDependents(uint32_t outIdx) const
+  {
+    uint32_t count = 0;
+    for (auto& s : dependents)
+    {
+      if (s.secondary == outIdx)
+        count++;
+    }
+    return count;
+  }
 
 private:
-  std::unordered_set<dshandle, DSHandleHash> dependents;
+  std::unordered_set<Source, SourceHash> dependents;
 };
 
-
-}
+} // namespace terra

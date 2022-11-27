@@ -12,7 +12,7 @@ namespace terra
 class Node;
 class Pipeline;
 
-using SourceSet = std::unordered_set<dshandle, DSHandleHash>;
+using SourceSet = std::unordered_set<Source, SourceHash>;
 class DataSource : public Dependency
 {
 public:
@@ -29,7 +29,7 @@ public:
     eNodeDeleted
   };
 
-  using handle = dshandle;
+  using handle = HDataSource;
 
   DataSource() = default;
   DataSource(handle n) : self(n) {}
@@ -46,11 +46,11 @@ public:
   // So proper sync is expected between data accessed here and main thread
   // virtual bool       ensure(Pipeline&) = 0;
 
-  virtual Type       getType() const   = 0;
-  virtual DataFormat getFormat() const = 0;
+  virtual Type       getType() const                         = 0;
+  virtual DataFormat getFormat(uint32 outputIndex = 0) const = 0;
 
   // Accept the change event from a source, for a data source that is dependent
-  virtual void accept(dshandle source, Event);
+  virtual void accept(Source source, Event);
 
   virtual bool fromDataStream(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
   {
@@ -83,9 +83,9 @@ public:
 
   void getSources(SourceSet& set) const
   {
-    if (set.contains(self))
+    if (set.contains(Source(self)))
       return;
-    set.emplace(self);
+    set.emplace(Source(self));
     getSourcesImpl(set);
   }
 
@@ -95,17 +95,17 @@ public:
   virtual void beginIteration(Pipeline&) {}
   virtual void endIteration(Pipeline&) {}
 
-  static void prepareGeneration(dshandle, Pipeline&);
-  static void beginIteration(dshandle, Pipeline&);
-  static void endIteration(dshandle, Pipeline&);
+  static void prepareGeneration(HDataSource, Pipeline&);
+  static void beginIteration(HDataSource, Pipeline&);
+  static void endIteration(HDataSource, Pipeline&);
 
   void propagate(Event);
-  void onParamChange(uint32_t i, dshandle oldValue, dshandle newValue);
+  void onParamChange(uint32_t i, Source oldValue, Source newValue);
   bool setParamSource(uint32_t paramIdx, Source);
 
-  static bool isValid(dshandle);
-  static bool isNode(dshandle);
-  using exchange = std::pair<dshandle, bool>;
+  static bool isValid(HDataSource);
+  static bool isNode(HDataSource);
+  using exchange = std::pair<Source, bool>;
 
   static inline bool isWithinTile(uvec2 tile, uvec2 tileConstraintOffset, uvec2 tileConstraintSize)
   {
@@ -122,7 +122,7 @@ public:
   }
 
 protected:
-  virtual void        onParamChangeImpl(uint32_t i, dshandle oldValue, dshandle newValue) {}
+  virtual void        onParamChangeImpl(uint32_t i, Source oldValue, Source newValue) {}
   virtual void        getSourcesImpl(SourceSet&) const = 0;
   inline virtual bool fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx)
   {
@@ -134,8 +134,8 @@ protected:
     return exchange();
   }
 
-  dshandle self;
-  uint32_t version = 0;
+  HDataSource self;
+  uint32_t    version = 0;
 };
 
 } // namespace terra

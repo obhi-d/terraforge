@@ -9,7 +9,7 @@
 namespace terra
 {
 
-DrawableNode::DrawableNode(TerraMainApp& app, dshandle id, ImVec2 pos)
+DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
 {
   this->id  = id;
   this->pos = pos;
@@ -281,7 +281,7 @@ void DrawableNode::updateThumbnailFromImage(Image& image)
   }
   thumbnail = app().getDevice()->createImage(
     GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize, (uint32_t)ThumbnailSize, ImageFormat::eUnorm8,
-    (std::byte const*)sampled.get(),
+    (ubyte_t const*)sampled.get(),
     GfxImage2D::Swizzle{GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eOne});
   thumbnailVersion = image.getVersion();
 }

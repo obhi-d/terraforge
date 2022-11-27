@@ -23,7 +23,7 @@ public:
     cleanup();
   }
 
-  void compute(dshandle, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
+  void compute(HDataSource, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
 
   // this function is called once results are available
   virtual void getResults(float*, size_t nbFloats, float& min, float& max) = 0;
@@ -40,7 +40,7 @@ public:
     return iteration;
   }
 
-  bool reissue(dshandle node)
+  bool reissue(HDataSource node)
   {
     iterationRequests++;
     if (!reissueNode)
@@ -62,7 +62,7 @@ public:
     reissueNode = {};
   }
 
-  bool wasReissued(dshandle c)
+  bool wasReissued(HDataSource c)
   {
     return c == reissueNode;
   }
@@ -77,7 +77,7 @@ public:
     return launchParams.seed;
   }
 
-  dshandle getActor() const
+  HDataSource getActor() const
   {
     return actor;
   }
@@ -97,9 +97,14 @@ public:
     return start;
   }
 
-  bool isActor(dshandle h) const
+  bool isActor(HDataSource h) const
   {
     return h == actor;
+  }
+
+  uint32_t getId() const
+  {
+    return id;
   }
 
 protected:
@@ -113,7 +118,7 @@ protected:
     return iterationRequests != 0;
   }
 
-  bool isPrimary(dshandle h) const
+  bool isPrimary(HDataSource h) const
   {
     return actor == h;
   }
@@ -123,8 +128,8 @@ protected:
   virtual void pushTileTask(EnvParams const&) = 0;
 
   // main actor
-  dshandle     reissueNode;
-  dshandle     actor;
+  HDataSource  reissueNode;
+  HDataSource  actor;
   int          iterationRequests = 0;
   LaunchParams launchParams;
   ivec2        start;
@@ -132,6 +137,7 @@ protected:
   int32_t      iteration = 0;
   uint32_t     tile      = 0;
   uint32_t     nbTiles   = 0;
+  uint32_t     id        = 0;
 };
 
 } // namespace terra

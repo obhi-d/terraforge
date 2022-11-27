@@ -42,9 +42,9 @@ public:
     }
   }
 
-  void ensure();
-  std::byte* map(uint32_t offset, uint32_t size);
-  void       unmap();
+  void     ensure();
+  ubyte_t* map(uint32_t offset, uint32_t size);
+  void     unmap();
 
 private:
   ComputeDevice&    cd;

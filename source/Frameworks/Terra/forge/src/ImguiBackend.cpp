@@ -139,7 +139,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   }
 
   ImageSerializer                 serializer;
-  std::vector<std::byte>          imageData;
+  std::vector<ubyte_t>          imageData;
   std::array<int, ImagePackCount> packIDs;
   for (uint32 i = ImageName::eLogo; i < theme.images.size(); ++i)
   {
@@ -168,14 +168,14 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     packUVs[i].uv1.x = (custRect->X + img.size.x) / (float)width;
     packUVs[i].uv1.y = (custRect->Y + img.size.y) / (float)height;
 
-    std::vector<std::byte*> rows(img.size.y);
+    std::vector<ubyte_t*> rows(img.size.y);
     for (uint32 r = 0; r < img.size.y; ++r)
-      rows[r] = (std::byte*)(pixels + ((custRect->Y + r) * width + custRect->X));
+      rows[r] = (ubyte_t*)(pixels + ((custRect->Y + r) * width + custRect->X));
     serializer.loadImageGray(rows, img.size.x, img.size.y, getMediaPath() / theme.images[i].path);
   }
 
   font      = renderer->createImage(GfxStorageClass::eStaticDeviceReadonly, (uint32)width, (uint32)height,
-                                    ImageFormat::eUnorm8, (std::byte const*)pixels,
+                                    ImageFormat::eUnorm8, (ubyte_t const*)pixels,
                                     GfxImage2D::Swizzle{.r = GfxImage2D::ComponentValue::eOne,
                                                         .g = GfxImage2D::ComponentValue::eOne,
                                                         .b = GfxImage2D::ComponentValue::eOne,

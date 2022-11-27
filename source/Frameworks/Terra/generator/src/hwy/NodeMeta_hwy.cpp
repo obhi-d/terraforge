@@ -44,7 +44,7 @@ void NodeMeta_hwy::domain(Parameter const& param, Pipeline_hwy& pipe, uint32_t t
   }
 }
 
-void NodeMeta_hwy::run(dshandle h, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes)
+void NodeMeta_hwy::run(HDataSource h, Pipeline_hwy& pipe, uint32_t threadGroupId, uint32_t lanes)
 {
   assert(DataSource::isValid(h));
 

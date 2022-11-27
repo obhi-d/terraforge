@@ -59,7 +59,7 @@ public:
   }
 
 private:
-  void setActor(TerraMainApp& app, dshandle actor)
+  void setActor(TerraMainApp& app, HDataSource actor)
   {
     meshPreview.regenerate(app, actor);
   }

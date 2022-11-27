@@ -15,7 +15,7 @@ void Image::unload()
 }
 
 /*
-void Image::remove(dshandle node)
+void Image::remove(HDataSource node)
 {
   Dependency::remove(node);
   if (isDetached())
@@ -112,13 +112,13 @@ void ImageSource::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
   addToDataStream(dataStream, source.reserved);
 }
 
-std::pair<dshandle, bool> ImageSource::setParamSourceImpl(uint32_t paramIdx, dshandle h)
+std::pair<HDataSource, bool> ImageSource::setParamSourceImpl(uint32_t paramIdx, HDataSource h)
 {
   auto const& ds = get().get<DataSource>(h);
   if (ds.getFormat().type != DataType::eImage)
-    return std::pair<dshandle, bool>(source, false);
+    return std::pair<HDataSource, bool>(source, false);
   std::swap(source.reserved, h.reserved);
-  return std::pair<dshandle, bool>(h, true);
+  return std::pair<HDataSource, bool>(h, true);
 }
 
 bool ImageSource::ensure(Pipeline& p) 

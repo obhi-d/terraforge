@@ -22,7 +22,7 @@ void GpuBuffer::ensure()
     handle = cd.createBuffer(storage, usage, size);
 }
 
-std::byte* GpuBuffer::map(uint32_t offset, uint32_t size) 
+ubyte_t* GpuBuffer::map(uint32_t offset, uint32_t size) 
 {
   return cd.mapBuffer(handle, offset, size);
 }

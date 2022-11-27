@@ -28,16 +28,16 @@ class NodeEditor;
 class DrawableNode
 {
 public:
-  DrawableNode(TerraMainApp&, dshandle id, ImVec2 pos);
+  DrawableNode(TerraMainApp&, HDataSource id, ImVec2 pos);
   ~DrawableNode();
   bool begin(TerraMainApp&, ImguiBackend&, NodeEditor&, uint32_t selectedStyle);
   void end(TerraMainApp&, ImguiBackend&, NodeEditor&, uint32_t selectedStyle);
-  bool is(dshandle id) const
+  bool is(HDataSource id) const
   {
     return id == this->id;
   }
 
-  dshandle getId() const
+  HDataSource getId() const
   {
     return id;
   }
@@ -61,7 +61,7 @@ private:
 
   float headerMaxY = 0.0f;
 
-  dshandle id;
+  HDataSource id;
   uint32_t style = 0;
 
   ImVec2 pos{};

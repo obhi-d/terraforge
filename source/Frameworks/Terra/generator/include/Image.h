@@ -12,11 +12,11 @@ class Terra;
 
 struct Image : public DataSource
 {
-  std::filesystem::path        source;
-  std::unique_ptr<std::byte[]> data;
-  uint32_t                     width  = 0;
-  uint32_t                     height = 0;
-  ImageFormat                  format = ImageFormat::eFloat;
+  std::filesystem::path      source;
+  std::unique_ptr<ubyte_t[]> data;
+  uint32_t                   width  = 0;
+  uint32_t                   height = 0;
+  ImageFormat                format = ImageFormat::eFloat;
 
   struct rgba
   {
@@ -45,14 +45,14 @@ struct Image : public DataSource
     return Type::eImage;
   }
 
-  DataFormat getFormat() const final
+  DataFormat getFormat(uint32) const final
   {
     return DataFormat(DataType::eImage);
   }
 
-  inline std::pair<dshandle, bool> setParamSourceImpl(uint32_t paramIdx, Source) final
+  inline std::pair<Source, bool> setParamSourceImpl(uint32_t paramIdx, Source) final
   {
-    return std::make_pair<dshandle, bool>({}, false);
+    return std::make_pair<Source, bool>({}, false);
   }
 
   template <typename T>
@@ -135,7 +135,7 @@ struct Image : public DataSource
   }
   // bool        isEnabled(Pipeline const&) const final;
   // bool        ensure(Pipeline&) final;
-  // void     remove(dshandle node) final;
+  // void     remove(HDataSource node) final;
   bool     fromDataStreamImpl(const std::vector<uint8_t>& dataStream, size_t& serialIdx) final;
   void     toDataStreamImpl(std::vector<uint8_t>& dataStream) const;
   HelpInfo getHelpInfo(HelpType type, int param = -1) const final;

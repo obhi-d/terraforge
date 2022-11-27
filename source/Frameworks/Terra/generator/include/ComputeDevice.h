@@ -27,10 +27,10 @@ struct ComputeDevice
   /// @param height image height
   /// @return Returns the image handle
   virtual GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
-                                         std::byte const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
+                                         ubyte_t const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
                                          uint32 mipLevels = 1)                                        = 0;
   virtual GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                              ImageFormat format, std::span<std::byte const*> data = {},
+                                              ImageFormat format, std::span<ubyte_t const*> data = {},
                                               GfxImage2D::Swizzle swizzle = {}, uint32 mipLevels = 1) = 0;
   virtual void               destroy(GfxImage2D::handle)                                              = 0;
   /// @brief Create a sampler
@@ -39,8 +39,8 @@ struct ComputeDevice
   /// @brief Should create a compute shader object
   /// @param sources compute shader sources
   /// @return compute shader handle
-  virtual GfxProgram::handle createProgram(ShaderOptions const& options, ShaderBuilder const& code) = 0;
-  virtual void               destroy(GfxProgram::handle)                                            = 0;
+  virtual GfxProgram::handle createProgram(std::span<ShaderOptions> options, ShaderBuilder const& code) = 0;
+  virtual void               destroy(GfxProgram::handle)                                                = 0;
   /// @brief Create a descriptor set layout
   /// @param types handle types
   /// @return DescriptorSet handle
@@ -55,17 +55,17 @@ struct ComputeDevice
   /// @brief Map buffer for cpu upload
   /// @param buffer buffer handle
   /// @return CPU data to be used for memcpy
-  virtual std::byte* mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size) = 0;
-  virtual void       unmapBuffer(GfxBuffer::handle buffer)                               = 0;
+  virtual ubyte_t* mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size) = 0;
+  virtual void     unmapBuffer(GfxBuffer::handle buffer)                               = 0;
 
   /// @brief Update texture
-  virtual void updateImage(GfxImage2D::handle image, std::span<std::byte const> data) = 0;
+  virtual void updateImage(GfxImage2D::handle image, std::span<ubyte_t const> data) = 0;
   /// @brief Update descriptor sett
   virtual void updateDescriptorSet(GfxDescriptorSet::handle, std::span<GfxDescriptorSet::rhandle> handles) = 0;
   /// @brief Readback buffer
-  virtual void readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<std::byte> out) = 0;
+  virtual void readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<ubyte_t> out) = 0;
   /// @brief Readback image
-  virtual void readImage(GfxImage2D::handle image, std::span<std::byte> out) = 0;
+  virtual void readImage(GfxImage2D::handle image, std::span<ubyte_t> out) = 0;
 
   /// @brief dispatch a compute shader
   /// @param shader shader handle

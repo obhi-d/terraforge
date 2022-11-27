@@ -182,7 +182,7 @@ void declBufferOutput(std::string& opaque, DescriptorList& dl, OptionList& ol, i
   opaque += std::format(gs_bufferStore, "output_data");
 }
 
-void fillScalarDisabled(Pipeline const&, ParameterMeta const& pm, ScalarValue sv, std::byte* data)
+void fillScalarDisabled(Pipeline const&, ParameterMeta const& pm, ScalarValue sv, ubyte_t* data)
 {
   switch (pm.format.scalarSubType)
   {
@@ -201,14 +201,14 @@ void fillScalarDisabled(Pipeline const&, ParameterMeta const& pm, ScalarValue sv
 // ----------------------------------------------
 
 // ------------------ Update --------------------
-void CurveData::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, std::byte* data)
+void CurveData::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, ubyte_t* data)
 {
   rh.first            = handle;
   *(int*)data         = spline.get_nb_points();
   *((float*)data + 1) = spline.get_c0();
 }
 
-void Node::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, std::byte* data)
+void Node::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, ubyte_t* data)
 {
 
   if (isEnabled(pipeline))
@@ -233,14 +233,14 @@ void Node::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& r
     *(float*)data = defaultValue;
 }
 
-void Image::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, std::byte* data)
+void Image::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, ubyte_t* data)
 {
   rh.first           = handle;
   *(vec2*)data       = vec2{1.f, 1.f};
   *(vec2*)(data + 8) = vec2{0.f, 0.f};
 }
 /*
-void ImageSource::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, std::byte* data)
+void ImageSource::fillDescriptor(Pipeline const& pipeline, GfxDescriptorSet::rhandle& rh, ubyte_t* data)
 {
   bool hasSource = true;
   if (DataSource::isValid(source) && isWithinTile(pipeline.params().tile))

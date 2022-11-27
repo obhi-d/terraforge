@@ -16,7 +16,7 @@ class TerraMainApp
 public:
   struct EventRegen
   {
-    dshandle actor;
+    HDataSource actor;
   };
 
   TerraMainApp();
@@ -71,7 +71,7 @@ public:
     return theme;
   }
 
-  void regenWithActor(dshandle h)
+  void regenWithActor(HDataSource h)
   {
     EventRegen actor;
     assert(!h || DataSource::isNode(h));

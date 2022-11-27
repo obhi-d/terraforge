@@ -3,13 +3,9 @@
 
 namespace terra
 {
+// Source builder is bindless shader builder
 
-class SourceBuilder
-{
-  bool isMergable(float cycles);
-
-  ShaderOptions options;
-  float         cycles = 1.f;
-};
+struct SourceBuilder
+{};
 
 } // namespace terra

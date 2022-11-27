@@ -35,25 +35,25 @@ public:
   }
 
   template <typename As>
-  inline As& get(dshandle at)
+  inline As& get(HDataSource at)
   {
     return static_cast<As&>(*dataSources[at].get());
   }
 
   template <typename As>
-  inline As const& get(dshandle at) const
+  inline As const& get(HDataSource at) const
   {
     return static_cast<As const&>(*dataSources[at].get());
   }
 
-  inline bool isValid(dshandle at) const
+  inline bool isValid(HDataSource at) const
   {
     return at && dataSources.contains(at) && dataSources.at(at) &&
            get<DataSource>(at).getSelf() == DataSource::handle(at.reserved);
   }
 
   template <typename As>
-  inline As* getIf(dshandle at) const
+  inline As* getIf(HDataSource at) const
   {
     if (at && dataSources.contains(at))
     {
@@ -64,27 +64,29 @@ public:
     return nullptr;
   }
 
-  inline void destroy(dshandle n)
+  inline void destroy(HDataSource n)
   {
     dataSources.erase(n);
   }
 
   template <typename T>
-  inline void replace(T& oldT, T& newT, dshandle node)
+  inline void replace(T& oldT, T& newT, HDataSource node)
   {
     if (oldT)
       get(oldT);
   }
 
-  dshandle createNode(NodeMeta const&);
-  dshandle getImage(std::filesystem::path path);
-  dshandle createCurve();
+  HDataSource createNode(NodeMeta const&);
+  HDataSource getImage(std::filesystem::path path);
+  HDataSource createCurve();
 
   template <typename Meta>
   void addMeta(std::string_view name, Meta const& meta)
   {
     metaMap[name] = (uint32_t)nodeMetaTable.size();
     nodeMetaTable.push_back(std::static_pointer_cast<NodeMeta>(std::make_shared<Meta>(meta)));
+    nodeMetaTable.back()->id = (uint32_t)nodeMetaTable.size();
+    nodeMetaTable.back()->prepare();
   }
 
   inline NodeMeta* getNodeMeta(std::string_view name)
@@ -211,7 +213,7 @@ struct MetaBuilder
     dummy.icon     = icon;
     dummy.category = category;
     dummy.style    = style;
-    dummy.format   = output;
+    dummy.outputs.push_back(output);
     dummy.as<NodeT>();
     return dummy;
   }
@@ -230,7 +232,7 @@ struct MetaBuilder
     dummy.icon     = icon;
     dummy.category = category;
     dummy.style    = style;
-    dummy.format   = output;
+    dummy.outputs.push_back(output);
     dummy.as<NodeT>();
     return dummy;
   }

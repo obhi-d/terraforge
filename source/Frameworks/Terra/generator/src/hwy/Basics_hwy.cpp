@@ -348,8 +348,7 @@ void Basics_hwy()
     builder.param<&DistanceNode::fromY>("@fromY");
     builder.param<&DistanceNode::modulateByFreq>("@modulateByFreq");
     builder.param<&DistanceNode::distanceType>(
-      "@distanceType",
-      FmtEnum(0, {"@eucledian"_ls, "@eucledianSquared"_ls, "@manhattan"_ls, "@hybrid"_ls, "@maxAxis"_ls}));
+      "@distanceType", FmtEnum(0, {"@eucledian", "@eucledianSquared", "@manhattan", "@hybrid", "@maxAxis"}));
     builder.done();
   }
 
@@ -357,7 +356,7 @@ void Basics_hwy()
     builder.add<MaskNode>("@imageMask", IconBasicMask);
     builder.fn(HWY_DYNAMIC_DISPATCH(imageMask));
     builder.param<&MaskNode::source>("@source", FmtVal<DataType::eImage>());
-    builder.param<&MaskNode::sampler>("@sampling", FmtEnum(0, {"@x1"_ls, "@x2"_ls, "@x3"_ls, "@x4"_ls}));
+    builder.param<&MaskNode::sampler>("@sampling", FmtEnum(0, {"@x1", "@x2", "@x3", "@x4"}));
     builder.param<&MaskNode::offset>("@offset");
     builder.param<&MaskNode::scale>("@scale");
     builder.done();

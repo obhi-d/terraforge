@@ -8,62 +8,100 @@
 
 namespace terra
 {
+
 struct ShaderOptions
 {
-  void setOption(std::string_view option, int32_t value)
+  struct Options
   {
-    auto id       = getIndex(option);
-    auto pos      = options.end();
-    bool posFound = false;
-    for (auto it = options.begin(); it != options.end(); ++it)
+    inline bool operator==(Options const&) const noexcept = default;
+    inline bool operator!=(Options const&) const noexcept = default;
+
+    uint64_t mask = 0;
+  };
+
+  struct Dictionary
+  {
+    std::vector<std::string> names;
+  };
+
+  Dictionary const* dictionary = nullptr;
+  Options           options    = {};
+
+  inline ShaderOptions() noexcept {}
+  inline ShaderOptions(Dictionary const* dict) : dictionary(dict) {}
+
+  void setOption(std::string_view option)
+  {
+    assert(dictionary);
+    for (uint64_t i = 0; i < dictionary->names.size(); ++i)
     {
-      if (it->first == id)
+      if (option == dictionary->names[i])
       {
-        it->second = value;
+        options.mask |= 1ull << i;
         return;
       }
-      else if (it->first > value && !posFound)
-      {
-        pos      = it;
-        posFound = true;
-      }
     }
-    options.insert(pos, std::pair<uint32_t, int32_t>(id, value));
   }
 
-  void removeOption(std::string_view option)
+  void unsetOption(std::string_view option)
   {
-    auto id = getIndex(option);
-    for (auto it = options.begin(); it != options.end(); ++it)
+    for (uint64_t i = 0; i < dictionary->names.size(); ++i)
     {
-      if (it->first == id)
+      if (option == dictionary->names[i])
       {
-        options.erase(it);
+        options.mask &= ~(1ull << i);
         return;
       }
     }
   }
 
-  static uint32_t getIndex(std::string_view name)
+  void setOption(Options options)
   {
-    auto it = optionIndices.find(name);
-    if (it == optionIndices.end())
-    {
-      optionIndices.emplace(name, (uint32_t)optionIndices.size() + 1);
-      return (uint32_t)optionIndices..size();
-    }
-    return *it;
+    options.mask |= options.mask;
+  }
+
+  void unsetOption(Options options)
+  {
+    options.mask &= ~options.mask;
+  }
+
+  void setOption(uint64_t idx)
+  {
+    options.mask |= 1ull << idx;
+  }
+
+  void unsetOption(uint64_t idx)
+  {
+    options.mask &= ~(1 << idx);
   }
 
   inline bool operator==(ShaderOptions const&) const noexcept = default;
   inline bool operator!=(ShaderOptions const&) const noexcept = default;
 
-  inline uint32_t operator() const noexcept
+  struct hasher
   {
-    return fnv1a(options.data(), options.size() * sizeof(std::pair<uint32_t, int32_t>));
+    inline uint32_t operator()(ShaderOptions const& option) const noexcept
+    {
+      return fnv1a(&option.options.mask, sizeof(option.options.mask));
+    }
+  };
+
+  std::string_view name(uint32_t i) const
+  {
+    return dictionary->names[i];
   }
 
-  std::vector<std::pair<uint32_t, int32_t>>             options;
-  static std::unordered_map<std::string_view, uint32_t> optionIndices;
+  int32_t value(uint64_t i) const
+  {
+    return options.mask & (1ull << i);
+  }
+
+  uint32_t size() const
+  {
+    return dictionary ? (uint32_t)dictionary->names.size() : 0;
+  }
+
+  static std::vector<Dictionary> optionDictionaries;
+};
 
 } // namespace terra

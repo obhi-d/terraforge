@@ -1,13 +1,19 @@
 
 #pragma once
 
+#include "HashMachine.h"
 #include "Node.h"
+#include "ShaderOptions.h"
+#include "ShaderProgram.h"
+#include "hyb/HybridBuffer.h"
 #include "hyb/HybridNodeMeta.h"
+#include <acl/dynamic_array.hpp>
 #include <unordered_map>
 
 namespace terra
 {
-class SourceBuilder;
+
+class HybridPipeline;
 /// @brief Basics of node
 /// A node can be executed on:
 ///   - CPU  : Fully executes and genertes results
@@ -23,35 +29,63 @@ struct HybridNode : public Node
     eGraphics
   };
 
-  virtual bool  needsPipelineExecute() const                     = 0;
-  virtual bool  isInjectSupported() const                        = 0;
-  virtual Queue getQueue() const                                 = 0;
-  virtual void  execute(HybridPipeline&) const                   = 0;
-  virtual void  copyToCPU()                                      = 0;
-  virtual bool  buildIntoSource(SourceBuilder&, HybridPipeline&) = 0;
-  virtual bool  fillParameters(SourceBuilder&, HybridPipeline&)  = 0;
+  enum class Result
+  {
+    eDone,
+    eContinue,
+    eFailed,
+    eWaiting
+  };
+
+  virtual bool   needsPipelineExecute() const        = 0;
+  virtual bool   isSourceModifier() const            = 0;
+  virtual Queue  getQueue() const                    = 0;
+  virtual Result execute(HybridPipeline&) const      = 0;
+  virtual void   prepare(HybridPipeline&)            = 0;
+  virtual void   probe(HybridPipeline&, ProgramKey&) = 0;
 };
 
 struct ClassicHybridNode : public HybridNode
 {
-  virtual bool needsPipelineExecute() const
+  bool needsPipelineExecute() const override
   {
     return true;
   }
-  virtual bool isInjectSupported() const
+  bool isSourceModifier() const override
   {
     return false;
   }
-  virtual Queue getQueue() const
+  Queue getQueue() const override
   {
     return Queue::eGraphics;
   }
-  virtual bool buildIntoSource(SourceBuilder&, HybridPipeline&)
+  Result execute(HybridPipeline&) const override
   {
-    return false;
+    return Result::eDone;
   }
-  virtual void execute(HybridPipeline&) const                  = 0;
-  virtual void copyToCPU()                                     = 0;
-  virtual bool fillParameters(SourceBuilder&, HybridPipeline&) = 0;
+  void modifyOption(ShaderOptions&) const {}
+
+  uvec2 constraintTileStart = uvec2(0, 0);
+  uvec2 constraintTileCount = uvec2(0, 0);
+};
+
+struct GpuNode : public ClassicHybridNode
+{
+  struct Data
+  {
+    uint32_t                                 pipeline;
+    ShaderOptions                            options;
+    ShaderProgramRef                         program;
+    acl::dynamic_array<HybridBuffer::handle> inputs;
+    acl::dynamic_array<HybridBuffer::handle> outputs;
+  };
+
+  void   modifyOption(ShaderOptions&) const;
+  void   prepare(HybridPipeline&) override;
+  void   probe(HybridPipeline&, ProgramKey&) override;
+  Result execute(HybridPipeline&) const;
+  bool   fillParameters(ShaderProgram&, HybridPipeline&);
+
+  Data nodeData;
 };
 } // namespace terra

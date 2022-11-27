@@ -27,7 +27,7 @@ void declCurveData(std::string& ubo, std::string& opaque, DescriptorList&, Optio
 void declTextureOutput(std::string& opaque, DescriptorList&, OptionList&, int32_t& binding, ShaderBuilder&);
 void declBufferOutput(std::string& opaque, DescriptorList& dl, OptionList& ol, int32_t& binding,
                       ShaderBuilder& sb);
-void fillScalarDisabled(Pipeline const&, ParameterMeta const& pm, ScalarValue sv, std::byte* data);
+void fillScalarDisabled(Pipeline const&, ParameterMeta const& pm, ScalarValue sv, ubyte_t* data);
 
 } // namespace glsl
 

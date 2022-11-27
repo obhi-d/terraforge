@@ -1,8 +1,10 @@
 #pragma once
 #include <acl/linear_arena_allocator.hpp>
+#include <acl/link.hpp>
 #include <array>
 #include <cassert>
 #include <cctype>
+#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -13,6 +15,7 @@
 #include <mimalloc-2.0/mimalloc.h>
 #include <optional>
 #include <semaphore>
+#include <span>
 #include <stdexcept>
 #include <vector>
 
@@ -40,6 +43,8 @@
 
 namespace terra
 {
+
+using ubyte_t = std::uint8_t;
 
 namespace detail
 {
@@ -130,8 +135,8 @@ struct MemberPtr<P>
 
 struct Content
 {
-  std::unique_ptr<std::byte[]> data;
-  size_t                       size = 0;
+  std::unique_ptr<ubyte_t[]> data;
+  size_t                     size = 0;
 
   Content()                              = default;
   Content(Content&&) noexcept            = default;
@@ -203,6 +208,15 @@ struct HandleHash
   inline uint32_t operator()(handle<T> d) const noexcept
   {
     return d.reserved;
+  }
+};
+
+template <typename T>
+struct LinkHash
+{
+  inline uint32_t operator()(acl::link<T> d) const noexcept
+  {
+    return d.value();
   }
 };
 
@@ -374,17 +388,27 @@ enum class DrawHint
 
 class DataSource;
 using DataSourcePtr = std::shared_ptr<DataSource>;
-using dshandle      = handle<DataSourcePtr>;
-using DSHandleHash  = HandleHash<DataSourcePtr>;
+using HDataSource   = handle<DataSourcePtr>;
+using HHashSource   = HandleHash<DataSourcePtr>;
 
 struct Source
 {
-  dshandle source;
-  uint32_t secondary = 0;
+  HDataSource source;
+  uint32_t    secondary = 0;
+
+  inline auto operator<=>(Source const&) const noexcept = default;
 
   inline Source() noexcept = default;
-  inline Source(dshandle d) : source(d) {}
-  inline Source(dshandle d, uint32_t v) : source(d), secondary(v) {}
+  inline Source(HDataSource d) : source(d) {}
+  inline Source(HDataSource d, uint32_t v) : source(d), secondary(v) {}
+};
+
+struct SourceHash
+{
+  inline uint32_t operator()(Source d) const noexcept
+  {
+    return fnv1a(&d, sizeof(d));
+  }
 };
 
 inline uintptr_t pack(uint32_t first, uint32_t sec)
@@ -686,11 +710,6 @@ public:
   inline operator glm::vec4() const
   {
     return tovec4<glm::vec4>();
-  }
-
-  inline operator ImVec4() const
-  {
-    return tovec4<ImVec4>();
   }
 
   inline float r() const

@@ -115,20 +115,20 @@ public:
   void   popInput(uint32_t thread);
 
   template <typename T>
-  T& addCacheData(dshandle ds)
+  T& addCacheData(HDataSource ds)
   {
     auto l = cacheData.emplace<T>(ds.um_index());
     return cacheData.at<T>(l);
   }
 
   template <typename T>
-  T const& getCacheData(dshandle ds) const
+  T const& getCacheData(HDataSource ds) const
   {
     return cacheData.at<T>(ds.um_index());
   }
 
   template <typename T>
-  T& getCacheData(dshandle ds)
+  T& getCacheData(HDataSource ds)
   {
     return cacheData.at<T>(ds.um_index());
   }
