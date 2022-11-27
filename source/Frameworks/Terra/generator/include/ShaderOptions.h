@@ -24,11 +24,12 @@ struct ShaderOptions
     std::vector<std::string> names;
   };
 
-  Dictionary const* dictionary = nullptr;
-  Options           options    = {};
+  uint32_t dictionary = 0xffffffff;
+  uint32_t node       = 0;
+  Options  options    = {};
 
   inline ShaderOptions() noexcept {}
-  inline ShaderOptions(Dictionary const* dict) : dictionary(dict) {}
+  inline ShaderOptions(uint32_t dict, uint32_t id) : dictionary(dict), node(id) {}
 
   void setOption(std::string_view option)
   {
@@ -88,7 +89,7 @@ struct ShaderOptions
 
   std::string_view name(uint32_t i) const
   {
-    return dictionary->names[i];
+    return optionDictionaries[dictionary].names[i];
   }
 
   int32_t value(uint64_t i) const
@@ -98,7 +99,7 @@ struct ShaderOptions
 
   uint32_t size() const
   {
-    return dictionary ? (uint32_t)dictionary->names.size() : 0;
+    return dictionary < optionDictionaries.size() ? (uint32_t)optionDictionaries[dictionary].names.size() : 0;
   }
 
   static std::vector<Dictionary> optionDictionaries;

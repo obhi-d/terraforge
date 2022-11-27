@@ -42,7 +42,7 @@ struct HybridNode : public Node
   virtual Queue  getQueue() const                    = 0;
   virtual Result execute(HybridPipeline&) const      = 0;
   virtual void   prepare(HybridPipeline&)            = 0;
-  virtual void   probe(HybridPipeline&, ProgramKey&) = 0;
+  virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&) = 0;
 };
 
 struct ClassicHybridNode : public HybridNode
@@ -73,8 +73,7 @@ struct GpuNode : public ClassicHybridNode
 {
   struct Data
   {
-    uint32_t                                 pipeline;
-    ShaderOptions                            options;
+    ProgramKey                               key;
     ShaderProgramRef                         program;
     acl::dynamic_array<HybridBuffer::handle> inputs;
     acl::dynamic_array<HybridBuffer::handle> outputs;
@@ -82,10 +81,10 @@ struct GpuNode : public ClassicHybridNode
 
   void   modifyOption(ShaderOptions&) const;
   void   prepare(HybridPipeline&) override;
-  void   probe(HybridPipeline&, ProgramKey&) override;
+  void   probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
   Result execute(HybridPipeline&) const;
   bool   fillParameters(ShaderProgram&, HybridPipeline&);
 
-  Data nodeData;
+  std::vector<Data> nodeData;
 };
 } // namespace terra

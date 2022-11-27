@@ -13,10 +13,10 @@ class HybridNodeMeta : public NodeMeta
 
 struct ProgramKey
 {
-  HashMachine                machine = HashMachine(0);
-  std::vector<ShaderOptions> options;
+  uint64_t                   hash       = 0;
   uint32_t                   active     = 0;
   uint32_t                   probeCount = 0;
+  std::vector<ShaderOptions> options;
 
   inline bool operator==(ProgramKey const&) const noexcept = default;
   inline bool operator!=(ProgramKey const&) const noexcept = default;
@@ -25,7 +25,7 @@ struct ProgramKey
   {
     inline uint32_t operator()(ProgramKey const& option) const noexcept
     {
-      return option.machine();
+      return option.hash;
     }
   };
 };

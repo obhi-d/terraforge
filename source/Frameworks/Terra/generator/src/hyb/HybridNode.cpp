@@ -10,19 +10,37 @@ namespace terra
 void GpuNode::prepare(HybridPipeline& pipe)
 {
   pipe.push(self);
-  if (pipe.get)
-  ProgramKey option;
-  probe(pipe, option);
+  if (pipe.getId() >= nodeData.size())
+    nodeData.resize(pipe.getId() + 1);
+  auto&       ndat    = nodeData[pipe.getId()];
+  auto        program = ndat.program.lock();
+  HashMachine machine{0};
+  ProgramKey  option;
+  probe(pipe, option, machine);
+  option.hash         = machine.value;
   auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
-  auto const  program = gpuMeta.findProgram(option);
+  if (!program || ndat.key != option)
+    program = gpuMeta.findProgram(option);
   if (!program)
   {
+    GpuProgramBuilder builder;
+    for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
+    {
+      auto const& def = meta.parameterDef[i];
+      switch (def.format.type)
+      {
+      case DataType::eBuffer:
+        builder.bind_buffer()
+        
+        break;
+      case DataType::eInt2:
+      }
+    }
     // use GpuProgramBuilder to build a program
-
   }
 }
 
-void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option)
+void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machine)
 {
   uint32_t      optionIdx = 0;
   ShaderOptions shoption;
@@ -74,7 +92,7 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option)
     }
   }
 
-  option.machine(shoption.options.mask);
+  machine(shoption.options.mask);
   option.options.emplace_back(shoption);
 }
 
