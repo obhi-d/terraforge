@@ -23,27 +23,67 @@ void GpuNode::prepare(HybridPipeline& pipe)
     program = gpuMeta.findProgram(option);
   if (!program)
   {
-    GpuProgramBuilder builder;
-    for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
+    auto builder = GpuProgramBuilder(meta.id);
+    build(pipe, builder);
+    // use GpuProgramBuilder to build a program
+  }
+}
+
+void GpuNode::build(HybridPipeline& pipe, GpuProgramBuilder& builder)
+{
+  auto const&   gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
+  uint32_t      optionIdx = 0;
+  ShaderOptions shoption{gpuMeta.getDictionaryIdx()};
+  for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
+  {
+    auto const& def = meta.parameterDef[i];
+    auto        p   = param(i);
+    if (std::holds_alternative<Source>(p))
     {
-      auto const& def = meta.parameterDef[i];
-      switch (def.format.type)
+      auto source = std::get<Source>(p).source;
+      if (DataSource::isValid(source) &&
+          DataSource::isWithinTile(pipe.getTileId(), constraintTileStart, constraintTileCount))
       {
-      case DataType::eBuffer:
-        builder.bind_buffer()
-        
-        break;
-      case DataType::eInt2:
+        //
+        auto& node = get().get<HybridNode>(source);
+        if (node.isSourceModifier())
+        {
+          node.build(pipe, builder);
+        }
+        shoption.setOption(optionIdx);
+        optionIdx++;
       }
     }
-    // use GpuProgramBuilder to build a program
+    else
+    {
+      switch (def.format.type)
+      {
+      case DataType::eCurveData:
+      case DataType::eImage:
+      case DataType::eInput:
+      case DataType::ePostProcess:
+      case DataType::eBuffer:
+        optionIdx++;
+        break;
+      case DataType::eBool:
+        if (std::get<ScalarValue>(p).bvalue)
+          shoption.setOption(optionIdx);
+        optionIdx++;
+        break;
+      case DataType::eEnum:
+        shoption.setOption(optionIdx + std::get<ScalarValue>(p).ivalue);
+        optionIdx += def.maxEnum;
+        break;
+      }
+    }
   }
 }
 
 void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machine)
 {
+  auto const&   gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t      optionIdx = 0;
-  ShaderOptions shoption;
+  ShaderOptions shoption{gpuMeta.getDictionaryIdx()};
   for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
   {
     auto const& def = meta.parameterDef[i];
@@ -59,7 +99,7 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
         auto& node = get().get<HybridNode>(source);
         if (node.isSourceModifier())
         {
-          node.probe(pipe, option);
+          node.probe(pipe, option, machine);
           option.probeCount++;
         }
         node.prepare(pipe);

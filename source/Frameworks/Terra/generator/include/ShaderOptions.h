@@ -24,19 +24,19 @@ struct ShaderOptions
     std::vector<std::string> names;
   };
 
-  uint32_t dictionary = 0xffffffff;
-  uint32_t node       = 0;
-  Options  options    = {};
+  Options  options = {};
+  uint32_t index   = 0xffffffff;
 
   inline ShaderOptions() noexcept {}
-  inline ShaderOptions(uint32_t dict, uint32_t id) : dictionary(dict), node(id) {}
+  inline ShaderOptions(uint32_t dict) : index(dict) {}
 
   void setOption(std::string_view option)
   {
-    assert(dictionary);
-    for (uint64_t i = 0; i < dictionary->names.size(); ++i)
+    assert(index < optionDictionaries.size());
+    auto const& dictionary = optionDictionaries[index];
+    for (uint64_t i = 0; i < dictionary.names.size(); ++i)
     {
-      if (option == dictionary->names[i])
+      if (option == dictionary.names[i])
       {
         options.mask |= 1ull << i;
         return;
@@ -46,9 +46,11 @@ struct ShaderOptions
 
   void unsetOption(std::string_view option)
   {
-    for (uint64_t i = 0; i < dictionary->names.size(); ++i)
+    assert(index < optionDictionaries.size());
+    auto const& dictionary = optionDictionaries[index];
+    for (uint64_t i = 0; i < dictionary.names.size(); ++i)
     {
-      if (option == dictionary->names[i])
+      if (option == dictionary.names[i])
       {
         options.mask &= ~(1ull << i);
         return;
@@ -89,7 +91,7 @@ struct ShaderOptions
 
   std::string_view name(uint32_t i) const
   {
-    return optionDictionaries[dictionary].names[i];
+    return optionDictionaries[index].names[i];
   }
 
   int32_t value(uint64_t i) const
@@ -99,7 +101,7 @@ struct ShaderOptions
 
   uint32_t size() const
   {
-    return dictionary < optionDictionaries.size() ? (uint32_t)optionDictionaries[dictionary].names.size() : 0;
+    return index < optionDictionaries.size() ? (uint32_t)optionDictionaries[index].names.size() : 0;
   }
 
   static std::vector<Dictionary> optionDictionaries;

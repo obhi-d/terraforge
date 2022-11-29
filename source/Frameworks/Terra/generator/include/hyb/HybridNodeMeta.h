@@ -36,6 +36,11 @@ public:
   ShaderProgramPtr findProgram(ProgramKey const& key) const;
   void             addProgram(ProgramKey const& key, ShaderProgramPtr program) const;
 
+  uint32 getDictionaryIdx() const
+  {
+    return dictionaryIdx;
+  }
+
 protected:
   void prepare() override;
 

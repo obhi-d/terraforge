@@ -12,7 +12,7 @@
 
 namespace terra
 {
-
+class GpuProgramBuilder;
 class HybridPipeline;
 /// @brief Basics of node
 /// A node can be executed on:
@@ -37,12 +37,13 @@ struct HybridNode : public Node
     eWaiting
   };
 
-  virtual bool   needsPipelineExecute() const        = 0;
-  virtual bool   isSourceModifier() const            = 0;
-  virtual Queue  getQueue() const                    = 0;
-  virtual Result execute(HybridPipeline&) const      = 0;
-  virtual void   prepare(HybridPipeline&)            = 0;
+  virtual bool   needsPipelineExecute() const                      = 0;
+  virtual bool   isSourceModifier() const                          = 0;
+  virtual Queue  getQueue() const                                  = 0;
+  virtual Result execute(HybridPipeline&) const                    = 0;
+  virtual void   prepare(HybridPipeline&)                          = 0;
   virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&) = 0;
+  virtual void   build(HybridPipeline&, GpuProgramBuilder&)        = 0;
 };
 
 struct ClassicHybridNode : public HybridNode
@@ -63,8 +64,7 @@ struct ClassicHybridNode : public HybridNode
   {
     return Result::eDone;
   }
-  void modifyOption(ShaderOptions&) const {}
-
+  void  build(HybridPipeline&, GpuProgramBuilder&) override {}
   uvec2 constraintTileStart = uvec2(0, 0);
   uvec2 constraintTileCount = uvec2(0, 0);
 };
@@ -82,6 +82,7 @@ struct GpuNode : public ClassicHybridNode
   void   modifyOption(ShaderOptions&) const;
   void   prepare(HybridPipeline&) override;
   void   probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
+  void   build(HybridPipeline&, GpuProgramBuilder&) override;
   Result execute(HybridPipeline&) const;
   bool   fillParameters(ShaderProgram&, HybridPipeline&);
 
