@@ -7,10 +7,10 @@
 #include <vector>
 
 #include "Common.h"
-#include "ComputeDevice.h"
 #include "CurveData.h"
 #include "DataSource.h"
 #include "Dependency.h"
+#include "GfxDevice.h"
 #include "GpuBuffer.h"
 #include "Image.h"
 #include "Serializer.h"
@@ -317,21 +317,20 @@ class NodeMeta
 {
 
 public:
-  struct ShaderContent
-  {
-    std::string function;
-    std::string extensions;
-    std::string shaderContent;
-  };
-
   std::string_view           icon;
   DisplayInfo                displayInfo;
   std::u8string_view         category;
   std::string_view           style;
   std::vector<ParameterMeta> parameterDef;
 
-  std::vector<DataFormat> outputs    = {DataFormat(DataType::eBuffer)};
-  CreateNode              createNode = nullptr;
+  struct Output
+  {
+    DataFormat       format = DataFormat(DataType::eBuffer);
+    std::string_view name   = "output";
+  };
+
+  std::vector<Output> outputs;
+  CreateNode          createNode = nullptr;
 
   // derived
   uint32_t id;

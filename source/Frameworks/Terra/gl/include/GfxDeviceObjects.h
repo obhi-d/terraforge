@@ -1,30 +1,36 @@
 #pragma once
 #include "GlGfx.h"
 #include "Table.h"
+#include <acl/dynamic_array.hpp>
+#include <unordered_map>
 
 namespace terra
 {
 struct GfxBufferGl : GfxBuffer
 {
-  gl::GLuint       glhandle;
+  gl::GLuint       glhandle = {};
   gl::GLenum       target;
   GfxStorageClass  storage;
   GfxBuffer::Usage usage;
-  uint32_t         size;
+  uint32_t         size  = {};
+  gl::GLuint       gltbo = {};
+  gl::GLuint64     hdev  = 0;
 };
 
 struct GfxImageGl : GfxImage2D
 {
-  gl::GLuint      glhandle;
-  GfxStorageClass storage;
-  uint32_t        width;
-  uint32_t        height;
-  ImageFormat     format;
+  gl::GLuint                                   glhandle = {};
+  GfxStorageClass                              storage;
+  uint32_t                                     width  = {};
+  uint32_t                                     height = {};
+  ImageFormat                                  format;
+  gl::GLuint64                                 hdev = 0;
+  std::unordered_map<gl::GLuint, gl::GLuint64> hdevTexSampler;
 };
 
 struct GfxSamplerGl : GfxSampler
 {
-  gl::GLuint glhandle;
+  gl::GLuint glhandle = {};
 };
 
 struct GfxDescriptorSetLayoutGl : GfxDescriptorSetLayout
@@ -41,12 +47,12 @@ struct GfxDescriptorSetGl : GfxDescriptorSet
 
 struct GfxFenceGl : GfxFence
 {
-  gl::GLsync sync;
+  gl::GLsync sync = {};
 };
 
 struct GfxProgramGl : GfxProgram
 {
-  gl::GLuint glhandle;
+  gl::GLuint glhandle                 = {};
   gl::GLuint shaders[ShaderTypeCount] = {};
 };
 
@@ -60,8 +66,24 @@ struct GfxMeshLayoutGl : GfxMesh
   gl::GLuint             glhandle;
 };
 
+struct GfxBindlessLayoutGl : GfxBindlessLayout
+{
+
+  acl::dynamic_array<Entry> entries;
+};
+
+struct GfxBindlessDescriptorGl : GfxBindlessDescriptor
+{
+  GfxBindlessLayout::handle layout;
+  gl::GLuint                glhandle     = 0;
+  uint32_t                  bufferOffset = 0;
+  uint32_t                  bufferSize   = 0;
+};
+
 struct GfxResources
 {
+  std::vector<std::uint8_t> uboData;
+
   table<GfxBufferGl>  buffers;
   table<GfxImageGl>   images;
   table<GfxSamplerGl> samplers;
@@ -70,8 +92,10 @@ struct GfxResources
   table<GfxDescriptorSetGl>       descriptorSets;
   table<GfxFenceGl>               fences;
 
-  table<GfxProgramGl>    programs;
-  table<GfxMeshLayoutGl> meshes;
+  table<GfxProgramGl>                  programs;
+  table<GfxMeshLayoutGl>               meshes;
+  table<GfxBindlessLayoutGl>           bindlessLayout;
+  std::vector<GfxBindlessDescriptorGl> bindlessDescriptors;
 
   using MeshMap = std::unordered_map<GfxMesh::Layout, GfxMesh::handle, GfxMesh::LayoutHash>;
   MeshMap meshMap;

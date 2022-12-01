@@ -2,7 +2,7 @@
 #pragma once
 
 #include "Common.h"
-#include "ComputeDevice.h"
+#include "GfxDevice.h"
 #include "Image.h"
 #include "Sampler2D.h"
 

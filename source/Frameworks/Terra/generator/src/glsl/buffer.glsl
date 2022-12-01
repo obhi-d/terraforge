@@ -1,4 +1,4 @@
-constexpr std::string_view gs_bufferStore = R"_(
+constexpr std::string_view gs_bufferStore = R"glsl(
 
 void store_{0}(output_t value, NodeParams np)
 {{
@@ -6,9 +6,9 @@ void store_{0}(output_t value, NodeParams np)
   {0}.data[id] = value;
 }}
 
-)_";
+)glsl";
 
-constexpr std::string_view gs_bufferLoad = R"_(
+constexpr std::string_view gs_bufferLoad = R"glsl(
 
 {0}_t4 sample_{0}(NodeParams np)
 {{ 
@@ -32,4 +32,4 @@ constexpr std::string_view gs_bufferLoad = R"_(
 #endif
 }}
 
-)_";
+)glsl";

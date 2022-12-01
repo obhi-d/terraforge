@@ -1,17 +1,21 @@
 #pragma once
-#include "ComputeDevice.h"
+#include "GfxDevice.h"
 #include "GfxDeviceObjects.h"
 #include "GlGfx.h"
 
 namespace terra
 {
-class GfxDevice43 : public ComputeDevice
+class GfxDevice43 : public GfxDevice
 {
 public:
   GfxDevice43()
   {
     init();
   }
+
+  void beginFrame() override;
+  void endFrame() override;
+
   void clearBackbuffer(glm::vec4 color, bool depth = false) override;
   void setState(GfxState const&) override;
 
@@ -49,9 +53,18 @@ public:
   virtual void            bindResources(GfxDescriptorSet::handle descriptorSet);
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&);
   virtual void            destroy(GfxMesh::handle);
-  virtual void            draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material);
-  virtual void            flushStates();
-  Caps                    getCaps() const
+  void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material) override;
+  void                    flushStates() override;
+
+  GfxBindlessLayout::handle     createBindlessLayout(std::span<GfxBindlessLayout::Entry const> entries) override;
+  void                          destroy(GfxBindlessLayout::handle) override;
+  GfxBindlessDescriptor::handle pushBindlessDescriptor(GfxBindlessLayout::handle descriptorLayout,
+                                                       std::span<ubyte_t const>  data) override;
+  void               postProcessDraw(GfxProgram::handle program, std::span<GfxBindlessDescriptor::handle> descriptors,
+                                     std::span<GfxImage2D::handle> outputs) override;
+  GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code) override;
+
+  Caps getCaps() const
   {
     return features;
   }
@@ -60,8 +73,18 @@ protected:
   void       init();
   gl::GLuint createShader(ShaderType, std::span<gl::GLchar const*> sources, std::span<gl::GLint> lengths);
 
-  GlGfxState   state;
-  GfxFeature   features;
-  GfxResources resources;
+  struct UBO
+  {
+    // UBO will be thrown away at end frame
+    gl::GLuint buffer    = 0;
+    uint32_t   capacity  = 0;
+    uint32_t   available = 0;
+  };
+
+  std::vector<UBO> ubo;
+  gl43::GLuint     fullscreenVS = 0;
+  GlGfxState       state;
+  GfxFeature       features;
+  GfxResources     resources;
 };
 } // namespace terra

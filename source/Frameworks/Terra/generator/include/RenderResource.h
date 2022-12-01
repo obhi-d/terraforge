@@ -23,7 +23,9 @@ enum class ImageFormat
   eSnorm16,
   eUnorm16,
   eRgba8,
-  eSrgb8Alpha8
+  eSrgb8Alpha8,
+  eRgb32f,
+  eRgba32f,
 };
 
 enum class SamplingType
@@ -143,6 +145,31 @@ struct GfxDescriptorSet
   using rhandle = std::pair<uint32_t, uint32_t>;
 };
 
+enum GfxBindlessType
+{
+  eScalar,
+  eImage,
+  eSampledImage,
+  eStorageImage,
+  eBuffer
+};
+
+struct GfxBindlessLayout
+{
+  struct Entry
+  {
+    GfxBindlessType type;
+    uint32_t        size;
+  };
+
+  using handle = terra::handle<GfxBindlessLayout>;
+};
+
+struct GfxBindlessDescriptor
+{
+  using handle = terra::handle<GfxBindlessDescriptor>;
+};
+
 struct GfxFence
 {
   using handle = terra::handle<GfxFence>;
@@ -189,15 +216,21 @@ enum class CullMode
   eCullNone
 };
 
+struct GfxBlendState
+{
+  BlendMode mode = BlendMode::eDisabled;
+};
+
 struct GfxState
 {
-  CullMode      cullMode        = CullMode::eCullBack;
-  BlendMode     blend           = BlendMode::eDisabled;
-  DepthTestMode depthTest       = DepthTestMode::eDisabled;
-  bool          scissorsEnabled = false;
-  Rect          viewport;
-  Rect          scissor;
-  bool          flush = false;
+  CullMode                     cullMode  = CullMode::eCullBack;
+  DepthTestMode                depthTest = DepthTestMode::eDisabled;
+  std::array<GfxBlendState, 8> blend;
+  Rect                         viewport;
+  Rect                         scissor;
+  uint16_t                     nbBlendModes    = 0;
+  bool                         scissorsEnabled = false;
+  bool                         flush           = false;
 };
 
 struct GfxMesh
@@ -275,7 +308,8 @@ struct GfxMaterial
 
 struct GfxFeature
 {
-  int version = 450; // min version is 430
+  int          version              = 450; // min version is 430
+  GlGfxSupport ARB_bindless_texture = GlGfxSupport::eUnsupported;
   // GlGfxSupport ARB_program_interface_query      = GlGfxSupport::eUnsupported;
   // GlGfxSupport EXT_shader_image_load_store  = GlGfxSupport::eUnsupported;
   // GlGfxSupport ARB_shading_language_420pack = GlGfxSupport::eUnsupported;

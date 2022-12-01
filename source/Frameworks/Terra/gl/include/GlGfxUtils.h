@@ -5,7 +5,7 @@
 
 namespace terra
 {
-inline gl::GLenum toGlFormat(ImageFormat format) 
+inline gl::GLenum toGlFormat(ImageFormat format)
 {
   switch (format)
   {
@@ -21,6 +21,10 @@ inline gl::GLenum toGlFormat(ImageFormat format)
     return gl::GLenum::GL_RGBA8;
   case ImageFormat::eSrgb8Alpha8:
     return gl::GLenum::GL_SRGB8_ALPHA8;
+  case ImageFormat::eRgb32f:
+    return gl::GLenum::GL_RGB32F;
+  case ImageFormat::eRgba32f:
+    return gl::GLenum::GL_RGBA32F;
   }
   return gl::GLenum::GL_NONE;
 }
@@ -35,7 +39,10 @@ inline gl::GLenum toGlDataFormat(ImageFormat format)
     return gl::GLenum::GL_RED;
   case ImageFormat::eRgba8:
   case ImageFormat::eSrgb8Alpha8:
+  case ImageFormat::eRgba32f:
     return gl::GLenum::GL_RGBA;
+  case ImageFormat::eRgb32f:
+    return gl::GLenum::GL_RGB;
   }
   return gl::GLenum::GL_NONE;
 }
@@ -43,6 +50,8 @@ inline gl::GLenum toGlType(ImageFormat format)
 {
   switch (format)
   {
+  case ImageFormat::eRgb32f:
+  case ImageFormat::eRgba32f:
   case ImageFormat::eFloat:
     return gl::GLenum::GL_FLOAT;
   case ImageFormat::eSnorm16:
@@ -56,7 +65,7 @@ inline gl::GLenum toGlType(ImageFormat format)
   }
   return gl::GLenum::GL_NONE;
 }
-inline gl::GLenum toGlType(ShaderType type) 
+inline gl::GLenum toGlType(ShaderType type)
 {
   switch (type)
   {
@@ -83,7 +92,7 @@ inline gl::GLenum toGLDrawMode(GfxMesh::Type type)
   return gl::GLenum::GL_NONE;
 }
 
-inline std::string_view toString(Access access) 
+inline std::string_view toString(Access access)
 {
   return access == Access::eReadonly ? "readonly" : (access == Access::eWriteonly ? "writeonly" : "");
 }
@@ -94,7 +103,7 @@ inline auto toGlMapBit(Access access)
                                      : (access == Access::eWriteonly ? gl::GL_WRITE_ONLY : gl::GL_READ_WRITE);
 }
 
-inline auto toGl(GfxImage2D::ComponentValue comp) 
+inline auto toGl(GfxImage2D::ComponentValue comp)
 {
   switch (comp)
   {
@@ -112,4 +121,4 @@ inline auto toGl(GfxImage2D::ComponentValue comp)
     return gl::GL_ONE;
   }
 }
-}
+} // namespace terra

@@ -22,7 +22,7 @@ void PostProcess_hwy();
 
 Terra Terra::instance;
 
-void Terra::init(Localization l, std::shared_ptr<ComputeDevice> iDev)
+void Terra::init(Localization l, std::shared_ptr<GfxDevice> iDev)
 {
   localizationProvider = l;
   device               = iDev;

@@ -6,6 +6,8 @@
 #include "ResourceUtils.h"
 #include <glbinding-aux/ContextInfo.h>
 #include <glbinding/gl43core/gl.h>
+#include <glbinding/gl43ext/gl.h>
+
 #ifdef _WIN32
 extern "C"
 {
@@ -15,6 +17,26 @@ extern "C"
 
 namespace terra
 {
+
+namespace glsl
+{
+
+constexpr std::string_view fullScreenVS = R"glsl(
+
+#version {}
+
+layout(location = 0) out highp vec2 fs_UV;
+void main() 
+{
+   vec2 vertices[3]=vec2[3](vec2(-1,-1), vec2(3,-1), vec2(-1, 3));
+   gl_Position = vec4(vertices[gl_VertexID],0,1);
+   fs_UV = 0.5 * gl_Position.xy + vec2(0.5);
+}
+
+)glsl";
+
+}
+
 namespace gl43 = gl43core;
 void MessageCallback(gl43::GLenum source, gl43::GLenum type, gl43::GLuint id, gl43::GLenum severity,
                      gl43::GLsizei length, const gl43::GLchar* message, const void* userParam)
@@ -37,6 +59,13 @@ void GfxDevice43::init()
     logError("OpenGL version not supported : {}", version.toString());
     throw std::runtime_error("Failed to initalize device");
   }
+
+  std::set<gl::GLextension> extensions;
+  extensions.emplace(gl::GLextension::GL_ARB_bindless_texture);
+  if (glbinding::aux::ContextInfo::supported(extensions))
+    features.ARB_bindless_texture = GlGfxSupport::eSupported;
+  extensions.clear();
+
   features.version = (int)version.majorVersion() * 100 + (int)version.minorVersion() * 10;
 #ifndef NDEBUG
   gl43::glEnable(gl43::GL_DEBUG_OUTPUT);
@@ -76,21 +105,31 @@ void GfxDevice43::setState(GfxState const& newState)
     }
     state.cullMode = newState.cullMode;
   }
-  if (newState.blend != state.blend || state.flush)
+  if (state.flush || newState.nbBlendModes != state.nbBlendModes || newState.blend != state.blend)
   {
-    switch (newState.blend)
+    for (uint32_t i = 0; i < newState.nbBlendModes; ++i)
     {
-    case BlendMode::eDisabled:
-      gl43::glDisable(gl43::GL_BLEND);
-      break;
-    case BlendMode::eAdditive:
-      gl43::glEnable(gl43::GL_BLEND);
-      gl43::glBlendEquation(gl43::GL_FUNC_ADD);
-      gl43::glBlendFuncSeparate(gl43::GL_SRC_ALPHA, gl43::GL_ONE_MINUS_SRC_ALPHA, gl43::GL_ONE,
-                                gl43::GL_ONE_MINUS_SRC_ALPHA);
-      break;
+      if (state.flush || newState.blend[i].mode != state.blend[i].mode)
+      {
+        switch (newState.blend[i].mode)
+        {
+        case BlendMode::eDisabled:
+          gl43::glDisablei(gl43::GL_BLEND, i);
+          break;
+        case BlendMode::eAdditive:
+          gl43::glEnablei(gl43::GL_BLEND, i);
+          gl43::glBlendEquationi(i, gl43::GL_FUNC_ADD);
+          gl43::glBlendFuncSeparatei(i, gl43::GL_SRC_ALPHA, gl43::GL_ONE_MINUS_SRC_ALPHA, gl43::GL_ONE,
+                                     gl43::GL_ONE_MINUS_SRC_ALPHA);
+          break;
+        }
+      }
     }
-    state.blend = newState.blend;
+    for (uint32_t i = newState.nbBlendModes; i < state.nbBlendModes; ++i)
+      gl43::glDisablei(gl43::GL_BLEND, i);
+
+    state.blend        = newState.blend;
+    state.nbBlendModes = newState.nbBlendModes;
   }
   if (newState.depthTest != state.depthTest || state.flush)
   {
@@ -178,6 +217,8 @@ void GfxDevice43::destroy(GfxBuffer::handle h)
     return;
   auto& res = resources.buffers.at(h);
   gl43::glDeleteBuffers(1, &res.glhandle);
+  if (res.gltbo)
+    gl43::glDeleteTextures(1, &res.gltbo);
   resources.buffers.erase(h);
 }
 GfxImage2D::handle GfxDevice43::createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
@@ -636,4 +677,195 @@ void GfxDevice43::bindResources(GfxDescriptorSet::handle descriptorSet)
   }
 }
 void GfxDevice43::applyLayoutToProgram(GfxProgram::handle program, GfxDescriptorSetLayout::handle layout) {}
+
+GfxBindlessLayout::handle GfxDevice43::createBindlessLayout(std::span<GfxBindlessLayout::Entry const> entries)
+{
+  auto  h         = resources.bindlessLayout.emplace();
+  auto& res       = resources.bindlessLayout.at(h);
+  auto  nbEntries = (uint32_t)entries.size();
+  res.entries     = acl::dynamic_array<GfxBindlessLayoutGl::Entry>(nbEntries);
+  std::memcpy(res.entries.data(), entries.data(), entries.size_bytes());
+  return h;
+}
+
+void GfxDevice43::destroy(GfxBindlessLayout::handle h)
+{
+  resources.bindlessLayout.erase(h);
+}
+
+GfxBindlessDescriptor::handle GfxDevice43::pushBindlessDescriptor(GfxBindlessLayout::handle descriptorLayout,
+                                                                  std::span<ubyte_t const>  data)
+{
+  if (features.ARB_bindless_texture == GlGfxSupport::eUnsupported)
+    return {};
+
+  GfxBindlessDescriptorGl entry;
+  uint32_t                size = 0;
+  resources.uboData.clear();
+  auto  d       = data.data();
+  auto& entries = resources.bindlessLayout[descriptorLayout].entries;
+  for (auto& e : entries)
+  {
+    switch (e.type)
+    {
+    case GfxBindlessType::eBuffer:
+    {
+      auto buffer = *(GfxBuffer::handle*)d;
+      d += sizeof(GfxBuffer::handle);
+      auto format = *(ImageFormat*)d;
+      d += sizeof(ImageFormat);
+      auto& res = resources.buffers[buffer];
+      if (!res.gltbo)
+      {
+        gl43::glGenTextures(1, &res.gltbo);
+        gl43::glBindTexture(gl43::GL_TEXTURE_BUFFER, res.gltbo);
+        gl43::glTexBuffer(gl43::GL_TEXTURE_BUFFER, toGlFormat(format), res.glhandle);
+      }
+      if (!res.hdev)
+        res.hdev = gl43ext::glGetTextureHandleARB(res.gltbo);
+      auto curr = resources.uboData.size();
+      resources.uboData.resize(resources.uboData.size() + sizeof(res.hdev));
+      *(gl::GLuint64*)(resources.uboData.data() + curr) = res.hdev;
+    }
+    break;
+    case GfxBindlessType::eSampledImage:
+    {
+      auto image = *(GfxImage2D::handle*)d;
+      d += sizeof(GfxImage2D::handle);
+      auto& sampler = resources.samplers[*(GfxSampler::handle*)d];
+      d += sizeof(GfxSampler::handle);
+      auto&        res  = resources.images[image];
+      auto         it   = res.hdevTexSampler.find(sampler.glhandle);
+      gl::GLuint64 hdev = 0;
+      if (it == res.hdevTexSampler.end())
+        res.hdevTexSampler[sampler.glhandle] = hdev =
+          gl43ext::glGetTextureSamplerHandleARB(res.glhandle, sampler.glhandle);
+      else
+        hdev = it->second;
+      auto curr = resources.uboData.size();
+      resources.uboData.resize(resources.uboData.size() + sizeof(hdev));
+      *(gl::GLuint64*)(resources.uboData.data() + curr) = hdev;
+    }
+    break;
+    case GfxBindlessType::eImage:
+    {
+      auto image = *(GfxImage2D::handle*)d;
+      d += sizeof(GfxImage2D::handle);
+      auto& res = resources.images[image];
+      if (!res.hdev)
+        res.hdev = gl43ext::glGetTextureHandleARB(res.glhandle);
+      auto curr = resources.uboData.size();
+      resources.uboData.resize(resources.uboData.size() + sizeof(res.hdev));
+      *(gl::GLuint64*)(resources.uboData.data() + curr) = res.hdev;
+    }
+    break;
+    case GfxBindlessType::eScalar:
+    {
+      auto curr = resources.uboData.size();
+      resources.uboData.resize(resources.uboData.size() + e.size);
+      std::memcpy((resources.uboData.data() + curr), d, e.size);
+      d += e.size;
+    }
+    break;
+    }
+  }
+
+  if (ubo.empty() || ubo.back().available < size)
+  {
+    UBO                newUBO;
+    constexpr uint32_t DefaultSize = 256 * 1024;
+    newUBO.capacity = newUBO.available = std::max(size, DefaultSize);
+    gl43::glGenBuffers(1, &newUBO.buffer);
+    gl43::glBindBuffer(gl43::GL_UNIFORM_BUFFER, newUBO.buffer);
+    gl43::glBufferData(gl43::GL_UNIFORM_BUFFER, newUBO.available, nullptr, gl43::GL_DYNAMIC_DRAW);
+    ubo.push_back(newUBO);
+  }
+  else
+    gl43::glBindBuffer(gl43::GL_UNIFORM_BUFFER, ubo.back().buffer);
+
+  auto& buff         = ubo.back();
+  entry.layout       = descriptorLayout;
+  entry.glhandle     = buff.buffer;
+  entry.bufferOffset = buff.capacity - buff.available;
+  entry.bufferSize   = size;
+  gl43::glBufferSubData(gl43::GL_UNIFORM_BUFFER, entry.bufferOffset, size, resources.uboData.data());
+  resources.bindlessDescriptors.emplace_back(entry);
+  return GfxBindlessDescriptor::handle((uint32_t)resources.bindlessDescriptors.size());
+}
+
+GfxProgram::handle GfxDevice43::createFullscreenProgram(std::span<std::string_view> code)
+{
+  GfxProgram::handle h   = resources.programs.emplace();
+  auto&              res = resources.programs.at(h);
+
+  std::vector<gl43::GLchar const*> sourceFiles;
+  std::vector<gl43::GLint>         sourceLengths;
+
+  if (!fullscreenVS)
+  {
+    sourceFiles.emplace_back((gl43::GLchar const*)glsl::fullScreenVS.data());
+    sourceLengths.emplace_back((gl43::GLint)glsl::fullScreenVS.size());
+    fullscreenVS = createShader(ShaderType::eVertex, sourceFiles, sourceLengths);
+    sourceFiles.clear();
+    sourceLengths.clear();
+  }
+
+  for (auto c : code)
+  {
+    sourceFiles.emplace_back((gl43::GLchar const*)c.data());
+    sourceLengths.emplace_back((gl43::GLint)c.size());
+  }
+
+  res.shaders[0] = createShader(ShaderType::eFragment, sourceFiles, sourceLengths);
+  if (res.shaders[0])
+  {
+    res.glhandle = gl43::glCreateProgram();
+    gl43::glAttachShader(res.glhandle, fullscreenVS);
+    gl43::glAttachShader(res.glhandle, res.shaders[0]);
+
+    gl43::glLinkProgram(res.glhandle);
+    gl43::GLint status = {};
+    gl43::glGetProgramiv(res.glhandle, gl43::GL_LINK_STATUS, &status);
+    if (status != gl43::GL_TRUE)
+    {
+      gl43::glGetProgramiv(res.glhandle, gl43::GL_INFO_LOG_LENGTH, &status);
+      std::string   info(status, 0);
+      gl43::GLsizei size = {};
+      gl43::glGetProgramInfoLog(res.glhandle, (gl43::GLsizei)info.length(), &size, (gl43::GLchar*)info.data());
+      logError("Program failed to link: {}", info);
+      for (uint32_t i = 0; i < ShaderTypeCount; ++i)
+      {
+        if (res.shaders[i])
+          gl43::glDeleteShader(res.shaders[i]);
+      }
+      destroy(GfxProgram::handle(h));
+      h = {};
+      return h;
+    }
+    gl43::glValidateProgram(res.glhandle);
+    gl43::glGetProgramiv(res.glhandle, gl43::GL_VALIDATE_STATUS, &status);
+    if (status != gl43::GL_TRUE)
+    {
+      logError("Program validation failed: {}", (uint32_t)h);
+      destroy(GfxProgram::handle(h));
+      h = {};
+    }
+  }
+  return h;
+}
+
+void GfxDevice43::postProcessDraw(GfxProgram::handle program, std::span<GfxBindlessDescriptor::handle> descriptors,
+                                  std::span<GfxImage2D::handle> outputs)
+{
+  gl43::glUseProgram(resources.programs[program].glhandle);
+  auto nbDes = (uint32_t)descriptors.size();
+  for (uint32_t i = 0; i < nbDes; ++i)
+  {
+    auto& buff = resources.bindlessDescriptors[descriptors[i].reserved - 1];
+    gl43::glBindBufferRange(gl43::GL_UNIFORM_BUFFER, i, buff.glhandle, buff.bufferOffset, buff.bufferSize);
+  }
+  gl43::glBindVertexArray(0);
+  gl43::glDrawArrays(gl::GL_TRIANGLES, 0, 3);
+}
+
 } // namespace terra

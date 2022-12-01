@@ -79,7 +79,7 @@ void CurveData::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
   addToDataStream(dataStream, type);
 }
 
-bool CurveData::getBuffer(ComputeDevice& dev, uint32& bufferVer, GfxBuffer::handle& handle)
+bool CurveData::getBuffer(GfxDevice& dev, uint32& bufferVer, GfxBuffer::handle& handle)
 {
   if (!handle || version != bufferVer)
   {

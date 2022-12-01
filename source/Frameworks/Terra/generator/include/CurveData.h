@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ComputeDevice.h"
 #include "DataSource.h"
+#include "GfxDevice.h"
 #include "RenderResource.h"
 #include "Serializer.h"
 #include "spline.h"
@@ -99,7 +99,7 @@ struct CurveData : public DataSource
     return spline == other.spline;
   }
 
-  bool getBuffer(ComputeDevice&, uint32& version, GfxBuffer::handle& ioBuffer);
+  bool getBuffer(GfxDevice&, uint32& version, GfxBuffer::handle& ioBuffer);
 
   inline Type getType() const final
   {

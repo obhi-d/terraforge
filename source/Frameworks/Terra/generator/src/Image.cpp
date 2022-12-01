@@ -1,7 +1,7 @@
 
 #include "Image.h"
+#include "GfxDevice.h"
 #include "ImageCodec.h"
-#include "ComputeDevice.h"
 #include "Terra.h"
 
 namespace terra
@@ -10,7 +10,7 @@ namespace terra
 void Image::unload()
 {
   auto& main = Terra::get();
-  data = {};
+  data       = {};
   updateVersion();
 }
 
@@ -27,14 +27,14 @@ bool Image::load()
 {
   if (this->data)
     return true;
-  auto& main  = Terra::get();
-  auto  ext   = source.extension().string();
+  auto& main = Terra::get();
+  auto  ext  = source.extension().string();
   std::transform(ext.begin(), ext.end(), ext.begin(),
                  [](unsigned char c)
                  {
                    return std::tolower(c);
                  });
-  auto  codec = main.getImageCodeFor(ext);
+  auto codec = main.getImageCodeFor(ext);
   if (!codec)
     return false;
 
@@ -71,8 +71,8 @@ void Image::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
 
 HelpInfo Image::getHelpInfo(HelpType type, int param) const
 {
-  static HelpInfo output ("@imageOut.help"_ls, "@imageOut.tip"_ls);
-  static HelpInfo main   ("@image.help"_ls, "@image.tip"_ls);
+  static HelpInfo output("@imageOut.help"_ls, "@imageOut.tip"_ls);
+  static HelpInfo main("@image.help"_ls, "@image.tip"_ls);
   switch (type)
   {
   case HelpType::eDataSource:
@@ -121,7 +121,7 @@ std::pair<HDataSource, bool> ImageSource::setParamSourceImpl(uint32_t paramIdx, 
   return std::pair<HDataSource, bool>(h, true);
 }
 
-bool ImageSource::ensure(Pipeline& p) 
+bool ImageSource::ensure(Pipeline& p)
 {
   if (DataSource::isValid(source))
   {

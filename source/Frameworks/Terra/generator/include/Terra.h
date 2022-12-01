@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "ComputeDevice.h"
+#include "GfxDevice.h"
 #include "ImageCodec.h"
 #include "Node.h"
 #include "Table.h"
@@ -13,13 +13,13 @@
 
 namespace terra
 {
-struct ComputeDevice;
+struct GfxDevice;
 struct ShaderBuilder;
 class Terra
 {
 public:
   using Localization = std::function<std::u8string_view(std::string_view)>;
-  void init(Localization loc, std::shared_ptr<ComputeDevice> iDev);
+  void init(Localization loc, std::shared_ptr<GfxDevice> iDev);
 
   inline void addImageCodec(std::string ext, std::shared_ptr<ImageCodec> codec)
   {
@@ -150,7 +150,7 @@ public:
 
   std::shared_ptr<Pipeline> createPipeline() const;
 
-  ComputeDevice& getDevice()
+  GfxDevice& getDevice()
   {
     return *device.get();
   }
@@ -171,8 +171,8 @@ private:
   table<DataSourcePtr>                   dataSources;
   ThreadPool                             threadPool;
   // WorkerThread computeThread;
-  std::shared_ptr<ComputeDevice> device;
-  PipelineType                   pipelineType = PipelineType::eCPU;
+  std::shared_ptr<GfxDevice> device;
+  PipelineType               pipelineType = PipelineType::eCPU;
 };
 
 inline Terra& get()
@@ -197,7 +197,6 @@ struct MetaBuilder
   std::u8string_view category;
   std::string_view   style;
   Meta               dummy;
-  DataFormat         output = DataFormat(DataType::eBuffer);
 
   void clear()
   {
@@ -218,9 +217,12 @@ struct MetaBuilder
     return dummy;
   }
 
-  void outputs(DataFormat fmt)
+  void outputs(std::string_view name, DataFormat fmt)
   {
-    output = fmt;
+    NodeMeta::Output output;
+    output.name   = name;
+    output.format = fmt;
+    dummy.outputs.emplace_back(output);
   }
 
   template <typename NodeT>
@@ -232,7 +234,6 @@ struct MetaBuilder
     dummy.icon     = icon;
     dummy.category = category;
     dummy.style    = style;
-    dummy.outputs.push_back(output);
     dummy.as<NodeT>();
     return dummy;
   }

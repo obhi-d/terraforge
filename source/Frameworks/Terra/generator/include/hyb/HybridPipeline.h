@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GpuBuffer.h"
 #include "HashMachine.h"
 #include "Pipeline.h"
 #include "Table.h"
@@ -68,11 +69,17 @@ public:
     return tileId;
   }
 
+  GpuBuffer& getUBO()
+  {
+    return ubo;
+  }
+
 private:
   void execute();
 
-  using UseSet                                  = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
-  using OrderSet                                = std::unordered_set<HDataSource, HHashSource>;
+  using UseSet   = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
+  using OrderSet = std::unordered_set<HDataSource, HHashSource>;
+  GpuBuffer                       ubo;
   size_t                          memoryUsed    = 0;
   size_t                          devMemoryUsed = 0;
   HybridNode::Result              result        = HybridNode::Result::eWaiting;

@@ -73,6 +73,11 @@ struct ShaderOptions
     options.mask |= 1ull << idx;
   }
 
+  bool isSet(uint64_t idx) const
+  {
+    return (options.mask & (1ull << idx)) != 0;
+  }
+
   void unsetOption(uint64_t idx)
   {
     options.mask &= ~(1 << idx);
