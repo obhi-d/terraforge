@@ -145,13 +145,42 @@ struct GfxDescriptorSet
   using rhandle = std::pair<uint32_t, uint32_t>;
 };
 
-enum GfxBindlessType
+enum class GfxBindlessType
 {
-  eScalar,
-  eImage,
-  eSampledImage,
+  eStorageBuffer,
+  eSampledTexture,
+  eTextureBuffer,
   eStorageImage,
-  eBuffer
+  eScalar,
+  eNone
+};
+
+struct StorageBuffer
+{
+  static inline constexpr GfxBindlessType type = GfxBindlessType::eStorageBuffer;
+  GfxBuffer::handle                       buffer;
+  uint32_t                                size = 0;
+};
+
+struct SampledTexture
+{
+  static inline constexpr GfxBindlessType type = GfxBindlessType::eSampledTexture;
+  GfxImage2D::handle                      texture;
+  GfxSampler::handle                      sampler;
+};
+
+struct TextureBuffer
+{
+  static inline constexpr GfxBindlessType type = GfxBindlessType::eTextureBuffer;
+  GfxBuffer::handle                       buffer;
+  ImageFormat                             format = ImageFormat::eFloat;
+};
+
+struct StorageImage
+{
+  static inline constexpr GfxBindlessType type = GfxBindlessType::eStorageImage;
+  GfxImage2D::handle                      texture;
+  uint32_t                                layerCount = 0;
 };
 
 struct GfxBindlessLayout

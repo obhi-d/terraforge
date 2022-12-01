@@ -299,19 +299,29 @@ enum class Semantic
   eSource
 };
 
+enum class ParamDeclType
+{
+  eStorageBuffer,
+  eSampledTexture,
+  eTextureBuffer,
+  eStorageImage,
+  eScalar,
+  eNone
+};
+
 struct DataFormat
 {
-  DataType type          = DataType::eInvalid;
-  DataType scalarSubType = DataType::eInvalid;
-  Semantic semantic      = Semantic::eNone;
-  uint32_t index         = 0;
+  DataType      type          = DataType::eInvalid;
+  DataType      scalarSubType = DataType::eInvalid;
+  Semantic      semantic      = Semantic::eNone;
+  ParamDeclType declType      = ParamDeclType::eNone;
 
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
   constexpr DataFormat() = default;
   constexpr DataFormat(DataType itype, DataType iscalarSubType = DataType::eFloat, Semantic isem = Semantic::eNone,
-                       uint32_t iindex = 0)
-      : type(itype), scalarSubType(iscalarSubType), semantic(isem), index(iindex)
+                       ParamDeclType iindex = ParamDeclType::eNone)
+      : type(itype), scalarSubType(iscalarSubType), semantic(isem), declType(iindex)
   {}
   static bool isCompatible(DataFormat const& from, DataFormat const& to);
 };
