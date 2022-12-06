@@ -15,53 +15,53 @@ namespace terra::glsl
 #include "glsl/image.glsl"
 #include "glsl/texture.glsl"
 
-uint32 subtypeSize(DataType type)
+uint32 subtypeSize(DataTypeEnum type)
 {
   switch (type)
   {
-  case DataType::eFloat:
-  case DataType::eInt:
+  case DataTypeEnum::eFloat:
+  case DataTypeEnum::eInt:
     return 4;
-  case DataType::eInt2:
-  case DataType::eFloat2:
+  case DataTypeEnum::eInt2:
+  case DataTypeEnum::eFloat2:
     return 8;
-  case DataType::eBool:
+  case DataTypeEnum::eBool:
     return 1;
   }
   return 0;
 }
 
-std::string_view bufferReadType(DataType type)
+std::string_view bufferReadType(DataTypeEnum type)
 {
   switch (type)
   {
-  case DataType::eInt:
+  case DataTypeEnum::eInt:
     return "int";
-  case DataType::eInt2:
+  case DataTypeEnum::eInt2:
     return "ivec2";
-  case DataType::eFloat:
+  case DataTypeEnum::eFloat:
     return "float";
-  case DataType::eFloat2:
+  case DataTypeEnum::eFloat2:
     return "vec2";
-  case DataType::eBool:
+  case DataTypeEnum::eBool:
     return "bool";
   }
   return "invalid";
 }
 
-std::string_view bufferWriteType(DataType type)
+std::string_view bufferWriteType(DataTypeEnum type)
 {
   switch (type)
   {
-  case DataType::eInt:
+  case DataTypeEnum::eInt:
     return "ivec4";
-  case DataType::eInt2:
+  case DataTypeEnum::eInt2:
     return "imat2x4";
-  case DataType::eFloat:
+  case DataTypeEnum::eFloat:
     return "vec4";
-  case DataType::eFloat2:
+  case DataTypeEnum::eFloat2:
     return "mat2x4";
-  case DataType::eBool:
+  case DataTypeEnum::eBool:
     return "bvec4";
   }
   return "invalid";
@@ -162,7 +162,7 @@ void declCurveData(std::string& ubo, std::string& opaque, DescriptorList& dl, Op
 void declTextureOutput(std::string& opaque, DescriptorList& dl, OptionList& ol, int32_t& binding, ShaderBuilder& sb)
 {
   sb.append("#define Has_TextureOutput 1\n");
-  auto bi = sb.declImage("output_data", ImageFormat::eFloat, Access::eWriteonly);
+  auto bi = sb.declImage("output_data", ImageFormatEnum::eFloat, Access::eWriteonly);
   binding = (int)dl.size();
   dl.emplace_back(bi.descriptor);
   opaque += bi.content;
@@ -186,12 +186,12 @@ void fillScalarDisabled(Pipeline const&, ParameterMeta const& pm, ScalarValue sv
 {
   switch (pm.format.scalarSubType)
   {
-  case DataType::eInt2:
-  case DataType::eFloat2:
+  case DataTypeEnum::eInt2:
+  case DataTypeEnum::eFloat2:
     std::memcpy(data, sv.value2.data(), sizeof(sv.value2));
     break;
-  case DataType::eFloat:
-  case DataType::eInt:
+  case DataTypeEnum::eFloat:
+  case DataTypeEnum::eInt:
     std::memcpy(data, sv.value2.data(), sizeof(sv.value));
     break;
   }

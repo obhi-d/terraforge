@@ -39,8 +39,8 @@ public:
 
   HybridBuffer::handle declareBuffer();
 
-  void describeBuffer(HybridBuffer::handle, HDataSource owner, uint32_t size, ImageFormat format);
-  void describeImage(HybridBuffer::handle, HDataSource owner, uint32_t width, uint32_t height, ImageFormat format);
+  void describeBuffer(HybridBuffer::handle, HDataSource owner, uint32_t size, ImageFormatEnum format);
+  void describeImage(HybridBuffer::handle, HDataSource owner, uint32_t width, uint32_t height, ImageFormatEnum format);
 
   GfxBuffer::handle        readBuffer(HybridBuffer::handle);
   GfxImage2D::handle       readImage(HybridBuffer::handle);
@@ -69,17 +69,11 @@ public:
     return tileId;
   }
 
-  GpuBuffer& getUBO()
-  {
-    return ubo;
-  }
-
 private:
   void execute();
 
-  using UseSet   = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
-  using OrderSet = std::unordered_set<HDataSource, HHashSource>;
-  GpuBuffer                       ubo;
+  using UseSet                                  = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
+  using OrderSet                                = std::unordered_set<HDataSource, HHashSource>;
   size_t                          memoryUsed    = 0;
   size_t                          devMemoryUsed = 0;
   HybridNode::Result              result        = HybridNode::Result::eWaiting;

@@ -2,6 +2,7 @@
 #include "GfxDevice.h"
 #include "GfxDeviceObjects.h"
 #include "GlGfx.h"
+#include "SourceBuilder.h"
 
 namespace terra
 {
@@ -21,10 +22,10 @@ public:
 
   GfxBuffer::handle  createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
   void               destroy(GfxBuffer::handle) override;
-  GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
+  GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
                                  ubyte_t const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
                                  uint32 mipLevels = 1) override;
-  GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
+  GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
                                       std::span<ubyte_t const*> data = {}, GfxImage2D::Swizzle swizzle = {},
                                       uint32 mipLevels = 1) override;
   void               destroy(GfxImage2D::handle) override;
@@ -49,6 +50,7 @@ public:
                        uint32_t numGroupY) override;
   void barrier(GfxBarrierFlags flags) override;
   std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) override;
+  std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang) override;
   void                    applyLayoutToProgram(GfxProgram::handle program, GfxDescriptorSetLayout::handle) override;
   virtual void            bindResources(GfxDescriptorSet::handle descriptorSet);
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&);
@@ -56,13 +58,13 @@ public:
   void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material) override;
   void                    flushStates() override;
 
-  GfxBindlessLayout::handle     createBindlessLayout(std::span<GfxBindlessLayout::Entry const> entries) override;
-  void                          destroy(GfxBindlessLayout::handle) override;
-  GfxBindlessDescriptor::handle pushBindlessDescriptor(GfxBindlessLayout::handle descriptorLayout,
-                                                       std::span<ubyte_t const>  data) override;
-  void               postProcessDraw(GfxProgram::handle program, std::span<GfxBindlessDescriptor::handle> descriptors,
-                                     std::span<GfxImage2D::handle> outputs) override;
-  GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code) override;
+  GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const>  entries,
+                                      std::span<GfxParamLayout::Output const> outputs) override;
+  void                   destroy(GfxParamLayout::handle) override;
+  void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout, Blob const& data) override;
+  GfxProgram::handle       createFullscreenProgram(std::span<std::string_view> code) override;
+  GfxCombinedImage::handle createCombinedTexture(GfxImage2D::handle image, GfxSampler::handle sampler) override;
+  void                     destroy(GfxCombinedImage::handle) override;
 
   Caps getCaps() const
   {
@@ -70,6 +72,14 @@ public:
   }
 
 protected:
+  void                     apply(GfxParamLayout::handle descriptorLayout, Blob const& data);
+  void                     makeResident(BindlessHandleGl::handle, GfxAccess access);
+  void                     makeResident(BindlessHandleGl::handle);
+  void                     destroy(BindlessHandleGl::handle);
+  BindlessHandleGl::handle makeBindless(GfxImageGl const&, GfxSamplerGl const&);
+  BindlessHandleGl::handle makeBindless(GfxBufferGl const&);
+  BindlessHandleGl::handle makeBindless(GfxImageGl const&, StorageImage const&);
+
   void       init();
   gl::GLuint createShader(ShaderType, std::span<gl::GLchar const*> sources, std::span<gl::GLint> lengths);
 
@@ -86,5 +96,6 @@ protected:
   GlGfxState       state;
   GfxFeature       features;
   GfxResources     resources;
+  uint32_t         frame = 0;
 };
 } // namespace terra

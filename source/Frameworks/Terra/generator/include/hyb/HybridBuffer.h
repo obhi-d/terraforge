@@ -17,7 +17,7 @@ public:
   HybridBuffer(HybridBuffer const&) = delete;
   HybridBuffer(HybridBuffer&&) noexcept;
   HybridBuffer() = default;
-  HybridBuffer(Source owner, uint32_t width, uint32_t height, ImageFormat type = ImageFormat::eFloat,
+  HybridBuffer(Source owner, uint32_t width, uint32_t height, ImageFormatEnum type = ImageFormatEnum::eFloat,
                bool isImage = true);
 
   HybridBuffer& operator=(HybridBuffer const&) = delete;
@@ -94,13 +94,13 @@ private:
 
   HDataSource owner;
 
-  uint32_t    width     = 0;
-  uint32_t    height    = 0;
-  uint32_t    useCount  = 0;
-  uint32_t    readCount = 0;
-  uint32_t    readers   = 0;
-  ImageFormat format    = ImageFormat::eFloat;
-  uint16_t    flags     = 0;
+  uint32_t        width     = 0;
+  uint32_t        height    = 0;
+  uint32_t        useCount  = 0;
+  uint32_t        readCount = 0;
+  uint32_t        readers   = 0;
+  ImageFormatEnum format    = ImageFormatEnum::eFloat;
+  uint16_t        flags     = 0;
 };
 
 } // namespace terra

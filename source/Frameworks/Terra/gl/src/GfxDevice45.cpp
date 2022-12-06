@@ -37,7 +37,7 @@ GfxBuffer::handle GfxDevice45::createBuffer(GfxStorageClass storage, GfxBuffer::
 }
 
 GfxImage2D::handle GfxDevice45::createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                            ImageFormat format, ubyte_t const* data, GfxImage2D::Swizzle swizzle,
+                                            ImageFormatEnum format, ubyte_t const* data, GfxImage2D::Swizzle swizzle,
                                             uint32 mipLevels)
 {
   auto  h     = resources.images.emplace();

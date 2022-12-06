@@ -12,7 +12,7 @@
 
 namespace terra
 {
-class GpuProgramBuilder;
+class SourceBuilder;
 class HybridPipeline;
 /// @brief Basics of node
 /// A node can be executed on:
@@ -37,41 +37,36 @@ struct HybridNode : public Node
     eWaiting
   };
 
-  virtual std::string_view getFunction() const                                                  = 0;
-  virtual bool             needsPipelineExecute() const                                         = 0;
-  virtual bool             isSourceModifier() const                                             = 0;
-  virtual Queue            getQueue() const                                                     = 0;
-  virtual Result           execute(HybridPipeline&) const                                       = 0;
-  virtual bool             prepare(HybridPipeline&)                                             = 0;
-  virtual void             probe(HybridPipeline&, ProgramKey&, HashMachine&)                    = 0;
-  virtual void             build(HybridPipeline&, GpuProgramBuilder&)                           = 0;
-  virtual void             execute(HybridPipeline&, ShaderProgramInstance&, uint32_t idx) const = 0;
+  virtual Queue  getQueue() const                                                                  = 0;
+  virtual Result execute(HybridPipeline&)                                                          = 0;
+  virtual bool   preExecute(HybridPipeline&)                                                       = 0;
+  virtual void   executeImpl(HybridPipeline&)                                                      = 0;
+  virtual Result postExecute(HybridPipeline&)                                                      = 0;
+  virtual bool   prepare(HybridPipeline&)                                                          = 0;
+  virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&)                                 = 0;
+  virtual void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) = 0;
 };
 
 struct ClassicHybridNode : public HybridNode
 {
-  bool needsPipelineExecute() const override
-  {
-    return true;
-  }
-  bool isSourceModifier() const override
-  {
-    return false;
-  }
   Queue getQueue() const override
   {
     return Queue::eGraphics;
   }
-  Result execute(HybridPipeline&) const override
+  Result execute(HybridPipeline& pipe) override
   {
-    return Result::eDone;
+    if (preExecute(pipe))
+    {
+      executeImpl(pipe);
+      return postExecute(pipe);
+    }
+    return Result::eFailed;
   }
-  std::string_view getFunction() const override
-  {
-    return {};
-  }
-  void  build(HybridPipeline&, GpuProgramBuilder&) override {}
-  void  execute(HybridPipeline&, ShaderProgramInstance&, uint32_t) const override {}
+  void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override {}
+  bool   preExecute(HybridPipeline&) override;
+  void   executeImpl(HybridPipeline&) override {}
+  Result postExecute(HybridPipeline&) override;
+
   uvec2 constraintTileStart = uvec2(0, 0);
   uvec2 constraintTileCount = uvec2(0, 0);
 };
@@ -80,20 +75,26 @@ struct GpuNode : public ClassicHybridNode
 {
   struct Data
   {
-    ProgramKey                               key;
-    ShaderProgramRef                         program;
-    acl::dynamic_array<HybridBuffer::handle> outputs;
-    uint64_t                                 injectMask = 0;
+    ProgramKey           key;
+    ShaderOptions        activeOptions;
+    GpuPipelineRef       gpuPasses;
+    HybridBuffer::handle outputs[8];
+    uint64_t             injectMask = 0;
   };
 
-  std::string_view getFunction() const override;
-  bool             prepare(HybridPipeline&) override;
-  void             probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
-  void             build(HybridPipeline&, GpuProgramBuilder&) override;
-  Result           execute(HybridPipeline&) const;
-  void             execute(HybridPipeline&, ShaderProgramInstance&, uint32_t idx) const override;
-  virtual void     pushOutputs(HybridPipeline&, ShaderProgramInstance&) const;
+  bool         isSourceModifier() const;
+  bool         prepare(HybridPipeline&) override;
+  void         probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
+  void         build(HybridPipeline&, uint32_t pass, SourceBuilder&);
+  void         executeImpl(HybridPipeline&) override;
+  void         push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override;
+  virtual void pushOutputs(HybridPipeline&, uint32_t pass, ShaderProgramInstance&);
 
   std::vector<Data> nodeData;
+};
+
+struct GpuScriptNode : public GpuNode
+{
+  std::vector<Parameter> parameters;
 };
 } // namespace terra

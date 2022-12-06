@@ -230,7 +230,7 @@ void domainWarp_end(Node& node, Pipeline_hwy& pipe)
 void Domain_hwy()
 {
   auto builder = buildMeta<NodeMeta_hwy>("@Domain"_ls, "domain");
-  builder.outputs(DataFormat(DataType::eInput));
+  builder.outputs(DataFormat(DataTypeEnum::eInput));
 
   {
     builder.add<DomainRotateNode>("@domainRotate", IconDomainRotate);

@@ -19,18 +19,18 @@ public:
 
   Parameter param(uint32_t i) const
   {
-    return meta.parameterDef[i].getter(*this);
+    return meta.parameterDef[i].getter(*this, i);
   }
 
   void state(uint32_t i, ScalarValue sv)
   {
-    meta.parameterDef[i].setter(*this, sv);
+    meta.parameterDef[i].setter(*this, i, sv);
   }
 
   Parameter param(uint32_t i, Parameter sv)
   {
     auto old = meta.parameterDef[i].getter(*this);
-    meta.parameterDef[i].setter(*this, sv);
+    meta.parameterDef[i].setter(*this, i, sv);
     HDataSource oldSrc, newSrc;
     if (std::holds_alternative<Source>(old))
       oldSrc = std::get<Source>(old).source;
@@ -52,7 +52,7 @@ public:
 
   DataFormat getFormat(uint32_t i) const override
   {
-    return meta.outputs[i];
+    return meta.outputs[i].format;
   }
 
   void getSourcesImpl(SourceSet&) const final;

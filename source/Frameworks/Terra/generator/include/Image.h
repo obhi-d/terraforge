@@ -16,7 +16,7 @@ struct Image : public DataSource
   std::unique_ptr<ubyte_t[]> data;
   uint32_t                   width  = 0;
   uint32_t                   height = 0;
-  ImageFormat                format = ImageFormat::eFloat;
+  ImageFormatEnum            format = ImageFormatEnum::eFloat;
 
   struct rgba
   {
@@ -47,7 +47,7 @@ struct Image : public DataSource
 
   DataFormat getFormat(uint32) const final
   {
-    return DataFormat(DataType::eImage);
+    return DataFormat(DataTypeEnum::eImage);
   }
 
   inline std::pair<Source, bool> setParamSourceImpl(uint32_t paramIdx, Source) final
@@ -73,15 +73,15 @@ struct Image : public DataSource
     {
       switch (format)
       {
-      case ImageFormat::eFloat:
+      case ImageFormatEnum::eFloat:
         return (float)get<float>(x, y);
-      case ImageFormat::eUnorm8:
+      case ImageFormatEnum::eUnorm8:
         return (float)get<std::uint8_t>(x, y) / 255.f;
-      case ImageFormat::eSnorm16:
-      case ImageFormat::eUnorm16:
+      case ImageFormatEnum::eSnorm16:
+      case ImageFormatEnum::eUnorm16:
         return (float)((float)get<std::uint16_t>(x, y) / (float)std::numeric_limits<std::uint16_t>::max());
-      case ImageFormat::eRgba8:
-      case ImageFormat::eSrgb8Alpha8:
+      case ImageFormatEnum::eRgba8:
+      case ImageFormatEnum::eSrgb8Alpha8:
       {
         auto rgb = get<rgba>(x, y);
         return (float)(.299f * ((float)rgb.r / 255.f) + .587f * ((float)rgb.g / 255.f) +

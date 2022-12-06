@@ -644,7 +644,7 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imn
     uint32_t paramChoice = (uint32_t)meta.parameterDef.size();
     for (uint32_t i = 0; i < paramChoice; ++i)
     {
-      if (meta.parameterDef[i].semantic == Semantic::eSource && meta.parameterDef[i].format == srcNode.getFormat())
+      if (meta.parameterDef[i].semantic == SemanticEnum::eSource && meta.parameterDef[i].format == srcNode.getFormat())
       {
         paramChoice = i;
         break;

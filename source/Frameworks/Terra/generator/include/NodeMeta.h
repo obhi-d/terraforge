@@ -138,14 +138,14 @@ enum class Result
 class NodeMeta;
 struct ParameterMeta;
 using CreateNode  = std::shared_ptr<Node> (*)(NodeMeta const&);
-using ParamSetter = void (*)(Node&, Parameter);
-using ParamGetter = Parameter (*)(Node const&);
+using ParamSetter = void (*)(Node&, uint32_t i, Parameter);
+using ParamGetter = Parameter (*)(Node const&, uint32_t i);
 
-template <DataType Type, DataType Scalar = DataType::eFloat>
+template <DataTypeEnum Type, DataTypeEnum Scalar = DataTypeEnum::eFloat>
 struct FmtVal
 {
-  static inline constexpr DataType type   = Type;
-  static inline constexpr DataType scalar = Scalar;
+  static inline constexpr DataTypeEnum type   = Type;
+  static inline constexpr DataTypeEnum scalar = Scalar;
 
   static inline constexpr bool is_enum = false;
 
@@ -171,8 +171,8 @@ struct FmtVal
 
 struct FmtEnum
 {
-  static inline constexpr DataType type   = DataType::eEnum;
-  static inline constexpr DataType scalar = DataType::eInt;
+  static inline constexpr DataTypeEnum type   = DataTypeEnum::eEnum;
+  static inline constexpr DataTypeEnum scalar = DataTypeEnum::eInt;
 
   static inline constexpr bool is_enum = true;
 
@@ -193,29 +193,29 @@ inline auto DeriveFormat()
 {
 
   if constexpr (std::is_same_v<typename MembPtr::member_t, HDataSource>)
-    return FmtVal<DataType::ePostProcess>();
+    return FmtVal<DataTypeEnum::ePostProcess>();
   else if constexpr (std::is_same_v<typename MembPtr::member_t, Parameter> ||
                      std::is_same_v<typename MembPtr::member_t, Source>)
-    return FmtVal<DataType::eBuffer>(0.0f, -std::numeric_limits<float>::infinity(),
-                                     std::numeric_limits<float>::infinity());
+    return FmtVal<DataTypeEnum::eBuffer>(0.0f, -std::numeric_limits<float>::infinity(),
+                                         std::numeric_limits<float>::infinity());
   else if constexpr (std::is_same_v<typename MembPtr::member_t, bool>)
-    return FmtVal<DataType::eBool>();
+    return FmtVal<DataTypeEnum::eBool>();
   else if constexpr (std::is_same_v<typename MembPtr::member_t, float>)
-    return FmtVal<DataType::eFloat>(0.0f, -std::numeric_limits<float>::infinity(),
-                                    std::numeric_limits<float>::infinity());
+    return FmtVal<DataTypeEnum::eFloat>(0.0f, -std::numeric_limits<float>::infinity(),
+                                        std::numeric_limits<float>::infinity());
   else if constexpr (std::is_same_v<typename MembPtr::member_t, int>)
-    return FmtVal<DataType::eInt>(0, -std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+    return FmtVal<DataTypeEnum::eInt>(0, -std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
   else if constexpr (std::is_same_v<typename MembPtr::member_t, vec2>)
-    return FmtVal<DataType::eFloat2>(0.0f, -std::numeric_limits<float>::infinity(),
-                                     std::numeric_limits<float>::infinity());
+    return FmtVal<DataTypeEnum::eFloat2>(0.0f, -std::numeric_limits<float>::infinity(),
+                                         std::numeric_limits<float>::infinity());
   else if constexpr (std::is_same_v<typename MembPtr::member_t, ivec2>)
-    return FmtVal<DataType::eInt2>(0, -std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+    return FmtVal<DataTypeEnum::eInt2>(0, -std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
   else if constexpr (std::is_same_v<typename MembPtr::member_t, Angle>)
-    return FmtVal<DataType::eFloat>(0.0f, -180.f, 180.f);
+    return FmtVal<DataTypeEnum::eFloat>(0.0f, -180.f, 180.f);
   else if constexpr (std::is_same_v<typename MembPtr::member_t, Unorm>)
-    return FmtVal<DataType::eFloat>(0.0f, 0.f, 1.f, 0.01f);
+    return FmtVal<DataTypeEnum::eFloat>(0.0f, 0.f, 1.f, 0.01f);
   else if constexpr (std::is_same_v<typename MembPtr::member_t, Snorm>)
-    return FmtVal<DataType::eFloat>(0.0f, -1.f, 1.f, 0.05f);
+    return FmtVal<DataTypeEnum::eFloat>(0.0f, -1.f, 1.f, 0.05f);
 }
 
 struct ParameterMeta
@@ -229,14 +229,13 @@ struct ParameterMeta
     eCount
   };
 
-  DataFormat       format;
-  DrawHint         drawHint = DrawHint::eDefault;
-  std::string_view name;
-  DisplayInfo      displayInfo;
+  DataFormat  format;
+  std::string name;
+  DisplayInfo displayInfo;
 
-  DataValue                           values[ValueType::eCount] = {};
-  std::unique_ptr<std::string_view[]> enumNames                 = {};
-  std::unique_ptr<DisplayInfo[]>      enumDisplayInfo           = {};
+  DataValue                      values[ValueType::eCount] = {};
+  std::unique_ptr<std::string[]> enumNames                 = {};
+  std::unique_ptr<DisplayInfo[]> enumDisplayInfo           = {};
   union
   {
     uint32_t maxEnum = 1;
@@ -252,16 +251,16 @@ struct ParameterMeta
   ParameterMeta& operator=(ParameterMeta&&) noexcept      = default;
 
   template <typename MembPtr>
-  ParameterMeta(MembPtr, std::string_view iname, Semantic semantic = Semantic::eNone,
+  ParameterMeta(MembPtr, std::string_view iname, SemanticEnum semantic = SemanticEnum::eNone,
                 DrawHint idrawhint = DrawHint::eDefault)
       : ParameterMeta(MembPtr(), iname, DeriveFormat<MembPtr>(), semantic, idrawhint)
   {}
 
   template <typename MembPtr, typename Fmt>
-  ParameterMeta(MembPtr, std::string_view iname, Fmt format, Semantic semantic = Semantic::eNone,
+  ParameterMeta(MembPtr, std::string_view iname, Fmt format, SemanticEnum semantic = SemanticEnum::eNone,
                 DrawHint idrawhint = DrawHint::eDefault)
       : format(Fmt::get()), name(iname), drawHint(idrawhint), setter(
-                                                                [](Node& node, Parameter param)
+                                                                [](Node& node, uint32_t, Parameter param)
                                                                 {
                                                                   using T       = typename MembPtr::class_t;
                                                                   auto  pmember = MembPtr::pmem;
@@ -269,7 +268,7 @@ struct ParameterMeta
                                                                   store(cnode.*pmember, param);
                                                                 }),
         getter(
-          [](Node const& node) -> Parameter
+          [](Node const& node, uint32_t) -> Parameter
           {
             using T       = typename MembPtr::class_t;
             auto  pmember = MembPtr::pmem;
@@ -282,7 +281,7 @@ struct ParameterMeta
     if constexpr (Fmt::is_enum)
     {
       maxEnum = (uint32)format.enumVals.size();
-      enumNames.reset(new std::string_view[maxEnum]);
+      enumNames.reset(new std::string[maxEnum]);
       enumDisplayInfo.reset(new DisplayInfo[maxEnum]);
       for (uint32_t i = 0; i < maxEnum; ++i)
       {
@@ -300,7 +299,7 @@ struct ParameterMeta
 
   inline bool isValid() const
   {
-    return format.type != DataType::eInvalid;
+    return format.type != DataTypeEnum::eInvalid;
   }
 
   bool canBeSource() const;
@@ -308,25 +307,46 @@ struct ParameterMeta
 
   ScalarValue getDefault() const;
 
-  void setTypeFromString(std::string_view);
+  void setTypeFromString(std::string_view type, std::string_view scalarType);
   void setValueFromString(ValueType, std::string_view);
+  void setDeclFromString(std::string_view type);
 };
 
 class Node;
+
+struct AutoParam
+{
+  enum Result
+  {
+    eContinueIteration,
+    eReturnResult,
+    eOk,
+    eReportFailure
+  };
+  using Callback = std::function<Result(Pipeline&, Node&, uint32_t)>;
+  Callback pre;
+  Callback post;
+};
+
 class NodeMeta
 {
 
 public:
-  std::string_view           icon;
+  uint32_t                   icon  = 0;
+  uint32_t                   style = 0;
   DisplayInfo                displayInfo;
   std::u8string_view         category;
-  std::string_view           style;
   std::vector<ParameterMeta> parameterDef;
+
+  std::vector<uint32_t> autoParams;
+  std::vector<uint32_t> autoOutputs;
 
   struct Output
   {
-    DataFormat       format = DataFormat(DataType::eBuffer);
-    std::string_view name   = "output";
+    std::string_view name       = "output";
+    DataFormat       format     = DataFormat(DataTypeEnum::eBuffer);
+    vec4             clearValue = vec4(0.f);
+    bool             clear      = false;
   };
 
   std::vector<Output> outputs;
@@ -335,11 +355,6 @@ public:
   // derived
   uint32_t id;
   bool     cacheResults = false;
-
-  // attributes
-  bool attribTileConstrained = false;
-  bool attribIteration       = false;
-  //
 
   template <typename N>
   void as()
@@ -350,8 +365,6 @@ public:
     };
   }
 
-  void addDomain();
-
   NodeMeta(NoDomain) {}
   NodeMeta();
   NodeMeta(NodeMeta const&)                     = default;
@@ -359,10 +372,11 @@ public:
   NodeMeta& operator=(NodeMeta const&) noexcept = default;
   NodeMeta& operator=(NodeMeta&&) noexcept      = default;
 
-  virtual void prepare() {}
-  virtual void prepareGeneration(Node&, Pipeline&) const = 0;
-  virtual void beginIteration(Node&, Pipeline&) const    = 0;
-  virtual void endIteration(Node&, Pipeline&) const      = 0;
+  void         addDomain();
+  virtual void prepare();
+
+  using AutoParamRegistry = std::vector<AutoParam>;
+  static AutoParamRegistry autoRegistry;
 };
 
 } // namespace terra

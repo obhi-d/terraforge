@@ -29,11 +29,11 @@ struct GfxDevice
   /// @param width image width
   /// @param height image height
   /// @return Returns the image handle
-  virtual GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormat format,
-                                         ubyte_t const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
-                                         uint32 mipLevels = 1)                                        = 0;
+  virtual GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
+                                         ImageFormatEnum format, ubyte_t const* data = nullptr,
+                                         GfxImage2D::Swizzle swizzle = {}, uint32 mipLevels = 1)      = 0;
   virtual GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                              ImageFormat format, std::span<ubyte_t const*> data = {},
+                                              ImageFormatEnum format, std::span<ubyte_t const*> data = {},
                                               GfxImage2D::Swizzle swizzle = {}, uint32 mipLevels = 1) = 0;
   virtual void               destroy(GfxImage2D::handle)                                              = 0;
   /// @brief Create a sampler
@@ -45,6 +45,9 @@ struct GfxDevice
   virtual GfxProgram::handle createProgram(std::span<ShaderOptions> options, ShaderBuilder const& code) = 0;
   virtual GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code)                  = 0;
   virtual void               destroy(GfxProgram::handle)                                                = 0;
+  /// @brief Create a combined sampler
+  virtual GfxCombinedImage::handle createCombinedTexture(GfxImage2D::handle image, GfxSampler::handle sampler) = 0;
+  virtual void                     destroy(GfxCombinedImage::handle)                                           = 0;
   /// @brief Create a descriptor set layout
   /// @param types handle types
   /// @return DescriptorSet handle
@@ -56,11 +59,10 @@ struct GfxDevice
   virtual GfxDescriptorSet::handle createDescriptorSet(GfxDescriptorSetLayout::handle descriptorLayout) = 0;
   virtual void                     destroy(GfxDescriptorSet::handle)                                    = 0;
 
-  virtual GfxBindlessLayout::handle createBindlessLayout(std::span<GfxBindlessLayout::Entry const> entries) = 0;
-  virtual void                      destroy(GfxBindlessLayout::handle)                                      = 0;
+  virtual GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const>  entries,
+                                              std::span<GfxParamLayout::Output const> outputs) = 0;
+  virtual void                   destroy(GfxParamLayout::handle)                               = 0;
   // @brief Bindless descriptor gets deleted at the end of the frame
-  virtual GfxBindlessDescriptor::handle pushBindlessDescriptor(GfxBindlessLayout::handle descriptorLayout,
-                                                               std::span<ubyte_t const>  data) = 0;
 
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&) = 0;
 
@@ -95,6 +97,7 @@ struct GfxDevice
 
   /// @brief Create a ShaderBuilder for a specific shader
   virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) = 0;
+  virtual std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang) = 0;
 
   virtual void bindResources(GfxDescriptorSet::handle descriptorSet)            = 0;
   virtual void destroy(GfxMesh::handle)                                         = 0;
@@ -102,7 +105,7 @@ struct GfxDevice
   virtual void flushStates()                                                    = 0;
   virtual void clearBackbuffer(glm::vec4 color, bool depth = false)             = 0;
   virtual void setState(GfxState const&)                                        = 0;
-  virtual void postProcessDraw(GfxProgram::handle program, std::span<GfxBindlessDescriptor::handle> descriptors,
-                               std::span<GfxImage2D::handle> outputs)           = 0;
+  virtual void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout,
+                               Blob const& data)                                = 0;
 };
 } // namespace terra

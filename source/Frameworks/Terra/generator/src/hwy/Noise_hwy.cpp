@@ -766,7 +766,7 @@ void Noise_hwy()
     builder.add<CellularValueNode>("@cellularValue", IconCellular);
     builder.fn(HWY_DYNAMIC_DISPATCH(cellularValue));
     builder.param<&CellularValueNode::jitter>("@jitter");
-    builder.param<&CellularValueNode::returnType>("@return", FmtVal<DataType::eInt>(0, 0, 3));
+    builder.param<&CellularValueNode::returnType>("@return", FmtVal<DataTypeEnum::eInt>(0, 0, 3));
     builder.param<&CellularValueNode::distanceType>(
       "@type", FmtEnum(0, {"@eucledian", "@eucledianSquared", "@manhattan", "@hybrid", "@maxAxis"}));
     builder.done();

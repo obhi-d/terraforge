@@ -10,7 +10,7 @@ HybridBuffer::HybridBuffer(HybridBuffer&& hb) noexcept
   *this = std::move(hb);
 }
 
-HybridBuffer::HybridBuffer(Source iowner, uint32_t iwidth, uint32_t iheight, ImageFormat itype, bool iisImage)
+HybridBuffer::HybridBuffer(Source iowner, uint32_t iwidth, uint32_t iheight, ImageFormatEnum itype, bool iisImage)
     : owner(iowner.source), width(iwidth), height(iheight), format(itype), flags(iisImage ? fImage : 0)
 {
   if (DataSource::isValid(iowner.source))

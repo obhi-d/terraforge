@@ -16,18 +16,6 @@ enum class Access
   eWriteonly
 };
 
-enum class ImageFormat
-{
-  eFloat,
-  eUnorm8,
-  eSnorm16,
-  eUnorm16,
-  eRgba8,
-  eSrgb8Alpha8,
-  eRgb32f,
-  eRgba32f,
-};
-
 enum class SamplingType
 {
   eLinear,
@@ -96,12 +84,17 @@ struct GfxImage2D
   };
 
   using handle = terra::handle<GfxImage2D>;
-  using Format = ImageFormat;
+  using Format = ImageFormatEnum;
 };
 
 struct GfxSampler
 {
   using handle = terra::handle<GfxSampler>;
+};
+
+struct GfxCombinedImage
+{
+  using handle = terra::handle<GfxCombinedImage>;
 };
 
 enum class ShaderLang
@@ -145,58 +138,79 @@ struct GfxDescriptorSet
   using rhandle = std::pair<uint32_t, uint32_t>;
 };
 
-enum class GfxBindlessType
+enum class GfxBindType
 {
   eStorageBuffer,
-  eSampledTexture,
+  eTexture,
   eTextureBuffer,
   eStorageImage,
-  eScalar,
+  eInt,
+  eInt2,
+  eFloat,
+  eFloat2,
+  eDepthBuffer,
   eNone
+};
+
+enum class GfxAccess : uint8_t
+{
+  eReadOnly,
+  eWriteOnly,
+  eReadWrite
 };
 
 struct StorageBuffer
 {
-  static inline constexpr GfxBindlessType type = GfxBindlessType::eStorageBuffer;
-  GfxBuffer::handle                       buffer;
-  uint32_t                                size = 0;
+  static inline constexpr GfxBindType type = GfxBindType::eStorageBuffer;
+  GfxBuffer::handle                   buffer;
+  uint32_t                            offset = 0;
+  uint32_t                            size   = 0;
 };
 
 struct SampledTexture
 {
-  static inline constexpr GfxBindlessType type = GfxBindlessType::eSampledTexture;
-  GfxImage2D::handle                      texture;
-  GfxSampler::handle                      sampler;
+  static inline constexpr GfxBindType type = GfxBindType::eTexture;
+  GfxCombinedImage::handle            texture;
 };
 
 struct TextureBuffer
 {
-  static inline constexpr GfxBindlessType type = GfxBindlessType::eTextureBuffer;
-  GfxBuffer::handle                       buffer;
-  ImageFormat                             format = ImageFormat::eFloat;
+  static inline constexpr GfxBindType type = GfxBindType::eTextureBuffer;
+  GfxBuffer::handle                   buffer;
+  ImageFormatEnum                     format = ImageFormatEnum::eFloat;
 };
 
 struct StorageImage
 {
-  static inline constexpr GfxBindlessType type = GfxBindlessType::eStorageImage;
-  GfxImage2D::handle                      texture;
-  uint32_t                                layerCount = 0;
+  static inline constexpr GfxBindType type = GfxBindType::eStorageImage;
+  GfxImage2D::handle                  texture;
+  uint16_t                            layer   = 0;
+  GfxAccess                           access  = GfxAccess::eReadWrite;
+  bool                                layered = false;
 };
 
-struct GfxBindlessLayout
+struct TextureOutput
+{
+  GfxImage2D::handle image;
+  vec4               clearValue;
+  bool               clear = false;
+};
+
+struct GfxParamLayout
 {
   struct Entry
   {
-    GfxBindlessType type;
-    uint32_t        size;
+    GfxBindType type;
+    uint32_t    index;
   };
 
-  using handle = terra::handle<GfxBindlessLayout>;
-};
+  struct Output
+  {
+    GfxBindType     type;
+    ImageFormatEnum format;
+  };
 
-struct GfxBindlessDescriptor
-{
-  using handle = terra::handle<GfxBindlessDescriptor>;
+  using handle = terra::handle<GfxParamLayout>;
 };
 
 struct GfxFence
@@ -359,18 +373,18 @@ inline uint32_t getMipLevels(uint32_t width, uint32_t height)
   return lvl;
 }
 
-inline uint32_t getBaseSize(ImageFormat format)
+inline uint32_t getBaseSize(ImageFormatEnum format)
 {
   switch (format)
   {
-  case ImageFormat::eSrgb8Alpha8:
-  case ImageFormat::eRgba8:
-  case ImageFormat::eFloat:
+  case ImageFormatEnum::eSrgb8Alpha8:
+  case ImageFormatEnum::eRgba8:
+  case ImageFormatEnum::eFloat:
     return 4;
-  case ImageFormat::eUnorm16:
-  case ImageFormat::eSnorm16:
+  case ImageFormatEnum::eUnorm16:
+  case ImageFormatEnum::eSnorm16:
     return 2;
-  case ImageFormat::eUnorm8:
+  case ImageFormatEnum::eUnorm8:
     return 1;
   }
 }

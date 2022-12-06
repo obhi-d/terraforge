@@ -5,62 +5,62 @@
 
 namespace terra
 {
-inline gl::GLenum toGlFormat(ImageFormat format)
+inline gl::GLenum toGlFormat(ImageFormatEnum format)
 {
   switch (format)
   {
-  case ImageFormat::eFloat:
+  case ImageFormatEnum::eFloat:
     return gl::GLenum::GL_R32F;
-  case ImageFormat::eUnorm8:
+  case ImageFormatEnum::eUnorm8:
     return gl::GLenum::GL_R8;
-  case ImageFormat::eSnorm16:
+  case ImageFormatEnum::eSnorm16:
     return gl::GLenum::GL_R16_SNORM;
-  case ImageFormat::eUnorm16:
+  case ImageFormatEnum::eUnorm16:
     return gl::GLenum::GL_R16;
-  case ImageFormat::eRgba8:
+  case ImageFormatEnum::eRgba8:
     return gl::GLenum::GL_RGBA8;
-  case ImageFormat::eSrgb8Alpha8:
+  case ImageFormatEnum::eSrgb8Alpha8:
     return gl::GLenum::GL_SRGB8_ALPHA8;
-  case ImageFormat::eRgb32f:
-    return gl::GLenum::GL_RGB32F;
-  case ImageFormat::eRgba32f:
+  case ImageFormatEnum::eRg32f:
+    return gl::GLenum::GL_RG32F;
+  case ImageFormatEnum::eRgba32f:
     return gl::GLenum::GL_RGBA32F;
   }
   return gl::GLenum::GL_NONE;
 }
-inline gl::GLenum toGlDataFormat(ImageFormat format)
+inline gl::GLenum toGlDataFormat(ImageFormatEnum format)
 {
   switch (format)
   {
-  case ImageFormat::eFloat:
-  case ImageFormat::eUnorm8:
-  case ImageFormat::eSnorm16:
-  case ImageFormat::eUnorm16:
+  case ImageFormatEnum::eFloat:
+  case ImageFormatEnum::eUnorm8:
+  case ImageFormatEnum::eSnorm16:
+  case ImageFormatEnum::eUnorm16:
     return gl::GLenum::GL_RED;
-  case ImageFormat::eRgba8:
-  case ImageFormat::eSrgb8Alpha8:
-  case ImageFormat::eRgba32f:
+  case ImageFormatEnum::eRgba8:
+  case ImageFormatEnum::eSrgb8Alpha8:
+  case ImageFormatEnum::eRgba32f:
     return gl::GLenum::GL_RGBA;
-  case ImageFormat::eRgb32f:
-    return gl::GLenum::GL_RGB;
+  case ImageFormatEnum::eRg32f:
+    return gl::GLenum::GL_RG;
   }
   return gl::GLenum::GL_NONE;
 }
-inline gl::GLenum toGlType(ImageFormat format)
+inline gl::GLenum toGlType(ImageFormatEnum format)
 {
   switch (format)
   {
-  case ImageFormat::eRgb32f:
-  case ImageFormat::eRgba32f:
-  case ImageFormat::eFloat:
+  case ImageFormatEnum::eRg32f:
+  case ImageFormatEnum::eRgba32f:
+  case ImageFormatEnum::eFloat:
     return gl::GLenum::GL_FLOAT;
-  case ImageFormat::eSnorm16:
+  case ImageFormatEnum::eSnorm16:
     return gl::GLenum::GL_SHORT;
-  case ImageFormat::eUnorm16:
+  case ImageFormatEnum::eUnorm16:
     return gl::GLenum::GL_UNSIGNED_SHORT;
-  case ImageFormat::eUnorm8:
-  case ImageFormat::eRgba8:
-  case ImageFormat::eSrgb8Alpha8:
+  case ImageFormatEnum::eUnorm8:
+  case ImageFormatEnum::eRgba8:
+  case ImageFormatEnum::eSrgb8Alpha8:
     return gl::GLenum::GL_UNSIGNED_BYTE;
   }
   return gl::GLenum::GL_NONE;
@@ -120,5 +120,17 @@ inline auto toGl(GfxImage2D::ComponentValue comp)
   default:
     return gl::GL_ONE;
   }
+}
+
+inline auto toGl(GfxAccess access)
+{
+  switch (access)
+  {
+  case GfxAccess::eReadOnly:
+    return gl::GL_READ_ONLY;
+  case GfxAccess::eWriteOnly:
+    return gl::GL_WRITE_ONLY;
+  }
+  return gl::GL_READ_WRITE;
 }
 } // namespace terra

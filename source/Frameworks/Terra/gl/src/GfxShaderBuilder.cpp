@@ -48,14 +48,14 @@ ShaderBuilder::BindingInfo GfxShaderBuilder::declTextureArray(std::string_view n
   info.descriptor.type    = GfxDescriptorType::eTexture;
   return info;
 }
-ShaderBuilder::BindingInfo GfxShaderBuilder::declImage(std::string_view name, ImageFormat format, Access access)
+ShaderBuilder::BindingInfo GfxShaderBuilder::declImage(std::string_view name, ImageFormatEnum format, Access access)
 {
   BindingInfo      info;
   std::string_view sformat;
   switch (format)
   {
-  case ImageFormat::eSrgb8Alpha8:
-  case ImageFormat::eRgba8:
+  case ImageFormatEnum::eSrgb8Alpha8:
+  case ImageFormatEnum::eRgba8:
     sformat = "rgba8";
     break;
   default:

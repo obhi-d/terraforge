@@ -13779,7 +13779,7 @@ bool ImGui::SetDragDropPayload(const char* type, const void* data, size_t data_s
     cond = ImGuiCond_Always;
 
   IM_ASSERT(type != NULL);
-  IM_ASSERT(strlen(type) < IM_ARRAYSIZE(payload.DataType) && "Payload type can be at most 32 characters long");
+  IM_ASSERT(strlen(type) < IM_ARRAYSIZE(payload.DataTypeEnum) && "Payload type can be at most 32 characters long");
   IM_ASSERT((data != NULL && data_size > 0) || (data == NULL && data_size == 0));
   IM_ASSERT(cond == ImGuiCond_Always || cond == ImGuiCond_Once);
   IM_ASSERT(payload.SourceId != 0); // Not called between BeginDragDropSource() and EndDragDropSource()
@@ -13787,7 +13787,7 @@ bool ImGui::SetDragDropPayload(const char* type, const void* data, size_t data_s
   if (cond == ImGuiCond_Always || payload.DataFrameCount == -1)
   {
     // Copy payload
-    ImStrncpy(payload.DataType, type, IM_ARRAYSIZE(payload.DataType));
+    ImStrncpy(payload.DataTypeEnum, type, IM_ARRAYSIZE(payload.DataTypeEnum));
     g.DragDropPayloadBufHeap.resize(0);
     if (data_size > sizeof(g.DragDropPayloadBufLocal))
     {
@@ -20791,7 +20791,7 @@ void ImGui::ShowMetricsWindow(bool* p_open)
     Text("HoverDelayId: 0x%08X, Timer: %.2f, ClearTimer: %.2f", g.HoverDelayId, g.HoverDelayTimer,
          g.HoverDelayClearTimer);
     Text("DragDrop: %d, SourceId = 0x%08X, Payload \"%s\" (%d bytes)", g.DragDropActive, g.DragDropPayload.SourceId,
-         g.DragDropPayload.DataType, g.DragDropPayload.DataSize);
+         g.DragDropPayload.DataTypeEnum, g.DragDropPayload.DataSize);
     Unindent();
 
     Text("NAV,FOCUS");
@@ -21719,7 +21719,7 @@ void ImGui::DebugHookIdInfo(ImGuiID id, ImGuiDataType data_type, const void* dat
     IM_ASSERT(0);
   }
   info->QuerySuccess = true;
-  info->DataType     = data_type;
+  info->DataTypeEnum     = data_type;
 }
 
 static int StackToolFormatLevelInfo(ImGuiStackTool* tool, int n, bool format_for_ui, char* buf, size_t buf_size)
@@ -21730,7 +21730,7 @@ static int StackToolFormatLevelInfo(ImGuiStackTool* tool, int n, bool format_for
     return ImFormatString(buf, buf_size, format_for_ui ? "\"%s\" [window]" : "%s", window->Name);
   if (info->QuerySuccess) // Source: GetID() hooks (prioritize over ItemInfo() because we frequently use patterns like:
                           // PushID(str), Button("") where they both have same id)
-    return ImFormatString(buf, buf_size, (format_for_ui && info->DataType == ImGuiDataType_String) ? "\"%s\"" : "%s",
+    return ImFormatString(buf, buf_size, (format_for_ui && info->DataTypeEnum == ImGuiDataType_String) ? "\"%s\"" : "%s",
                           info->Desc);
   if (tool->StackLevel < tool->Results.Size) // Only start using fallback below when all queries are done, so during
                                              // queries we don't flickering ??? markers.

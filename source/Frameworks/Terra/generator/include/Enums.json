@@ -1,0 +1,79 @@
+[
+  {
+    "name": "ImageFormatEnum",
+    "namespace": "terra",
+    "type": "uint8_t",
+    "usage": "enum",
+    "default": "None",
+    "stringModifier": "lower",
+    "values": [
+      "None",
+      "Float",
+      "Unorm8",
+      "Snorm16",
+      "Unorm16",
+      "Rgba8",
+      "Srgb8Alpha8",
+      "Rg32f",
+      "Rgba32f",
+      "None"
+    ]
+  },
+  {
+    "name": "DataTypeEnum",
+    "namespace": "terra",
+    "type": "uint8_t",
+    "usage": "enum",
+    "default": "Invalid",
+    "stringModifier": "lower",
+    "values": [
+      "Invalid",
+      "Int2",
+      "Float2",
+      "Int",
+      "Float",
+      "Image",
+      "Buffer",
+      "Input",
+      "CurveData",
+      "Bool",
+      "PostProcess",
+      "Enum"
+    ]
+  },
+  {
+    "name": "SemanticEnum",
+    "namespace": "terra",
+    "type": "uint8_t",
+    "usage": "enum",
+    "default": "None",
+    "stringModifier": "lower",
+    "values": [
+      "None",
+      "Source",
+      "Iterator"
+    ]
+  },
+  {
+    "name": "ParamDeclTypeEnum",
+    "namespace": "terra",
+    "type": "uint8_t",
+    "usage": "enum",
+    "default": "None",
+    "stringModifier": "lowerCamelCase",
+    "values": [
+      "None",
+      "ReadonlySSBO",
+      "WriteonlySSBO",
+      "SSBO",
+      "ReadonlyImage",
+      "WriteonlyImage",
+      "Image",
+      "Texture",
+      "TextureBuffer",
+      "Scalar",
+      "DepthOutput"
+    ]
+  }
+
+]

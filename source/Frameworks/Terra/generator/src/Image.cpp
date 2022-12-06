@@ -115,7 +115,7 @@ void ImageSource::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
 std::pair<HDataSource, bool> ImageSource::setParamSourceImpl(uint32_t paramIdx, HDataSource h)
 {
   auto const& ds = get().get<DataSource>(h);
-  if (ds.getFormat().type != DataType::eImage)
+  if (ds.getFormat().type != DataTypeEnum::eImage)
     return std::pair<HDataSource, bool>(source, false);
   std::swap(source.reserved, h.reserved);
   return std::pair<HDataSource, bool>(h, true);

@@ -355,7 +355,7 @@ void Basics_hwy()
   {
     builder.add<MaskNode>("@imageMask", IconBasicMask);
     builder.fn(HWY_DYNAMIC_DISPATCH(imageMask));
-    builder.param<&MaskNode::source>("@source", FmtVal<DataType::eImage>());
+    builder.param<&MaskNode::source>("@source", FmtVal<DataTypeEnum::eImage>());
     builder.param<&MaskNode::sampler>("@sampling", FmtEnum(0, {"@x1", "@x2", "@x3", "@x4"}));
     builder.param<&MaskNode::offset>("@offset");
     builder.param<&MaskNode::scale>("@scale");
@@ -365,7 +365,7 @@ void Basics_hwy()
   {
     builder.add<CurveNode>("@curve", IconBasicCurve);
     builder.fn(HWY_DYNAMIC_DISPATCH(curve));
-    builder.param<&CurveNode::source>("@source", FmtVal<DataType::eCurveData>());
+    builder.param<&CurveNode::source>("@source", FmtVal<DataTypeEnum::eCurveData>());
     builder.param<&CurveNode::applyX>("@applyX");
     builder.param<&CurveNode::applyY>("@applyY");
     builder.param<&CurveNode::strength>("@strength");

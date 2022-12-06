@@ -39,9 +39,9 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
       auto&       p = parameters[i];
       auto const& d = meta.parameterDef[i];
       p.id          = pack(id.um_index(), i + 1);
-      if (d.format.type == DataType::eInput || d.format.type == DataType::eBuffer ||
-          d.format.type == DataType::ePostProcess || d.format.type == DataType::eImage ||
-          d.format.type == DataType::eCurveData)
+      if (d.format.type == DataTypeEnum::eInput || d.format.type == DataTypeEnum::eBuffer ||
+          d.format.type == DataTypeEnum::ePostProcess || d.format.type == DataTypeEnum::eImage ||
+          d.format.type == DataTypeEnum::eCurveData)
       {
         p.flags = PinStateFlags::fInputPin;
         imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -69,23 +69,23 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
   IconType icon = IconType::Circle;
   switch (format.type)
   {
-  case DataType::eCurveData:
+  case DataTypeEnum::eCurveData:
     icon = IconType::Grid;
     break;
-  case DataType::eImage:
+  case DataTypeEnum::eImage:
     icon = IconType::Circle;
     break;
-  case DataType::eInput:
+  case DataTypeEnum::eInput:
     icon = IconType::Flow;
     break;
-  case DataType::ePostProcess:
+  case DataTypeEnum::ePostProcess:
     icon = IconType::Square;
     break;
-  case DataType::eBuffer:
+  case DataTypeEnum::eBuffer:
     icon = IconType::Diamond;
     switch (format.scalarSubType)
     {
-    case DataType::eFloat2:
+    case DataTypeEnum::eFloat2:
       icon = IconType::RoundSquare;
       break;
     }
@@ -140,11 +140,11 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
   }
 }
 
-bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type, ScalarValue& v)
+bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataTypeEnum type, ScalarValue& v)
 {
   switch (type)
   {
-  case DataType::eInt2:
+  case DataTypeEnum::eInt2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
     if (ImGui::DragInt2(def.displayInfo.getName(), &v.ivalue2.x, 1.0f, def.values[ParameterMeta::eMin].ival,
@@ -152,7 +152,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
       return true;
   }
   break;
-  case DataType::eInt:
+  case DataTypeEnum::eInt:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
     if (ImGui::DragInt(def.displayInfo.getName(), &v.ivalue, 1.0f, def.values[ParameterMeta::eMin].ival,
@@ -160,7 +160,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
       return true;
   }
   break;
-  case DataType::eFloat2:
+  case DataTypeEnum::eFloat2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
     if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.values[ParameterMeta::eStep].fval,
@@ -168,7 +168,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
       return true;
   }
   break;
-  case DataType::eFloat:
+  case DataTypeEnum::eFloat:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
     if (ImGui::DragFloat(def.displayInfo.getName(), &v.value, def.values[ParameterMeta::eStep].fval,
@@ -176,7 +176,7 @@ bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataType type,
       return true;
   }
   break;
-  case DataType::eBool:
+  case DataTypeEnum::eBool:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
     if (ImGui::Checkbox(def.displayInfo.getName(), &v.bvalue))
@@ -193,18 +193,18 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
   auto&                pin   = parameters[i];
   switch (def.format.type)
   {
-  case DataType::eFloat:
-  case DataType::eFloat2:
-  case DataType::eInt:
-  case DataType::eInt2:
-  case DataType::eBool:
+  case DataTypeEnum::eFloat:
+  case DataTypeEnum::eFloat2:
+  case DataTypeEnum::eInt:
+  case DataTypeEnum::eInt2:
+  case DataTypeEnum::eBool:
   {
     ScalarValue value = std::get<ScalarValue>(param);
     if (drawScalar(style, def, def.format.type, value))
       node.param(i, value);
   }
   break;
-  case DataType::eEnum:
+  case DataTypeEnum::eEnum:
     // draw combo
     {
       ScalarValue value = std::get<ScalarValue>(param);
@@ -214,19 +214,19 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
         node.state(i, value);
     }
     break;
-  case DataType::eCurveData:
+  case DataTypeEnum::eCurveData:
     ImGui::TextUnformatted(ICON_FA_BEZIER_CURVE);
     ImGui::SameLine();
     ImGui::TextUnformatted(def.displayInfo.getName());
     break;
-  case DataType::eInput:
+  case DataTypeEnum::eInput:
     ImGui::TextUnformatted(def.displayInfo.getName());
     ImGui::Dummy(ImVec2(4, 4));
     break;
-  case DataType::ePostProcess:
+  case DataTypeEnum::ePostProcess:
     ImGui::TextUnformatted(def.displayInfo.getName());
     break;
-  case DataType::eBuffer:
+  case DataTypeEnum::eBuffer:
     if (std::holds_alternative<Source>(param))
     {
       ImGui::TextUnformatted(def.displayInfo.getName());
@@ -239,7 +239,7 @@ void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& n
         node.param(i, value);
     }
     break;
-  case DataType::eImage:
+  case DataTypeEnum::eImage:
   {
     ImGui::TextUnformatted(ICON_FA_FILE_IMAGE);
     ImGui::SameLine();
@@ -280,7 +280,7 @@ void DrawableNode::updateThumbnailFromImage(Image& image)
     }
   }
   thumbnail = app().getDevice()->createImage(
-    GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize, (uint32_t)ThumbnailSize, ImageFormat::eUnorm8,
+    GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize, (uint32_t)ThumbnailSize, ImageFormatEnum::eUnorm8,
     (ubyte_t const*)sampled.get(),
     GfxImage2D::Swizzle{GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eOne});
   thumbnailVersion = image.getVersion();

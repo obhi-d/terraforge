@@ -6,26 +6,46 @@
 
 namespace terra
 {
+
+enum class BindlessHandleType : uint8_t
+{
+  eNone,
+  eTexture,
+  eImage,
+};
+
+struct BindlessHandleGl
+{
+  using handle                     = terra::handle<BindlessHandleGl>;
+  gl::GLuint64       hdev          = 0;
+  uint32_t           residentFrame = 0;
+  BindlessHandleType type          = BindlessHandleType::eNone;
+  GfxAccess          access        = GfxAccess::eReadOnly;
+  bool               active        = false;
+  bool               resident      = false;
+};
+
 struct GfxBufferGl : GfxBuffer
 {
-  gl::GLuint       glhandle = {};
-  gl::GLenum       target;
-  GfxStorageClass  storage;
-  GfxBuffer::Usage usage;
-  uint32_t         size  = {};
-  gl::GLuint       gltbo = {};
-  gl::GLuint64     hdev  = 0;
+  gl::GLuint               glhandle = {};
+  gl::GLenum               target;
+  GfxStorageClass          storage;
+  GfxBuffer::Usage         usage;
+  uint32_t                 size  = {};
+  gl::GLuint               gltbo = {};
+  BindlessHandleGl::handle hdev  = 0;
 };
 
 struct GfxImageGl : GfxImage2D
 {
-  gl::GLuint                                   glhandle = {};
-  GfxStorageClass                              storage;
-  uint32_t                                     width  = {};
-  uint32_t                                     height = {};
-  ImageFormat                                  format;
-  gl::GLuint64                                 hdev = 0;
-  std::unordered_map<gl::GLuint, gl::GLuint64> hdevTexSampler;
+  gl::GLuint               glhandle = {};
+  gl::GLenum               target   = gl::GL_TEXTURE_2D;
+  GfxStorageClass          storage;
+  uint32_t                 width  = {};
+  uint32_t                 height = {};
+  ImageFormatEnum          format;
+  BindlessHandleGl::handle hdev = 0;
+  BindlessHandleGl::handle himg = 0;
 };
 
 struct GfxSamplerGl : GfxSampler
@@ -66,36 +86,48 @@ struct GfxMeshLayoutGl : GfxMesh
   gl::GLuint             glhandle;
 };
 
-struct GfxBindlessLayoutGl : GfxBindlessLayout
+struct GfxBindlessLayoutGl : GfxParamLayout
 {
-
   acl::dynamic_array<Entry> entries;
+  std::array<Output, 8>     outputs;
+  uint32_t                  nbOutput = 0;
 };
 
-struct GfxBindlessDescriptorGl : GfxBindlessDescriptor
+struct GfxCombinedImageGl : GfxCombinedImage
 {
-  GfxBindlessLayout::handle layout;
-  gl::GLuint                glhandle     = 0;
-  uint32_t                  bufferOffset = 0;
-  uint32_t                  bufferSize   = 0;
+  GfxImage2D::handle       image;
+  GfxSampler::handle       sampler;
+  BindlessHandleGl::handle hdev = 0;
+};
+
+struct GfxFramebufferGl
+{
+  gl::GLuint glhandle;
+  uint8_t    activeAttachments  = 0;
+  bool       hasDepthAttachment = false;
 };
 
 struct GfxResources
 {
-  std::vector<std::uint8_t> uboData;
+  Blob uboData;
 
-  table<GfxBufferGl>  buffers;
-  table<GfxImageGl>   images;
-  table<GfxSamplerGl> samplers;
+  GfxFramebufferGl framebuffer;
+
+  table<GfxBufferGl>        buffers;
+  table<GfxImageGl>         images;
+  table<GfxSamplerGl>       samplers;
+  table<GfxCombinedImageGl> texSamplers;
 
   table<GfxDescriptorSetLayoutGl> descriptorSetLayouts;
   table<GfxDescriptorSetGl>       descriptorSets;
   table<GfxFenceGl>               fences;
 
-  table<GfxProgramGl>                  programs;
-  table<GfxMeshLayoutGl>               meshes;
-  table<GfxBindlessLayoutGl>           bindlessLayout;
-  std::vector<GfxBindlessDescriptorGl> bindlessDescriptors;
+  table<GfxProgramGl>        programs;
+  table<GfxMeshLayoutGl>     meshes;
+  table<GfxBindlessLayoutGl> bindlessLayout;
+  table<BindlessHandleGl>    bindlessHandles;
+
+  std::vector<BindlessHandleGl::handle> activeResidents;
 
   using MeshMap = std::unordered_map<GfxMesh::Layout, GfxMesh::handle, GfxMesh::LayoutHash>;
   MeshMap meshMap;

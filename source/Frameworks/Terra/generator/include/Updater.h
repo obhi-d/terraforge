@@ -13,8 +13,8 @@ namespace glsl
 using DescriptorList = std::vector<GfxDescriptorSetLayout::Descriptor>;
 using OptionList     = std::vector<std::string>;
 
-std::string_view bufferReadType(DataType type);
-std::string_view bufferWriteType(DataType type);
+std::string_view bufferReadType(DataTypeEnum type);
+std::string_view bufferWriteType(DataTypeEnum type);
 
 void declBufferSource(std::string& ubo, std::string& opaque, DescriptorList&, OptionList&, ParameterMeta&,
                       int32_t& offset, ShaderBuilder&);

@@ -108,7 +108,7 @@ struct CurveData : public DataSource
 
   inline DataFormat getFormat(uint32) const final
   {
-    return DataFormat(DataType::eCurveData);
+    return DataFormat(DataTypeEnum::eCurveData);
   }
 
   inline exchange setParamSourceImpl(uint32_t paramIdx, Source) final

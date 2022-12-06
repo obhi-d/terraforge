@@ -7,7 +7,9 @@
 namespace terra
 {
 
+struct HybridNode;
 class HybridPipeline;
+
 class HybridNodeMeta : public NodeMeta
 {};
 
@@ -34,34 +36,43 @@ struct ProgramKey
 class GpuNodeMeta : public HybridNodeMeta
 {
 public:
-  struct ShaderContent
+  struct GpuPass
   {
-    std::string function;
-    std::string extensions;
-    std::string shaderContent;
+    std::string           function;
+    std::string           extensions;
+    std::string           shaderContent;
+    std::vector<uint32_t> parameters;
+    std::vector<uint32_t> outputs;
   };
 
-  ShaderProgramPtr findProgram(ProgramKey const& key) const;
-  void             addProgram(ProgramKey const& key, ShaderProgramPtr program) const;
+  GpuPipelinePtr findProgram(ProgramKey const& key) const;
+  void           addProgram(ProgramKey const& key, GpuPipelinePtr program) const;
 
   uint32 getDictionaryIdx() const
   {
     return dictionaryIdx;
   }
 
-  ShaderContent const& getCode() const
+  uint32_t getNumPasses() const
   {
-    return content;
+    return (uint32_t)passes.size();
   }
 
-protected:
+  GpuPass const& getCode(uint32_t pass) const
+  {
+    return passes[pass];
+  }
+
   void prepare() override;
 
-  using ShaderMap = std::unordered_map<ProgramKey, ShaderProgramPtr, ProgramKey::hasher>;
-  static std::unordered_map<uint32_t, ShaderMap> shaderMaps;
+  using GpuPipelineMap = std::unordered_map<ProgramKey, GpuPipelinePtr, ProgramKey::hasher>;
+  static std::unordered_map<uint32_t, GpuPipelineMap> shaderMaps;
 
-  ShaderContent content;
-  uint32_t      dictionaryIdx = 0xffffffff;
+  std::vector<GpuPass> passes;
+  uint32_t             dictionaryIdx    = 0xffffffff;
+  bool                 isSourceModifier = false;
 };
 
+class GpuScriptNodeMeta : public GpuNodeMeta
+{};
 } // namespace terra

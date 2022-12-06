@@ -26,7 +26,7 @@ struct ShaderBuilder
   virtual BindingInfo declConstants(std::string_view prefix, std::string_view name)             = 0;
   virtual BindingInfo declTexture(std::string_view name)                                        = 0;
   virtual BindingInfo declTextureArray(std::string_view name)                                   = 0;
-  virtual BindingInfo declImage(std::string_view name, ImageFormat format, Access access)       = 0;
+  virtual BindingInfo declImage(std::string_view name, ImageFormatEnum format, Access access)       = 0;
   virtual void        append(std::string_view)                                                  = 0;
   virtual void        begin(ShaderType)                                                         = 0;
   virtual void        end()                                                                     = 0;

@@ -271,7 +271,7 @@ void hydraulicErosion_end(Node& inode, Pipeline_hwy& pipe)
 void PostProcess_hwy()
 {
   auto builder = buildMeta<NodeMeta_hwy>("@PostProcess"_ls, "postprocess");
-  builder.outputs(DataFormat(DataType::ePostProcess));
+  builder.outputs(DataFormat(DataTypeEnum::ePostProcess));
 
   {
     builder.add<PostProcessNode>(NoDomain(), "@postProcess", IconOpPostProc);
@@ -285,11 +285,12 @@ void PostProcess_hwy()
     builder.fn(postProcessPassthrough);
     builder.prepare(hydraulicErosion_prepare);
     builder.end(hydraulicErosion_end);
-    builder.param<&ErosionNode::source>("@source", FmtVal<DataType::ePostProcess>());
-    builder.param<&ErosionNode::relativePos>("@relativePos", FmtVal<DataType::eFloat2>(0.5f, 0.1f, 1.0f, 0.01f));
+    builder.param<&ErosionNode::source>("@source", FmtVal<DataTypeEnum::ePostProcess>());
+    builder.param<&ErosionNode::relativePos>("@relativePos", FmtVal<DataTypeEnum::eFloat2>(0.5f, 0.1f, 1.0f, 0.01f));
     builder.param<&ErosionNode::effectRadius>("@effectRadius");
-    builder.param<&ErosionNode::particleCount>("@particleCount", FmtVal<DataType::eInt>());
-    builder.param<&ErosionNode::iteration>("@iteration", FmtVal<DataType::eInt>(0, std::numeric_limits<int>::max()));
+    builder.param<&ErosionNode::particleCount>("@particleCount", FmtVal<DataTypeEnum::eInt>());
+    builder.param<&ErosionNode::iteration>("@iteration",
+                                           FmtVal<DataTypeEnum::eInt>(0, std::numeric_limits<int>::max()));
     builder.param<&ErosionNode::lifetime>("@lifetime");
     builder.param<&ErosionNode::inertia>("@inertia");
     builder.param<&ErosionNode::minCapacity>("@minCapacity");
@@ -301,7 +302,7 @@ void PostProcess_hwy()
     builder.param<&ErosionNode::evaporationRate>("@evaporationRate");
     builder.param<&ErosionNode::gravity>("@gravity");
     builder.param<&ErosionNode::minSediment>("@minSediment");
-    builder.param<&ErosionNode::erosionMask>("@erosionMask", FmtVal<DataType::eImage>());
+    builder.param<&ErosionNode::erosionMask>("@erosionMask", FmtVal<DataTypeEnum::eImage>());
     builder.param<&ErosionNode::blur>("@applyBlur");
     builder.param<&ErosionNode::blurFactor>("@blurFactor");
     builder.done();

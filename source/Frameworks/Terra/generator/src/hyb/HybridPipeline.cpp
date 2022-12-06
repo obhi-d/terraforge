@@ -16,14 +16,14 @@ HybridBuffer::handle HybridPipeline::declareBuffer()
   return buffers.emplace();
 }
 
-void HybridPipeline::describeBuffer(HybridBuffer::handle item, HDataSource owner, uint32_t size, ImageFormat format)
+void HybridPipeline::describeBuffer(HybridBuffer::handle item, HDataSource owner, uint32_t size, ImageFormatEnum format)
 {
   auto& ii = buffers.at(item);
   ii       = HybridBuffer(owner, size, 1, format, false);
 }
 
 void HybridPipeline::describeImage(HybridBuffer::handle item, HDataSource owner, uint32_t width, uint32_t height,
-                                   ImageFormat format)
+                                   ImageFormatEnum format)
 {
   auto& ii = buffers.at(item);
   ii       = HybridBuffer(owner, width, height, format, true);
@@ -120,7 +120,7 @@ std::span<ubyte_t> HybridPipeline::writeImageData(HybridBuffer::handle item, boo
   return writeBufferData(item, discard);
 }
 
-void HybridPipeline::compute(HDataSource item, ivec2 tileSize, vec2 start, float freq, int32_t seed)
+void HybridPipeline::compute(HDataSource item, uvec2 tileSize, uvec2 start, float freq, uint32_t seed)
 {
   actor           = item;
   this->frequency = freq;

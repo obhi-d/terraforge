@@ -175,7 +175,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   }
 
   font      = renderer->createImage(GfxStorageClass::eStaticDeviceReadonly, (uint32)width, (uint32)height,
-                                    ImageFormat::eUnorm8, (ubyte_t const*)pixels,
+                                    ImageFormatEnum::eUnorm8, (ubyte_t const*)pixels,
                                     GfxImage2D::Swizzle{.r = GfxImage2D::ComponentValue::eOne,
                                                         .g = GfxImage2D::ComponentValue::eOne,
                                                         .b = GfxImage2D::ComponentValue::eOne,

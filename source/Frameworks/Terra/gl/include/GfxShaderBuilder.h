@@ -23,7 +23,7 @@ public:
   BindingInfo declConstants(std::string_view prefix, std::string_view name) final;
   BindingInfo declTexture(std::string_view name) final;
   BindingInfo declTextureArray(std::string_view name) final;
-  BindingInfo declImage(std::string_view name, ImageFormat format, Access access) final;
+  BindingInfo declImage(std::string_view name, ImageFormatEnum format, Access access) final;
 
   void begin(ShaderType) final;
   void end() final;

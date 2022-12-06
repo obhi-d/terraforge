@@ -57,7 +57,7 @@ void ImageSerializer::saveImage(ImageData const& image, std::filesystem::path pa
   int color = PNG_COLOR_TYPE_GRAY;
   int bitd  = 16;
   uint pix   = 2;
-  if (image.format == ImageFormat::eRgba8 || image.format == ImageFormat::eSrgb8Alpha8)
+  if (image.format == ImageFormatEnum::eRgba8 || image.format == ImageFormatEnum::eSrgb8Alpha8)
   {
     color = PNG_COLOR_TYPE_RGBA;
     bitd  = 8;
@@ -118,11 +118,11 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
   if (colorType == PNG_COLOR_TYPE_GRAY)
   {
     if (bitDepth == 8)
-      data.format = ImageFormat::eUnorm8;
+      data.format = ImageFormatEnum::eUnorm8;
     else if (bitDepth == 16)
     {
       png_set_swap(png_ptr);
-      data.format = ImageFormat::eSnorm16;
+      data.format = ImageFormatEnum::eSnorm16;
     }
     else
     {
@@ -136,7 +136,7 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
     if (colorType == PNG_COLOR_TYPE_RGBA)
     {
       if (bitDepth == 8)
-        data.format = ImageFormat::eRgba8;
+        data.format = ImageFormatEnum::eRgba8;
       else
       {
         logError("PNG bit depth not supported for color texture! : {}", bitDepth);
@@ -155,7 +155,7 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
       goto error;
     }
     if (bitDepth == 8)
-      data.format = ImageFormat::eRgba8;
+      data.format = ImageFormatEnum::eRgba8;
     else
     {
       logError("PNG bit depth not supported for color texture! : {}", bitDepth);

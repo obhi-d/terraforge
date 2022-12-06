@@ -1,4 +1,5 @@
 #pragma once
+#include "generatorEnums.hpp"
 #include <acl/linear_arena_allocator.hpp>
 #include <acl/link.hpp>
 #include <array>
@@ -143,6 +144,56 @@ struct Content
   Content& operator=(Content&&) noexcept = default;
 };
 
+struct Blob
+{
+  std::vector<ubyte_t> content;
+
+  inline void clear()
+  {
+    content.clear();
+  }
+
+  ubyte_t const* data() const
+  {
+    return content.data();
+  }
+
+  uint32_t size() const
+  {
+    return (uint32_t)content.size();
+  }
+
+  template <typename T>
+  void push(T const& data)
+  {
+    auto s = content.size();
+    content.resize(s + sizeof(T));
+    *(T*)(content.data() + s) = data;
+  }
+
+  struct Reader
+  {
+    Blob const& blob;
+    uint32_t    cursor = 0;
+
+    Reader(Reader const& other) : blob(other.blob), cursor(other.cursor) {}
+    Reader(Blob const& b) : blob(b) {}
+
+    template <typename T>
+    T const& read()
+    {
+      auto s = blob.content.data() + cursor;
+      cursor += sizeof(T);
+      return *(T const*)(s);
+    }
+  };
+
+  Reader reader() const
+  {
+    return Reader(*this);
+  }
+};
+
 // helper type for the visitor #4
 template <class... Ts>
 struct overloaded : Ts...
@@ -244,10 +295,11 @@ inline uint32_t fnv1a(const void* data, size_t numBytes, uint32_t hash = Seed)
   return hash;
 }
 
-inline std::u8string parseU8(std::string_view from)
+template <typename string_type>
+inline string_type parseU8(std::string_view from)
 {
-  std::u8string out;
-  auto          hexchar = [](char c) -> char8_t
+  string_type out;
+  auto        hexchar = [](char c) -> char8_t
   {
     c = std::toupper(c);
     return (c >= 'A') ? (c - 'A' + 10) : (c - '0');
@@ -277,60 +329,30 @@ inline std::u8string parseU8(std::string_view from)
   return out;
 }
 
-enum class DataType
-{
-  eInvalid,
-  eInt2,
-  eFloat2,
-  eInt,
-  eFloat,
-  eImage,
-  eBuffer,
-  eInput,
-  eCurveData,
-  eBool,
-  ePostProcess,
-  eEnum
-};
-
-enum class Semantic
-{
-  eNone,
-  eSource
-};
-
-enum class ParamDeclType
-{
-  eStorageBuffer,
-  eSampledTexture,
-  eTextureBuffer,
-  eStorageImage,
-  eScalar,
-  eNone
-};
-
 struct DataFormat
 {
-  DataType      type          = DataType::eInvalid;
-  DataType      scalarSubType = DataType::eInvalid;
-  Semantic      semantic      = Semantic::eNone;
-  ParamDeclType declType      = ParamDeclType::eNone;
+  DataTypeEnum      type          = DataTypeEnum::eInvalid;
+  ImageFormatEnum   imageFormat   = ImageFormatEnum::eFloat;
+  DataTypeEnum      scalarSubType = DataTypeEnum::eInvalid;
+  SemanticEnum      semantic      = SemanticEnum::eNone;
+  ParamDeclTypeEnum declType      = ParamDeclTypeEnum::eNone;
+  bool              preEval       = false;
 
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
   constexpr DataFormat() = default;
-  constexpr DataFormat(DataType itype, DataType iscalarSubType = DataType::eFloat, Semantic isem = Semantic::eNone,
-                       ParamDeclType iindex = ParamDeclType::eNone)
+  constexpr DataFormat(DataTypeEnum itype, DataTypeEnum iscalarSubType = DataTypeEnum::eFloat,
+                       SemanticEnum isem = SemanticEnum::eNone, ParamDeclTypeEnum iindex = ParamDeclTypeEnum::eNone)
       : type(itype), scalarSubType(iscalarSubType), semantic(isem), declType(iindex)
   {}
   static bool isCompatible(DataFormat const& from, DataFormat const& to);
 };
 
-template <DataType Type, DataType Scalar = DataType::eFloat>
+template <DataTypeEnum Type, DataTypeEnum Scalar = DataTypeEnum::eFloat>
 struct Format
 {
-  static inline constexpr DataType type   = Type;
-  static inline constexpr DataType scalar = Scalar;
+  static inline constexpr DataTypeEnum type   = Type;
+  static inline constexpr DataTypeEnum scalar = Scalar;
 
   static inline constexpr auto get()
   {
@@ -338,8 +360,8 @@ struct Format
   }
 };
 
-DataType         stringToType(std::string_view);
-std::string_view typeToString(DataType);
+DataTypeEnum     stringToType(std::string_view);
+std::string_view typeToString(DataTypeEnum);
 
 union DataValue
 {

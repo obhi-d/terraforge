@@ -16,68 +16,14 @@ bool DataFormat::isCompatible(DataFormat const& from, DataFormat const& to)
   return from == to;
 }
 
-std::string_view typeToString(DataType type)
-{
-  switch (type)
-  {
-  case DataType::eEnum:
-    return "enum";
-  case DataType::eInt:
-    return "int";
-  case DataType::eInt2:
-    return "ivec2";
-  case DataType::eFloat:
-    return "float";
-  case DataType::eFloat2:
-    return "vec2";
-  case DataType::eBool:
-    return "bool";
-  case DataType::eImage:
-    return "image";
-  case DataType::eBuffer:
-    return "source";
-  case DataType::eInput:
-    return "input";
-  case DataType::eCurveData:
-    return "curve";
-  }
-  return "invalid";
-}
-
-DataType stringToType(std::string_view stype)
-{
-  DataType type = DataType::eInvalid;
-  if (stype == "enum")
-    type = DataType::eEnum;
-  else if (stype == "int")
-    type = DataType::eInt;
-  else if (stype == "float")
-    type = DataType::eFloat;
-  else if (stype == "ivec2")
-    type = DataType::eInt2;
-  else if (stype == "vec2")
-    type = DataType::eFloat2;
-  else if (stype == "bool")
-    type = DataType::eBool;
-  else if (stype == "image")
-    type = DataType::eImage;
-  else if (stype == "buffer" || stype == "source")
-    type = DataType::eBuffer;
-  else if (stype == "input")
-    type = DataType::eInput;
-  else if (stype == "curve")
-    type = DataType::eCurveData;
-  return type;
-}
-
 bool ParameterMeta::canBeSource() const
 {
   switch (format.type)
   {
-  case DataType::eCurveData:
-  case DataType::eBuffer:
-  case DataType::eImage:
-  case DataType::eInput:
+  case DataTypeEnum::eCurveData:
+  case DataTypeEnum::eBuffer:
+  case DataTypeEnum::eImage:
+  case DataTypeEnum::eInput:
     return true;
   }
   return false;
@@ -90,45 +36,51 @@ bool ParameterMeta::canBeScalar() const
 
 ScalarValue ParameterMeta::getDefault() const
 {
-  if (DataType::eBool == format.type)
+  if (DataTypeEnum::eBool == format.type)
     return ScalarValue((bool)(values[ValueType::eDefault].ival != 0));
-  else if (DataType::eEnum == format.type)
+  else if (DataTypeEnum::eEnum == format.type)
     return ScalarValue(values[ValueType::eDefault].ival, 0);
   switch (format.scalarSubType)
   {
-  case DataType::eFloat:
+  case DataTypeEnum::eFloat:
     return ScalarValue(values[ValueType::eDefault].fval);
-  case DataType::eFloat2:
+  case DataTypeEnum::eFloat2:
     return vec2{values[ValueType::eDefault].fval, values[ValueType::eDefault].fval};
-  case DataType::eBool:
-  case DataType::eInt:
+  case DataTypeEnum::eBool:
+  case DataTypeEnum::eInt:
     return ScalarValue(values[ValueType::eDefault].ival);
-  case DataType::eInt2:
+  case DataTypeEnum::eInt2:
     return ivec2{values[ValueType::eDefault].ival, values[ValueType::eDefault].ival};
   default:
     return ScalarValue();
   }
 }
 
-void ParameterMeta::setTypeFromString(std::string_view stype)
+void ParameterMeta::setTypeFromString(std::string_view type, std::string_view scalarType)
 {
-  format.type = stringToType(stype);
+  format.type          = DataType::FromString(type);
+  format.scalarSubType = DataType::FromString(scalarType);
+}
+
+void ParameterMeta::setDeclFromString(std::string_view type)
+{
+  format.declType = ParamDeclType::FromString(type);
 }
 
 void ParameterMeta::setValueFromString(ValueType valType, std::string_view value)
 {
-  auto setter = [this, valType](auto value)
+  auto localSetter = [this, valType](auto value)
   {
     values[valType] = DataValue(value);
   };
   int   ivalue = 0;
   float fvalue = 0;
-  switch (format.type)
+  switch (format.scalarSubType)
   {
-  case DataType::eEnum:
-  case DataType::eBool:
-  case DataType::eInt2:
-  case DataType::eInt:
+  case DataTypeEnum::eEnum:
+  case DataTypeEnum::eBool:
+  case DataTypeEnum::eInt2:
+  case DataTypeEnum::eInt:
     if (value == "inf")
       ivalue = std::numeric_limits<int>::max();
     else if (value == "-inf")
@@ -139,32 +91,61 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
       ivalue = 0;
     else
       std::from_chars(value.data(), value.data() + value.size(), ivalue);
-    setter(ivalue);
+    localSetter(ivalue);
     break;
-  case DataType::eCurveData:
-  case DataType::eImage:
-  case DataType::eInput:
-  case DataType::eBuffer:
-  case DataType::eFloat:
-  case DataType::eFloat2:
+  case DataTypeEnum::eCurveData:
+  case DataTypeEnum::eImage:
+  case DataTypeEnum::eInput:
+  case DataTypeEnum::eBuffer:
+  case DataTypeEnum::eFloat:
+  case DataTypeEnum::eFloat2:
     if (value == "inf")
       fvalue = std::numeric_limits<float>::infinity();
     else if (value == "-inf")
       fvalue = -std::numeric_limits<float>::infinity();
     else
       std::from_chars(value.data(), value.data() + value.size(), fvalue);
-    setter(fvalue);
+    localSetter(fvalue);
     break;
   }
 }
 
 NodeMeta::NodeMeta()
 {
-  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataType::eInput>());
+  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataTypeEnum::eInput>());
 }
 
 void NodeMeta::addDomain()
 {
-  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataType::eInput>());
+  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataTypeEnum::eInput>());
+}
+
+void NodeMeta::prepare()
+{
+  for (uint32_t i = 0, end = (uint32_t)parameterDef.size(); i < end; ++i)
+  {
+    auto autoIdx = (uint32_t)parameterDef[i].format.semantic;
+    if (autoIdx != (uint32_t)SemanticEnum::eNone)
+    {
+      if (autoIdx < autoRegistry.size())
+      {
+        if (autoRegistry[autoIdx].pre || autoRegistry[autoIdx].post)
+          autoParams.emplace_back(i);
+      }
+    }
+  }
+
+  for (uint32_t i = 0, end = (uint32_t)outputs.size(); i < end; ++i)
+  {
+    auto autoIdx = (uint32_t)outputs[i].format.semantic;
+    if (autoIdx != (uint32_t)SemanticEnum::eNone)
+    {
+      if (autoIdx < autoRegistry.size())
+      {
+        if (autoRegistry[autoIdx].pre || autoRegistry[autoIdx].post)
+          autoOutputs.emplace_back(i);
+      }
+    }
+  }
 }
 } // namespace terra

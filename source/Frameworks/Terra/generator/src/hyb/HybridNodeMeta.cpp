@@ -18,16 +18,16 @@ void GpuNodeMeta::prepare()
     auto const& pdef = parameterDef[i];
     switch (pdef.format.type)
     {
-    case DataType::eImage:
+    case DataTypeEnum::eImage:
       dict.names.emplace_back(imgPrefix + std::string(pdef.name.substr(1)));
       break;
-    case DataType::eBuffer:
+    case DataTypeEnum::eBuffer:
       dict.names.emplace_back(buffPrefix + std::string(pdef.name.substr(1)));
       break;
-    case DataType::eBool:
+    case DataTypeEnum::eBool:
       dict.names.emplace_back(boolPrefix + std::string(pdef.name.substr(1)));
       break;
-    case DataType::eEnum:
+    case DataTypeEnum::eEnum:
       for (uint32_t i = 0; i < pdef.maxEnum; ++i)
         dict.names.emplace_back(enumPrefix + std::string(pdef.enumNames[i]));
       break;

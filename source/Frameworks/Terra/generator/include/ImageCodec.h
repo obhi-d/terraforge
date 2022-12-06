@@ -13,7 +13,7 @@ struct ImageData
   std::unique_ptr<ubyte_t[]> data;
   uint32_t                     width  = 0;
   uint32_t                     height = 0;
-  ImageFormat                  format = ImageFormat::eFloat;
+  ImageFormatEnum                  format = ImageFormatEnum::eFloat;
 };
 
 struct ImageCodec
