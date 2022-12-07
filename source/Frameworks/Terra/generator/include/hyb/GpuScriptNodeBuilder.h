@@ -6,27 +6,26 @@
 namespace terra
 {
 class Terra;
-struct NodeCmdHandler : neo::command_handler
+struct GpuScriptNodeBuilder : neo::command_handler
 {
   template <typename L>
-  NodeCmdHandler(NodeMeta& m, L&& eh) : meta(m), errorHandler(std::forward<L>(eh))
+  GpuScriptNodeBuilder(NodeMeta& m, L&& eh) : meta(m), errorHandler(std::forward<L>(eh))
   {}
 
   std::u8string_view               localizedString(std::string_view);
   std::function<void(std::string)> errorHandler;
-  GpuScriptNodeMeta::GpuPass       content;
   GpuScriptNodeMeta&               meta;
 };
 
-#define NodeCmdHandler(FnName, iObj, iState, iCmd) neo_cmd_handler(FnName, terra::NodeCmdHandler, iObj, iState, iCmd)
+#define NodeCmdExecute(FnName, iObj, iState, iCmd) neo_cmd_handler(FnName, terra::GpuScriptNodeBuilder, iObj, iState, iCmd)
 
 #define NodeCmdEndHandler(FnName, iObj, iState, iName)                                                                 \
-  neo_cmdend_handler(FnName, terra::NodeCmdHandler, iObj, iState, iCmd)
+  neo_cmdend_handler(FnName, terra::GpuScriptNodeBuilder, iObj, iState, iCmd)
 
 #define NodeTextHandler(FnName, iObj, iState, iType, iName, iContent)                                                  \
-  neo_text_handler(FnName, terra::NodeCmdHandler, iObj, iState, iType, iName, iContent)
+  neo_text_handler(FnName, terra::GpuScriptNodeBuilder, iObj, iState, iType, iName, iContent)
 
-#define NodeStarHandler(FnName, iObj, iState, iCmd) neo_star_handler(FnName, terra::NodeCmdHandler, iObj, iState, iCmd)
+#define NodeStarHandler(FnName, iObj, iState, iCmd) neo_star_handler(FnName, terra::GpuScriptNodeBuilder, iObj, iState, iCmd)
 
 #define NodeRegistry(name)      neo_registry(name)
 #define NodeRegister(name, reg) neo_register(name, reg)

@@ -4,6 +4,7 @@
 
 #include "RenderResource.h"
 #include "ShaderBuilder.h"
+#include "SourceBuilder.h"
 #include <span>
 
 namespace terra

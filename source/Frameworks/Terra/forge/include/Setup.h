@@ -76,4 +76,14 @@ enum class WindowAction
   eClose
 };
 
+inline ImVec4 toImgui(glm::vec4 v)
+{
+  return ImVec4(v.x, v.y, v.z, v.w);
+}
+
+inline ImVec4 toImgui(Color v)
+{
+  return ImVec4(v.r(), v.g(), v.b(), v.a());
+}
+
 } // namespace terra

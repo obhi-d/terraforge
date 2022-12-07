@@ -1,6 +1,6 @@
 [
   {
-    "name": "ImageFormatEnum",
+    "name": "ImageFormat",
     "namespace": "terra",
     "type": "uint8_t",
     "usage": "enum",
@@ -15,12 +15,11 @@
       "Rgba8",
       "Srgb8Alpha8",
       "Rg32f",
-      "Rgba32f",
-      "None"
+      "Rgba32f"
     ]
   },
   {
-    "name": "DataTypeEnum",
+    "name": "DataType",
     "namespace": "terra",
     "type": "uint8_t",
     "usage": "enum",
@@ -42,7 +41,7 @@
     ]
   },
   {
-    "name": "SemanticEnum",
+    "name": "Semantic",
     "namespace": "terra",
     "type": "uint8_t",
     "usage": "enum",
@@ -51,11 +50,11 @@
     "values": [
       "None",
       "Source",
-      "Iterator"
+      "Iteration"
     ]
   },
   {
-    "name": "ParamDeclTypeEnum",
+    "name": "ParamDeclType",
     "namespace": "terra",
     "type": "uint8_t",
     "usage": "enum",

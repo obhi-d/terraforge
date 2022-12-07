@@ -207,6 +207,12 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         drawProp(app, camera.scrollSpeed, 0.01f, 1000000.f, .5f);
         drawProp(app, camera.distanceFactor, 0.01f, 1000000.f, .5f);
       }
+      {
+          static std::u8string_view header = app.getLocalizedString("@nodeParams");
+          ImGui::Text("%s", (const char*)header.data());
+          ImGui::Separator();      
+          nodeEditor.drawNodeSettings(app, backend);
+      }
       popNormalFont();
     }
     ImGui::End();

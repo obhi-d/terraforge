@@ -7,6 +7,32 @@ namespace terra
 class ImguiBackend;
 class TerraMainApp;
 
+inline constexpr uint32_t MaxInputPin = 64;
+inline constexpr bool     isOutputPin(uint32_t id)
+{
+  return id > MaxInputPin;
+}
+inline constexpr bool pinToIndex(uint32_t id)
+{
+  return id > MaxInputPin ? id - MaxInputPin : id;
+}
+inline constexpr bool inputToIndex(uint32_t id)
+{
+  return id;
+}
+inline constexpr bool outputToIndex(uint32_t id)
+{
+  return id - MaxInputPin;
+}
+inline constexpr bool indexToOutput(uint32_t id)
+{
+  return id + MaxInputPin;
+}
+inline constexpr bool indexToInput(uint32_t id)
+{
+  return id;
+}
+
 class NodeEditor
 {
 public:
@@ -31,6 +57,7 @@ public:
   void init(TerraMainApp& app);
   void deinit(TerraMainApp& app);
   bool drawNodeEditor(TerraMainApp&, ImguiBackend&);
+  void drawNodeSettings(TerraMainApp&, ImguiBackend&);
 
   bool acceptsAction();
 
@@ -56,7 +83,12 @@ public:
 
   void changeImage(HDataSource id);
 
-private:
+  uint32_t getPreviewNodeStyle() const
+  {
+    return previewNodeStyle;
+  }
+
+ private:
   void createLink(ImThemeColors const&, uintpair start, uintpair end);
   void deleteLink(imne::LinkId);
   void deleteNode(imne::NodeId);

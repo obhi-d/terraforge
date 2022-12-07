@@ -11,10 +11,7 @@
 namespace terra
 {
 
-bool DataFormat::isCompatible(DataFormat const& from, DataFormat const& to)
-{
-  return from == to;
-}
+NodeMeta::AutoParamRegistry NodeMeta::autoRegistry;
 
 bool ParameterMeta::canBeSource() const
 {

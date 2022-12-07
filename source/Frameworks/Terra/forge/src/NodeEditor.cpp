@@ -248,7 +248,7 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
                     frameCache.createSelected = &entry;
                   if (frameCache.createSelected == &entry)
                     ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.highlight);
-                  if (ImGui::MenuItemEx(entry.displayInfo.getName(), (const char*)entry.icon.data()))
+                  if (ImGui::MenuItemEx(entry.displayInfo.getName(), app.getIcon(entry.icon).data()))
                   {
                     pendingAction.meta     = &entry;
                     pendingAction.action   = Action::eCreateNode;
@@ -435,7 +435,7 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
   // if (acceptsAction())
   {
     uintpair newLinkPin;
-    if (imne::BeginCreate(theme.themeColors.link, theme.linkThickness))
+    if (imne::BeginCreate(toImgui(theme.themeColors.link), theme.linkThickness))
     {
       auto showLabel = [](std::u8string_view label, Color color)
       {
@@ -485,17 +485,17 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
           }
           else if (endPin.second && startPin.second)
           {
-            showLabel(tipIncompatType, Color(45, 32, 32, 180));
+            showLabel(tipIncompatType, theme.themeColors.pinLabelReject);
             imne::RejectNewItem(ImColor(255, 0, 0), theme.linkThickness);
           }
           else if (getFormat(endPin) != getFormat(startPin))
           {
-            showLabel(tipIncompatFormat, Color(45, 32, 32, 180));
+            showLabel(tipIncompatFormat, theme.themeColors.pinLabelReject);
             imne::RejectNewItem(ImColor(255, 0, 0), theme.linkThickness);
           }
           else
           {
-            showLabel(tipLink, Color(32, 45, 32, 180));
+            showLabel(tipLink, theme.themeColors.pinLabelAccept);
             if (imne::AcceptNewItem(ImColor(128, 255, 128), 4.0f))
             {
               createLink(theme.themeColors, startPin, endPin);
@@ -508,7 +508,7 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
       if (imne::QueryNewNode(&pinId))
       {
         if (pinId)
-          showLabel(tipCreateNode, Color(32, 45, 32, 180));
+          showLabel(tipCreateNode, theme.themeColors.pinLabelAccept);
 
         if (imne::AcceptNewItem())
         {
@@ -639,12 +639,13 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imn
   auto        srcPin  = unpack(src.Get());
   auto const& srcNode = get().get<DataSource>(srcPin.first);
 
-  if (!srcPin.second || srcNode.getType() != DataSource::Type::eNode)
+  if (isOutputPin(srcPin.second) || srcNode.getType() != DataSource::Type::eNode)
   {
     uint32_t paramChoice = (uint32_t)meta.parameterDef.size();
+    uint32_t outIdx      = outputToIndex(srcPin.second);
     for (uint32_t i = 0; i < paramChoice; ++i)
     {
-      if (meta.parameterDef[i].semantic == SemanticEnum::eSource && meta.parameterDef[i].format == srcNode.getFormat())
+      if (meta.parameterDef[i].format.isCompatible(srcNode.getFormat(outIdx)))
       {
         paramChoice = i;
         break;
@@ -667,9 +668,13 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imn
   }
   else
   {
-    if (node.getFormat() == static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second - 1].format)
+    for (uint32_t i = 0, end = (uint32_t)node.meta.outputs.size(); i < end; ++i)
     {
-      createLink(col, uintpair(id, 0), srcPin);
+      if (node.getFormat(i).isCompatible(
+          static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second - 1].format))
+      {
+        createLink(col, uintpair(id, indexToOutput(i)), srcPin);
+      }
     }
   }
 }

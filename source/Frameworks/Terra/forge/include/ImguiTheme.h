@@ -46,8 +46,10 @@ struct ImThemeColors
   Color link        = 0xffffffff;
   Color texLink     = 0xaaaa11ff;
   Color dsLink      = 0x616666ff;
-  Color header      = Color(155, 155, 155, 255);
-  Color highlight   = Color(255, 155, 155, 255);
+  Color header         = Color((uint8_t)155, 155, 155, 255);
+  Color highlight      = Color((uint8_t)255, 155, 155, 255);
+  Color pinLabelReject = Color((uint8_t)45, (uint8_t)32, (uint8_t)32, (uint8_t)180);
+  Color pinLabelAccept = Color((uint8_t)32, (uint8_t)45, (uint8_t)32, (uint8_t)180);
 };
 
 struct NodeStyle

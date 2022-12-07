@@ -35,7 +35,7 @@ public:
   // Read for the given node
   virtual void cleanup();
 
-  int32_t getIteration() const
+  uint32_t getIteration() const
   {
     return iteration;
   }
@@ -130,11 +130,11 @@ protected:
   // main actor
   HDataSource  reissueNode;
   HDataSource  actor;
-  int          iterationRequests = 0;
+  uint32_t     iterationRequests = 0;
   LaunchParams launchParams;
   ivec2        start;
   ivec2        size;
-  int32_t      iteration = 0;
+  uint32_t     iteration = 0;
   uint32_t     tile      = 0;
   uint32_t     nbTiles   = 0;
   uint32_t     id        = 0;

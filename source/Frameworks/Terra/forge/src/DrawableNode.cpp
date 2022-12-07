@@ -16,10 +16,6 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
   // for nodes
   auto& source = get().get<DataSource>(id);
 
-  output.id    = pack(id.um_index(), 0);
-  output.flags = PinStateFlags::fOutput;
-  imne::SetPinFlags(output.id, imne::PinKind::Output, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
-
   switch (source.getType())
   {
   case DataSource::Type::eImage:
@@ -30,23 +26,41 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
   {
     auto&       node = get().get<Node>(id);
     auto const& meta = node.meta;
-    style            = app.getTheme().getNodeStyle(meta.style);
+    style            = meta.style;
 
     // imne::SetNodeFlags(id.reserved, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
-    parameters.resize(meta.parameterDef.size());
-    for (uint32 i = 0; i < (uint32)parameters.size(); ++i)
+    parameters.reserve(meta.parameterDef.size());
+    outputs.reserve(meta.outputs.size());
+    for (uint32_t param = 0, end = (uint32_t)meta.parameterDef.size(); param < end; ++param)
     {
-      auto&       p = parameters[i];
-      auto const& d = meta.parameterDef[i];
-      p.id          = pack(id.um_index(), i + 1);
-      if (d.format.type == DataTypeEnum::eInput || d.format.type == DataTypeEnum::eBuffer ||
-          d.format.type == DataTypeEnum::ePostProcess || d.format.type == DataTypeEnum::eImage ||
-          d.format.type == DataTypeEnum::eCurveData)
+      auto const& def = meta.parameterDef[param];
+      if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
+          def.format.type == DataTypeEnum::ePostProcess || def.format.type == DataTypeEnum::eImage ||
+          def.format.type == DataTypeEnum::eCurveData)
       {
+        PinData p;
+        p.id    = pack(id.um_index(), indexToInput(param));
         p.flags = PinStateFlags::fInputPin;
         imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+        parameters.emplace_back(p);
       }
     }
+    for (uint32_t out = 0, end = (uint32_t)meta.outputs.size(); out < end; ++out)
+    {
+      auto const& def = meta.outputs[out];
+      if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
+          def.format.type == DataTypeEnum::ePostProcess || def.format.type == DataTypeEnum::eImage ||
+          def.format.type == DataTypeEnum::eCurveData)
+      {
+        PinData p;
+        p.id    = pack(id.um_index(), indexToOutput(out));
+        p.flags = PinStateFlags::fInputPin;
+        imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+        outputs.emplace_back(p);
+      }
+    }
+    parameters.shrink_to_fit();
+    outputs.shrink_to_fit();
   }
   break;
   }
@@ -139,7 +153,7 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
     imne::EndPin();
   }
 }
-
+/*
 bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataTypeEnum type, ScalarValue& v)
 {
   switch (type)
@@ -285,32 +299,33 @@ void DrawableNode::updateThumbnailFromImage(Image& image)
     GfxImage2D::Swizzle{GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eOne});
   thumbnailVersion = image.getVersion();
 }
-
-bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, uint32_t selectedStyle)
+*/
+bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, uint32_t styleFlags)
 {
   auto&       source = get().get<DataSource>(id);
-  auto const& style  = app.getTheme().getNodeStyle(selectedStyle ? selectedStyle - 1 : this->style);
+  auto const& style  = app.getTheme().getNodeStyle(styleFlags & IsSelected ? ne.getPreviewNodeStyle() : this->style);
 
   ImGui::PushID(id.um_index());
-  imne::PushStyleColor(imne::StyleColor_NodeBg, style.nodeColor);
+  imne::PushStyleColor(imne::StyleColor_NodeBg, toImgui(style.nodeColor));
   imne::BeginNode(id.reserved);
 
   ImGui::BeginGroup();
-  output.xy.y = ImGui::GetCursorPosY();
+  
+  // output.xy.y = ImGui::GetCursorPosY();
 
   // Output/Header
 
   switch (source.getType())
   {
-  case DataSource::Type::eCurve:
-    // todo Editable text
-    ImGui::TextUnformatted((const char*)static_cast<CurveData&>(source).name.c_str());
-    headerMaxY = ImGui::GetCursorPosY() + 2;
-    if (drawCurveEditor(app, static_cast<CurveData&>(source)))
-    {
-      source.updateVersion();
-    }
-    break;
+//  case DataSource::Type::eCurve:
+//    // todo Editable text
+//    ImGui::TextUnformatted((const char*)static_cast<CurveData&>(source).name.c_str());
+//    headerMaxY = ImGui::GetCursorPosY() + 2;
+//    if (drawCurveEditor(app, static_cast<CurveData&>(source)))
+//    {
+//      source.updateVersion();
+//    }
+//    break;
   case DataSource::Type::eImage:
   {
     // static const char* browseImage = "@browseImage"_lsc;

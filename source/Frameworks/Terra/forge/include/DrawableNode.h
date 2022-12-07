@@ -28,10 +28,13 @@ class NodeEditor;
 class DrawableNode
 {
 public:
+  inline static constexpr uint32_t IsExecuting = 1;
+  inline static constexpr uint32_t IsSelected  = 2;
+
   DrawableNode(TerraMainApp&, HDataSource id, ImVec2 pos);
   ~DrawableNode();
-  bool begin(TerraMainApp&, ImguiBackend&, NodeEditor&, uint32_t selectedStyle);
-  void end(TerraMainApp&, ImguiBackend&, NodeEditor&, uint32_t selectedStyle);
+  bool begin(TerraMainApp&, ImguiBackend&, NodeEditor&, uint32_t styleFlags);
+  void end(TerraMainApp&, ImguiBackend&, NodeEditor&, uint32_t styleFlags);
   bool is(HDataSource id) const
   {
     return id == this->id;
@@ -56,8 +59,8 @@ private:
   void drawHeader(NodeEditor&, NodeStyle const&, ImVec2 headerMin, ImVec2 headerMax);
   void drawParameter(NodeEditor&, NodeStyle const&, Node&, uint32_t);
 
-  PinData              output;
   std::vector<PinData> parameters;
+  std::vector<PinData> outputs;
 
   float headerMaxY = 0.0f;
 

@@ -345,7 +345,10 @@ struct DataFormat
                        SemanticEnum isem = SemanticEnum::eNone, ParamDeclTypeEnum iindex = ParamDeclTypeEnum::eNone)
       : type(itype), scalarSubType(iscalarSubType), semantic(isem), declType(iindex)
   {}
-  static bool isCompatible(DataFormat const& from, DataFormat const& to);
+  inline constexpr bool isCompatible(DataFormat const& to) const
+  {
+    return type == to.type && scalarSubType == to.scalarSubType && imageFormat == to.imageFormat;
+  }
 };
 
 template <DataTypeEnum Type, DataTypeEnum Scalar = DataTypeEnum::eFloat>
@@ -532,6 +535,7 @@ struct HelpInfo
 struct DisplayInfo : HelpInfo
 {
   std::u8string_view name;
+  std::u8string_view category;
 
   DisplayInfo() = default;
   DisplayInfo(std::string_view n, std::u8string_view h, std::u8string_view t)

@@ -49,6 +49,12 @@ public:
     return iit.first->second;
   }
 
+  std::string_view getIcon(uint32_t icon) const
+  {
+    // TODO
+    return "";
+  }
+
   void readLocalization();
 
   SDL_GLContext getGlContext() const

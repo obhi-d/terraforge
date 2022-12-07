@@ -704,9 +704,9 @@ bool drawTitlebarButton(DisplayInfo const& text, float size)
   if (hover)
   {
     if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
-      ImGui::PushStyleColor(ImGuiCol_Text, (ImVec4)theme.themeColors.iconPressed);
+      ImGui::PushStyleColor(ImGuiCol_Text, theme.themeColors.iconPressed);
     else
-      ImGui::PushStyleColor(ImGuiCol_Text, (ImVec4)theme.themeColors.iconHover);
+      ImGui::PushStyleColor(ImGuiCol_Text, theme.themeColors.iconHover);
   }
   ImGui::SetCursorPos(pos);
   ImGui::Text(text.getName(), ImVec2(size + 4, size + 4));

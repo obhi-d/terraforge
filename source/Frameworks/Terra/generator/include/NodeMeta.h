@@ -229,10 +229,10 @@ struct ParameterMeta
     eCount
   };
 
-  DataFormat  format;
   std::string name;
   DisplayInfo displayInfo;
 
+  DataFormat                     format;
   DataValue                      values[ValueType::eCount] = {};
   std::unique_ptr<std::string[]> enumNames                 = {};
   std::unique_ptr<DisplayInfo[]> enumDisplayInfo           = {};
@@ -323,9 +323,11 @@ struct AutoParam
     eOk,
     eReportFailure
   };
-  using Callback = std::function<Result(Pipeline&, Node&, uint32_t)>;
-  Callback pre;
-  Callback post;
+  using Callback = Result (*)(Pipeline&, Node&, uint32_t);
+  Callback pre   = nullptr;
+  Callback post  = nullptr;
+  AutoParam()    = default;
+  AutoParam(Callback ipre, Callback ipost) : pre(ipre), post(ipost) {}
 };
 
 class NodeMeta
@@ -335,7 +337,7 @@ public:
   uint32_t                   icon  = 0;
   uint32_t                   style = 0;
   DisplayInfo                displayInfo;
-  std::u8string_view         category;
+
   std::vector<ParameterMeta> parameterDef;
 
   std::vector<uint32_t> autoParams;
@@ -374,6 +376,18 @@ public:
 
   void         addDomain();
   virtual void prepare();
+
+  static void registerAuto(SemanticEnum e, AutoParam param)
+  {
+    if ((uint32_t)e >= autoRegistry.size())
+      autoRegistry.resize((uint32_t)e + 1);
+    autoRegistry[(uint32_t)e] = param;
+  }
+
+  static void registerAuto(SemanticEnum e, AutoParam::Callback pre, AutoParam::Callback post)
+  {
+    registerAuto(e, AutoParam(pre, post));
+  }
 
   using AutoParamRegistry = std::vector<AutoParam>;
   static AutoParamRegistry autoRegistry;

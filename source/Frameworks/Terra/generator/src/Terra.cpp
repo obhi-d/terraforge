@@ -121,6 +121,9 @@ void DisplayInfo::from(std::string_view iname)
   tt   = iname;
   tt += ".tip";
   tooltip = get().localizationProvider(tt);
+  tt      = iname;
+  tt += ".category";
+  category = get().localizationProvider(tt);
 }
 
 } // namespace terra
