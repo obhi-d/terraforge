@@ -20,6 +20,7 @@ std::string_view toGlsl(DataTypeEnum type)
   case DataTypeEnum::eFloat2:
     return "vec2";
   }
+  return "";
 }
 
 std::string_view toGlsl(ImageFormatEnum type)
@@ -41,6 +42,7 @@ std::string_view toGlsl(ImageFormatEnum type)
   case ImageFormatEnum::eUnorm8:
     return "r8";
   }
+  return "";
 }
 
 std::string_view qualifier(ParamDeclTypeEnum type)
@@ -57,6 +59,7 @@ std::string_view qualifier(ParamDeclTypeEnum type)
   case ParamDeclTypeEnum::eWriteonlyImage:
     return "restrict writeonly";
   }
+  return "";
 }
 
 // ====================== ShaderProgram ====================
@@ -235,11 +238,11 @@ ShaderProgram SourceBuilderAdapter::finalize()
   {
     content = format(fmt::format(R"_(
 void main()
-{
+{{
   vec2 input = compute_input(gl_FragCoord.x, gl_FragCoord.y);
   {}
   {}
-})_",
+}})_",
                                  input, content));
   }
   GfxProgram::handle program = dev.createFullscreenProgram(snapshots);
@@ -247,12 +250,12 @@ void main()
   {
     ShaderProgram pret;
     pret.program  = program;
-    pret.layout   = dev.createLayout(entries, );
+    pret.layout   = dev.createLayout(entries, output);
     pret.bindings = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
-    for (uint32_t i = 0; i < pret->bindings.size(); ++i)
-      pret->bindings[i] = entries[i].type;
-    pret->outputCount = outputIdx;
-    pret->frame       = get().frameNumber();
+    for (uint32_t i = 0; i < pret.bindings.size(); ++i)
+      pret.bindings[i] = entries[i].type;
+    pret.outputCount = outputIdx;
+    pret.frame       = get().frameNumber();
     return pret;
   }
   return {};
@@ -293,7 +296,7 @@ void SourceBuilderBindless::sampleTextureBuffer(std::string_view name, DataForma
 // ====================== SourceBuilderBindless ====================
 void SourceBuilderBindful::sampleTexture(std::string_view name, DataFormat df)
 {
-  resources += format(fmt::format("layout(binding={3}) {0}_{1};\n", name, id, texBinding));
+  resources += format(fmt::format("layout(binding={2}) {0}_{1};\n", name, id, texBinding));
   GfxParamLayout::Entry entry;
   entry.type  = GfxBindType::eTexture;
   entry.index = texBinding++;

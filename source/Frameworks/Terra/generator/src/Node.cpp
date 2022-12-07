@@ -45,13 +45,10 @@ void Node::prepareGeneration(Pipeline& pipe)
       DataSource::prepareGeneration(std::get<Source>(p).source, pipe);
     }
   }
-  meta.prepareGeneration(*this, pipe);
 }
 
 void Node::beginIteration(Pipeline& pipe)
 {
-  meta.beginIteration(*this, pipe);
-
   for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
   {
     auto p = param(i);
@@ -72,8 +69,6 @@ void Node::endIteration(Pipeline& pipe)
       DataSource::endIteration(std::get<Source>(p).source, pipe);
     }
   }
-
-  meta.endIteration(*this, pipe);
 }
 
 HelpInfo Node::getHelpInfo(HelpType type, int param) const

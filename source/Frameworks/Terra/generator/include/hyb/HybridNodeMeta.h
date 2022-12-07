@@ -26,7 +26,7 @@ struct ProgramKey
 
   struct hasher
   {
-    inline uint32_t operator()(ProgramKey const& option) const noexcept
+    inline uint64_t operator()(ProgramKey const& option) const noexcept
     {
       return option.hash;
     }
@@ -36,6 +36,7 @@ struct ProgramKey
 class GpuNodeMeta : public HybridNodeMeta
 {
 public:
+  static constexpr uint32_t kOutputMask = 0x80000000;
   struct GpuPass
   {
     std::string           function;

@@ -112,6 +112,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   gpuMeta.addProgram(option, newProgram);
   ndat.key       = option;
   ndat.gpuPasses = std::move(newProgram);
+  ndat.outputs.resize(gpuMeta.outputs.size());
   return true;
 }
 
@@ -199,12 +200,12 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       break;
     }
   }
-  if (!isSourceModifier)
+  if (!isSourceModifier())
   {
     for (auto o : code.outputs)
       builder.writeOutput(meta.outputs[o].name, meta.outputs[o].format);
   }
-  auto const& code = gpuMeta.getCode(pass);
+
   builder.pushExtension(code.extensions);
   builder.append(code.shaderContent);
   builder.call(code.function);
@@ -289,40 +290,59 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
     // check if any conditions have changed
     for (auto i : code.parameters)
     {
-      auto const& def = meta.parameterDef[i];
-      auto        p   = param(i);
-
-      switch (def.format.type)
+      if (GpuNodeMeta::kOutputMask & i)
       {
-      case DataTypeEnum::eCurveData:
-      case DataTypeEnum::eImage:
-      case DataTypeEnum::eInput:
-      case DataTypeEnum::ePostProcess:
-      case DataTypeEnum::eBuffer:
-        if (ndat.activeOptions.isSet(optionIdx))
+        i               = i & ~GpuNodeMeta::kOutputMask;
+        auto const& def = meta.outputs[i];
+        switch (def.format.type)
         {
-          auto  source = std::get<Source>(p);
-          auto& node   = get().get<HybridNode>(source.source);
-          node.push(pipe, program, i, source.secondary);
+        case DataTypeEnum::eCurveData:
+        case DataTypeEnum::eImage:
+        case DataTypeEnum::eInput:
+        case DataTypeEnum::ePostProcess:
+        case DataTypeEnum::eBuffer:
+          program.pushValue(ndat.outputs[i], def.format);
+          optionIdx++;
+          break;
         }
-        else
+      }
+      else
+      {
+        auto const& def = meta.parameterDef[i];
+        auto        p   = param(i);
+
+        switch (def.format.type)
         {
+        case DataTypeEnum::eCurveData:
+        case DataTypeEnum::eImage:
+        case DataTypeEnum::eInput:
+        case DataTypeEnum::ePostProcess:
+        case DataTypeEnum::eBuffer:
+          if (ndat.activeOptions.isSet(optionIdx))
+          {
+            auto  source = std::get<Source>(p);
+            auto& node   = get().get<HybridNode>(source.source);
+            node.push(pipe, program, i, source.secondary);
+          }
+          else
+          {
+            program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
+          }
+          optionIdx++;
+          break;
+        case DataTypeEnum::eFloat:
+        case DataTypeEnum::eFloat2:
+        case DataTypeEnum::eInt:
+        case DataTypeEnum::eInt2:
           program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
+          break;
+        case DataTypeEnum::eBool:
+          optionIdx++;
+          break;
+        case DataTypeEnum::eEnum:
+          optionIdx += def.maxEnum;
+          break;
         }
-        optionIdx++;
-        break;
-      case DataTypeEnum::eFloat:
-      case DataTypeEnum::eFloat2:
-      case DataTypeEnum::eInt:
-      case DataTypeEnum::eInt2:
-        program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
-        break;
-      case DataTypeEnum::eBool:
-        optionIdx++;
-        break;
-      case DataTypeEnum::eEnum:
-        optionIdx += def.maxEnum;
-        break;
       }
     }
     if (!isSourceModifier())

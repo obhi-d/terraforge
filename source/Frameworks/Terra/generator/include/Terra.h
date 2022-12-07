@@ -155,6 +155,8 @@ public:
     return *device.get();
   }
 
+  void scanShader(std::filesystem::path path);
+
 private:
   static Terra instance;
 
@@ -172,7 +174,6 @@ private:
   ThreadPool                             threadPool;
   // WorkerThread computeThread;
   std::shared_ptr<GfxDevice> device;
-  PipelineType               pipelineType = PipelineType::eCPU;
 };
 
 inline Terra& get()
@@ -212,15 +213,13 @@ struct MetaBuilder
     dummy.icon     = icon;
     dummy.category = category;
     dummy.style    = style;
-    dummy.outputs.push_back(output);
     dummy.as<NodeT>();
     return dummy;
   }
 
   void outputs(std::string_view name, DataFormat fmt)
   {
-    NodeMeta::Output output;
-    output.name   = name;
+    OutputMeta output(std::string(name));
     output.format = fmt;
     dummy.outputs.emplace_back(output);
   }

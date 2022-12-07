@@ -12,7 +12,7 @@
 
 namespace terra
 {
-class SourceBuilder;
+struct SourceBuilder;
 class HybridPipeline;
 /// @brief Basics of node
 /// A node can be executed on:
@@ -75,11 +75,11 @@ struct GpuNode : public ClassicHybridNode
 {
   struct Data
   {
-    ProgramKey           key;
-    ShaderOptions        activeOptions;
-    GpuPipelineRef       gpuPasses;
-    HybridBuffer::handle outputs[8];
-    uint64_t             injectMask = 0;
+    ProgramKey                        key;
+    ShaderOptions                     activeOptions;
+    GpuPipelineRef                    gpuPasses;
+    std::vector<HybridBuffer::handle> outputs;
+    uint64_t                          injectMask = 0;
   };
 
   bool         isSourceModifier() const;

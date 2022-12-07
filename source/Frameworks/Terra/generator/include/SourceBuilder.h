@@ -1,4 +1,4 @@
-
+#pragma once
 #include "RenderResource.h"
 #include "ShaderOptions.h"
 #include <acl/dynamic_array.hpp>

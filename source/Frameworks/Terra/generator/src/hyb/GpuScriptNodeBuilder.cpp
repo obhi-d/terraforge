@@ -28,12 +28,6 @@ NodeCmdExecute(icon, builder, state, cmd)
   return neo::retcode::e_success;
 }
 
-NodeCmdExecute(category, builder, state, cmd)
-{
-  builder.meta.category = builder.localizedString(terra::getIdxParam(cmd, 0));
-  return neo::retcode::e_success;
-}
-
 NodeCmdExecute(style, builder, state, cmd)
 {
   auto p = terra::getIdxParam(cmd, 0);
@@ -114,7 +108,7 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         auto& values  = entry.value();
         auto  maxEnum = values.size();
-        meta.maxEnum  = maxEnum;
+        meta.maxEnum  = (uint32_t)maxEnum;
         meta.enumNames.reset(new std::string[maxEnum]);
         meta.enumDisplayInfo.reset(new terra::DisplayInfo[maxEnum]);
         for (int i = 0; i < maxEnum; ++i)
@@ -149,9 +143,8 @@ NodeCmdExecute(param, builder, state, cmd)
 }
 NodeCmdExecute(output, builder, state, cmd)
 {
-  auto name                     = terra::getIdxParam(cmd, 0, "source");
-  NodeMeta::Output output;
-  output.name                   = name;
+  auto        name   = terra::getIdxParam(cmd, 0, "source");
+  auto        output = OutputMeta(std::string(name));
   auto const& params = cmd.params().value();
   for (auto& p : params)
   {
@@ -192,8 +185,8 @@ NodeCmdExecute(output, builder, state, cmd)
       auto const& entry = std::get<neo::list>(p);
       if (entry.name() == "type")
       {
-        auto const& values = entry.value();
-        output.format.type = DataType::FromString(std::get<neo::single>(values[0]).value());
+        auto const& values          = entry.value();
+        output.format.type          = DataType::FromString(std::get<neo::single>(values[0]).value());
         output.format.scalarSubType = DataType::FromString(std::get<neo::single>(values[1]).value());
       }
       else if (entry.name() == "clear")
@@ -255,9 +248,21 @@ NodeCmdExecute(in, builder, state, cmd)
   auto names = terra::getFirstList(cmd);
   for (auto& e : names)
   {
-    for (uint32_t i = 0, end = (uint32_t)builder.meta.parameterDef.size(); i != end; ++i)
-      if (builder.meta.parameterDef[i].name == e)
-        builder.meta.passes.back().parameters.emplace_back(i);
+    [&]()
+    {
+      for (uint32_t i = 0, end = (uint32_t)builder.meta.parameterDef.size(); i != end; ++i)
+        if (builder.meta.parameterDef[i].name == e)
+        {
+          builder.meta.passes.back().parameters.emplace_back(i);
+          return;
+        }
+      for (uint32_t i = 0, end = (uint32_t)builder.meta.outputs.size(); i != end; ++i)
+        if (builder.meta.outputs[i].name == e)
+        {
+          builder.meta.passes.back().parameters.emplace_back(i | GpuNodeMeta::kOutputMask);
+          return;
+        }
+    }();
   }
   return neo::retcode::e_success;
 }
@@ -269,7 +274,10 @@ NodeCmdExecute(out, builder, state, cmd)
   {
     for (uint32_t i = 0, end = (uint32_t)builder.meta.outputs.size(); i != end; ++i)
       if (builder.meta.outputs[i].name == e)
-        builder.meta.passes.back().parameters.emplace_back(i);
+      {
+        builder.meta.passes.back().outputs.emplace_back(i);
+        break;
+      }
   }
   return neo::retcode::e_success;
 }
@@ -279,7 +287,6 @@ NodeRegistry(GpuScript)
   neo_handle_text(textreg);
 
   NodeCmd(name);
-  NodeCmd(category);
   NodeCmd(output);
   NodeCmd(icon);
   NodeCmd(style);

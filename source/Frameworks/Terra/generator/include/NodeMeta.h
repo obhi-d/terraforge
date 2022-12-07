@@ -251,22 +251,20 @@ struct ParameterMeta
   ParameterMeta& operator=(ParameterMeta&&) noexcept      = default;
 
   template <typename MembPtr>
-  ParameterMeta(MembPtr, std::string_view iname, SemanticEnum semantic = SemanticEnum::eNone,
-                DrawHint idrawhint = DrawHint::eDefault)
-      : ParameterMeta(MembPtr(), iname, DeriveFormat<MembPtr>(), semantic, idrawhint)
+  ParameterMeta(MembPtr, std::string_view iname, SemanticEnum semantic = SemanticEnum::eNone)
+      : ParameterMeta(MembPtr(), iname, DeriveFormat<MembPtr>(), semantic)
   {}
 
   template <typename MembPtr, typename Fmt>
-  ParameterMeta(MembPtr, std::string_view iname, Fmt format, SemanticEnum semantic = SemanticEnum::eNone,
-                DrawHint idrawhint = DrawHint::eDefault)
-      : format(Fmt::get()), name(iname), drawHint(idrawhint), setter(
-                                                                [](Node& node, uint32_t, Parameter param)
-                                                                {
-                                                                  using T       = typename MembPtr::class_t;
-                                                                  auto  pmember = MembPtr::pmem;
-                                                                  auto& cnode   = static_cast<T&>(node);
-                                                                  store(cnode.*pmember, param);
-                                                                }),
+  ParameterMeta(MembPtr, std::string_view iname, Fmt format, SemanticEnum semantic = SemanticEnum::eNone)
+      : format(Fmt::get()), name(iname), setter(
+                                           [](Node& node, uint32_t, Parameter param)
+                                           {
+                                             using T       = typename MembPtr::class_t;
+                                             auto  pmember = MembPtr::pmem;
+                                             auto& cnode   = static_cast<T&>(node);
+                                             store(cnode.*pmember, param);
+                                           }),
         getter(
           [](Node const& node, uint32_t) -> Parameter
           {
@@ -330,29 +328,35 @@ struct AutoParam
   AutoParam(Callback ipre, Callback ipost) : pre(ipre), post(ipost) {}
 };
 
+struct OutputMeta
+{
+  std::string name = "output";
+  DisplayInfo displayInfo;
+  DataFormat  format     = DataFormat(DataTypeEnum::eBuffer);
+  vec4        clearValue = vec4(0.f);
+  bool        clear      = false;
+
+  OutputMeta(std::string nam) : name(std::move(nam))
+  {
+    displayInfo.from(name);
+  }
+};
+
 class NodeMeta
 {
 
 public:
-  uint32_t                   icon  = 0;
-  uint32_t                   style = 0;
-  DisplayInfo                displayInfo;
+  uint32_t    icon  = 0;
+  uint32_t    style = 0;
+  DisplayInfo displayInfo;
 
   std::vector<ParameterMeta> parameterDef;
 
   std::vector<uint32_t> autoParams;
   std::vector<uint32_t> autoOutputs;
 
-  struct Output
-  {
-    std::string_view name       = "output";
-    DataFormat       format     = DataFormat(DataTypeEnum::eBuffer);
-    vec4             clearValue = vec4(0.f);
-    bool             clear      = false;
-  };
-
-  std::vector<Output> outputs;
-  CreateNode          createNode = nullptr;
+  std::vector<OutputMeta> outputs;
+  CreateNode              createNode = nullptr;
 
   // derived
   uint32_t id;

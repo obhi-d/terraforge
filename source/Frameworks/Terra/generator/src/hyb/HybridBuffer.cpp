@@ -99,7 +99,7 @@ bool HybridBuffer::upload()
   {
     ensureDev();
     if (!buffer)
-      return;
+      return false;
     auto& dev = get().getDevice();
     if (flags & fImage)
     {
@@ -107,7 +107,7 @@ bool HybridBuffer::upload()
     }
     else
     {
-      ubyte_t* bdata = dev.mapBuffer(buffer, 0, dataSize);
+      ubyte_t* bdata = dev.mapBuffer(buffer, 0, (uint32_t)dataSize);
       std::memcpy(bdata, data.get(), dataSize);
       dev.unmapBuffer(buffer);
     }

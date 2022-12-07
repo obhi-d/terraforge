@@ -265,7 +265,7 @@ struct HandleHash
 template <typename T>
 struct LinkHash
 {
-  inline uint32_t operator()(acl::link<T> d) const noexcept
+  inline uint32_t operator()(T d) const noexcept
   {
     return d.value();
   }

@@ -29,7 +29,7 @@ public:
 
   Parameter param(uint32_t i, Parameter sv)
   {
-    auto old = meta.parameterDef[i].getter(*this);
+    auto old = meta.parameterDef[i].getter(*this, i);
     meta.parameterDef[i].setter(*this, i, sv);
     HDataSource oldSrc, newSrc;
     if (std::holds_alternative<Source>(old))

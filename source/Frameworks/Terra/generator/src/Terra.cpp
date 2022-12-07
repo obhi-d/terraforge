@@ -4,21 +4,22 @@
 #include "Logger.h"
 #include "ResourceUtils.h"
 
-#include "hwy/Pipeline_hwy.h"
+#include "hyb/GpuScriptNodeBuilder.h"
+#include "hyb/HybridPipeline.h"
 
 #include <fmt/format.h>
 #include <fstream>
 #include <mimalloc-2.0/mimalloc-new-delete.h>
 
-neo_registry(NoiseBuilder);
+neo_registry(GpuScript);
 namespace terra
 {
 
-void Operators_hwy();
-void Noise_hwy();
-void Basics_hwy();
-void Domain_hwy();
-void PostProcess_hwy();
+// void Operators_hwy();
+// void Noise_hwy();
+// void Basics_hwy();
+// void Domain_hwy();
+// void PostProcess_hwy();
 
 Terra Terra::instance;
 
@@ -26,20 +27,7 @@ void Terra::init(Localization l, std::shared_ptr<GfxDevice> iDev)
 {
   localizationProvider = l;
   device               = iDev;
-  pipelineType         = device ? PipelineType::eGPU : PipelineType::eCPU;
-  if (pipelineType == PipelineType::eGPU)
-  {
-    // TODO
-    assert(false);
-  }
-  else
-  {
-    Operators_hwy();
-    Noise_hwy();
-    Basics_hwy();
-    Domain_hwy();
-    PostProcess_hwy();
-  }
+  NodeRegister(GpuScript, registry);
 }
 
 void Terra::destroy()
@@ -50,6 +38,31 @@ void Terra::destroy()
   // computeThread.shutdown();
 }
 
+void Terra::scanShader(std::filesystem::path path)
+{
+  std::ifstream iff(path);
+  if (iff.is_open())
+  {
+    GpuScriptNodeMeta    newMeta;
+    GpuScriptNodeBuilder handler(newMeta,
+                                 [this](std::string err)
+                                 {
+                                   logError(err);
+                                 });
+    neo::state_machine   sm{registry, &handler};
+
+    std::string f1_str((std::istreambuf_iterator<char>(iff)), std::istreambuf_iterator<char>());
+    sm.parse(path.string(), f1_str);
+    if (!sm.fail_bit())
+    {
+      addMeta(path.stem().string(), newMeta);
+    }
+  }
+  else
+  {
+    logError(std::format("Failed to open file: {}", path.string()));
+  }
+}
 HDataSource Terra::getImage(std::filesystem::path path)
 {
   HDataSource found;
@@ -100,16 +113,7 @@ uint32_t Terra::getSemantic(std::string_view from)
 
 std::shared_ptr<Pipeline> Terra::createPipeline() const
 {
-  if (pipelineType == PipelineType::eGPU)
-  {
-    // TODO
-    assert(false);
-    return nullptr;
-  }
-  else
-  {
-    return std::make_shared<Pipeline_hwy>();
-  }
+  return std::make_shared<HybridPipeline>();
 }
 
 void DisplayInfo::from(std::string_view iname)

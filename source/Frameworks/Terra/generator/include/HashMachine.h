@@ -1,6 +1,7 @@
 
 #pragma once
 #include "wyhash.h"
+#include <compare>
 
 namespace terra
 {

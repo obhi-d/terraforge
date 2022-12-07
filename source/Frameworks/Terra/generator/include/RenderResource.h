@@ -387,5 +387,6 @@ inline uint32_t getBaseSize(ImageFormatEnum format)
   case ImageFormatEnum::eUnorm8:
     return 1;
   }
+  return 0;
 }
 } // namespace terra

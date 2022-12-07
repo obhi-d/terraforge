@@ -38,10 +38,8 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
           def.format.type == DataTypeEnum::ePostProcess || def.format.type == DataTypeEnum::eImage ||
           def.format.type == DataTypeEnum::eCurveData)
       {
-        PinData p;
-        p.id    = pack(id.um_index(), indexToInput(param));
-        p.flags = PinStateFlags::fInputPin;
-        imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+        PinData p = pack(id.um_index(), indexToInput(param));
+        imne::SetPinFlags(p, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
         parameters.emplace_back(p);
       }
     }
@@ -52,10 +50,8 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
           def.format.type == DataTypeEnum::ePostProcess || def.format.type == DataTypeEnum::eImage ||
           def.format.type == DataTypeEnum::eCurveData)
       {
-        PinData p;
-        p.id    = pack(id.um_index(), indexToOutput(out));
-        p.flags = PinStateFlags::fInputPin;
-        imne::SetPinFlags(p.id, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+        PinData p = pack(id.um_index(), indexToOutput(out));
+        imne::SetPinFlags(p, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
         outputs.emplace_back(p);
       }
     }
@@ -72,13 +68,9 @@ DrawableNode::~DrawableNode()
   app().getDevice()->destroy(thumbnail);
 }
 
-void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData const& pin, DataFormat format,
-                               bool filled)
+void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::PinId id, const char* name,
+                               DataFormat format, bool output, bool detached)
 {
-  ImGui::SetCursorPos(pin.xy);
-
-  auto cursorPos = ImGui::GetCursorScreenPos();
-  auto drawList  = ImGui::GetWindowDrawList();
 
   IconType icon = IconType::Circle;
   switch (format.type)
@@ -106,16 +98,25 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
     break;
   }
 
-  ImGui::SetCursorPos(pin.xy);
-  imne::BeginPin(pin.id, pin.flags & PinStateFlags::fOutput ? imne::PinKind::Output : imne::PinKind::Input);
+  if (output)
+  {
+    ImGui::Text(name);
+    ImGui::SameLine();
+  }
+
+  auto cursorPos = ImGui::GetCursorScreenPos();
+  auto drawList  = ImGui::GetWindowDrawList();
+
+  auto pos = ImGui::GetCursorPos();
+  imne::BeginPin(id, output ? imne::PinKind::Output : imne::PinKind::Input);
   {
     auto drawArea = ImVec2(20, 20);
     imne::PinPivotAlignment(ImVec2(1.0f, 0.5f));
     imne::PinPivotSize(ImVec2(0, 0));
 
-    ImGui::SetCursorPos(pin.xy - ImVec2(style.pinSize * 0.05f, style.pinSize * 0.05f));
+    // ImGui::SetCursorPos(pin.xy - ImVec2(style.pinSize * 0.05f, style.pinSize * 0.05f));
     char idString[34] = {0}; // itoa can output 33 bytes maximum
-    snprintf(idString, 33, "p%p", pin.id.AsPointer());
+    snprintf(idString, 33, "p%p", id.AsPointer());
 
     ImGui::InvisibleButton(idString, ImVec2(style.pinSize * 1.1f, style.pinSize * 1.1f));
     auto color = style.pinColor;
@@ -133,9 +134,9 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
       else if (ne.acceptsAction())
       {
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-          ne.showHelp(pin.id);
+          ne.showHelp(id);
         else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-          ne.showTooltip(pin.id);
+          ne.showTooltip(id);
       }
       flags |= imne::ImneObjFlags::ImneObjFlags_IsHovered;
     }
@@ -148,8 +149,15 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, PinData c
       size += 1;
     }
 
-    drawIcon(drawList, cursorPos, ImVec2(cursorPos.x + size, cursorPos.y + size), icon, filled, color,
-             filled ? style.pinFillColor : Color(0));
+    drawIcon(drawList, cursorPos, ImVec2(cursorPos.x + size, cursorPos.y + size), icon, !detached, color,
+             detached ? Color(0) : style.pinFillColor);
+
+    if (!output)
+    {
+      ImGui::Text(name);
+      ImGui::SameLine();
+    }
+
     imne::EndPin();
   }
 }
@@ -310,41 +318,41 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
   imne::BeginNode(id.reserved);
 
   ImGui::BeginGroup();
-  
+
   // output.xy.y = ImGui::GetCursorPosY();
 
   // Output/Header
 
   switch (source.getType())
   {
-//  case DataSource::Type::eCurve:
-//    // todo Editable text
-//    ImGui::TextUnformatted((const char*)static_cast<CurveData&>(source).name.c_str());
-//    headerMaxY = ImGui::GetCursorPosY() + 2;
-//    if (drawCurveEditor(app, static_cast<CurveData&>(source)))
-//    {
-//      source.updateVersion();
-//    }
-//    break;
-  case DataSource::Type::eImage:
-  {
-    // static const char* browseImage = "@browseImage"_lsc;
-    auto name = static_cast<Image&>(source).source.filename().string();
-    if (ImGui::Button(ICON_FA_FILE_IMAGE))
-    {
-      ne.changeImage(id);
-    }
-
-    if (!name.empty())
-    {
-      ImGui::SameLine();
-      ImGui::TextUnformatted(name.c_str(), name.data() + name.length());
-    }
-    headerMaxY = ImGui::GetCursorPosY() + 2;
-    if (thumbnailVersion != source.getVersion())
-      updateThumbnailFromImage(static_cast<Image&>(source));
-    break;
-  }
+    //  case DataSource::Type::eCurve:
+    //    // todo Editable text
+    //    ImGui::TextUnformatted((const char*)static_cast<CurveData&>(source).name.c_str());
+    //    headerMaxY = ImGui::GetCursorPosY() + 2;
+    //    if (drawCurveEditor(app, static_cast<CurveData&>(source)))
+    //    {
+    //      source.updateVersion();
+    //    }
+    //    break;
+    //  case DataSource::Type::eImage:
+    //  {
+    //    // static const char* browseImage = "@browseImage"_lsc;
+    //    auto name = static_cast<Image&>(source).source.filename().string();
+    //    if (ImGui::Button(ICON_FA_FILE_IMAGE))
+    //    {
+    //      ne.changeImage(id);
+    //    }
+    //
+    //    if (!name.empty())
+    //    {
+    //      ImGui::SameLine();
+    //      ImGui::TextUnformatted(name.c_str(), name.data() + name.length());
+    //    }
+    //    headerMaxY = ImGui::GetCursorPosY() + 2;
+    //    if (thumbnailVersion != source.getVersion())
+    //      updateThumbnailFromImage(static_cast<Image&>(source));
+    //    break;
+    //  }
   case DataSource::Type::eNode:
   {
     auto&       node = static_cast<Node&>(source);
@@ -360,24 +368,8 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
     ImGui::SameLine();
     auto padding = imne::GetStyle().NodePadding.y;
     ImGui::Dummy(ImVec2(style.pinSize * 1.5f, lastY + padding));
-
-    headerMaxY = ImGui::GetCursorPosY();
-
-    // Parameters
-    for (uint32_t i = 0; i < node.getNumParams(); ++i)
-    {
-      parameters[i].xy.y = ImGui::GetCursorPosY();
-      ImGui::Dummy(ImVec2(style.pinSize * 1.5f, 0));
-      ImGui::SameLine();
-      drawParameter(ne, style, node, i);
-    }
   }
   break;
-  }
-
-  if (thumbnail)
-  {
-    ImGui::Image((ImTextureID)(std::uintptr_t)thumbnail.reserved, ImVec2{ThumbnailSize, ThumbnailSize});
   }
 
   return false;
@@ -392,8 +384,6 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
   auto const& style  = app.getTheme().getNodeStyle(selectedStyle ? selectedStyle - 1 : this->style);
   auto&       source = get().get<DataSource>(id);
   // Output
-  output.xy.x = max.x - style.pinSize;
-  drawPinIcon(ne, style, output, source.getFormat(), !source.isDetached());
   switch (source.getType())
   {
   case DataSource::Type::eNode:
@@ -401,18 +391,31 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
     auto&       node = static_cast<Node&>(source);
     auto const& meta = node.meta;
     // Parameters
-    for (uint32_t i = 0; i < node.getNumParams(); ++i)
+    for (uint32_t i = 0, end = (uint32_t)parameters.size(); i < end; ++i)
     {
-      if (parameters[i].flags & PinStateFlags::fInputPin)
-      {
-        parameters[i].xy.x = min.x;
-        auto src           = node.param(i);
-        drawPinIcon(ne, style, parameters[i], meta.parameterDef[i].format,
-                    std::holds_alternative<Source>(src) && std::get<Source>(src).source);
-      }
+      auto [n, id] = unpack(parameters[i].Get());
+      id           = inputToIndex(id);
+      auto src     = node.param(id);
+      drawPinIcon(ne, style, parameters[i], (const char*)meta.parameterDef[id].displayInfo.name.data(),
+                  meta.parameterDef[id].format, false,
+                  std::holds_alternative<Source>(src) && std::get<Source>(src).source);
+    }
+    for (uint32_t i = 0, end = (uint32_t)outputs.size(); i < end; ++i)
+    {
+      auto [n, id] = unpack(outputs[i].Get());
+      id           = outputToIndex(id);
+      auto src     = node.param(i);
+      drawPinIcon(ne, style, outputs[i], (const char*)meta.outputs[id].displayInfo.name.data(), meta.outputs[id].format,
+                  false, std::holds_alternative<Source>(src) && std::get<Source>(src).source);
     }
   }
   }
+
+  if (thumbnail)
+  {
+    ImGui::Image((ImTextureID)(std::uintptr_t)thumbnail.reserved, ImVec2{ThumbnailSize, ThumbnailSize});
+  }
+
   imne::EndNode();
   imne::PopStyleColor();
   auto padding = imne::GetStyle().NodePadding.y * 0.5f;

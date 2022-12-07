@@ -56,6 +56,7 @@ public:
   }
 
   void readLocalization();
+  void scanScripts();
 
   SDL_GLContext getGlContext() const
   {

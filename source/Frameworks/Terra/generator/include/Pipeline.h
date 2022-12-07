@@ -26,9 +26,9 @@ public:
   void compute(HDataSource, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
 
   // this function is called once results are available
-  virtual void getResults(float*, size_t nbFloats, float& min, float& max) = 0;
+  virtual bool getResults(GfxImage2D::handle& heights, GfxImage2D::handle& layerContrib) = 0;
   // returns the size of the results available, 0 if no results are available
-  virtual std::size_t hasResults() = 0;
+  virtual bool hasResults() = 0;
 
   void cancel();
 
@@ -123,9 +123,8 @@ protected:
     return actor == h;
   }
 
-  virtual void wait()                         = 0;
-  virtual void launch()                       = 0;
   virtual void pushTileTask(EnvParams const&) = 0;
+  virtual void launch()                       = 0;
 
   // main actor
   HDataSource  reissueNode;

@@ -5,14 +5,14 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "DrawHelpers.h"
+#include "GfxDevice45.h"
 #include "GlGfx.h"
+#include "ImageSerializer.h"
 #include "ImguiTheme.h"
 #include "NeoHelper.h"
 #include "ResourceUtils.h"
 #include "Terra.h"
-#include "GfxDevice45.h"
-#include "DrawHelpers.h"
-#include "ImageSerializer.h"
 
 neo_registry(ThemeBuilder);
 neo_registry(StringBuilder);
@@ -31,9 +31,7 @@ TerraMainApp::TerraMainApp()
     Logger::get().open(Logger::Info);
 }
 
-TerraMainApp::~TerraMainApp()
-{
-}
+TerraMainApp::~TerraMainApp() {}
 
 void TerraMainApp::destroy()
 {
@@ -83,6 +81,19 @@ void TerraMainApp::initalize()
   }
   ThemeRegister(ThemeBuilder, themeReader);
   readLocalization();
+  scanScripts();
+}
+
+void TerraMainApp::scanScripts()
+{
+  auto const& path    = getMediaPath();
+  auto        effects = path / "scripts";
+  for (auto const& dir_entry : std::filesystem::directory_iterator{effects})
+  {
+    auto filepath = dir_entry.path();
+    if (dir_entry.is_regular_file() && filepath.extension() == "gfx")
+      get().scanShader(filepath);
+  }
 }
 
 void TerraMainApp::reloadTheme()
@@ -135,7 +146,7 @@ void TerraMainApp::createContext()
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, DebugActive | SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG);
 
-  glContext = SDL_GL_CreateContext(window);
+  glContext   = SDL_GL_CreateContext(window);
   int version = 450;
   if (!glContext)
   {
@@ -148,7 +159,7 @@ void TerraMainApp::createContext()
     {
       // try without robust access
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, DebugActive);
-      glContext = SDL_GL_CreateContext(window);
+      glContext                = SDL_GL_CreateContext(window);
       settings.hasRobustAccess = false;
       if (!glContext)
         throw std::runtime_error("createContext(): cannot create glContext");
@@ -167,10 +178,12 @@ void TerraMainApp::run()
 {
   initalize();
   createContext();
-  terra::get().init([this](std::string_view name) -> std::u8string_view
-                    {
-                      return getLocalizedString(name);
-                    }, nullptr);
+  terra::get().init(
+    [this](std::string_view name) -> std::u8string_view
+    {
+      return getLocalizedString(name);
+    },
+    nullptr);
 
   viewer.init(*this);
   reloadTheme();
@@ -189,9 +202,9 @@ void TerraMainApp::run()
 int TerraMainApp::Main(int argc, const char* argv[])
 {
   g_app.reset(new TerraMainApp());
-  #ifdef NDEBUG
+#ifdef NDEBUG
   try
-  #endif
+#endif
   {
     g_app->run();
   }
