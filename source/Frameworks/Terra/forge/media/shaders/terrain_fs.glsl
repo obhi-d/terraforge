@@ -8,9 +8,9 @@
 // vec3 sun_direction;
 // float sun_intensity;
 // vec4 layer_weights;
-// sampler2D layer_colors;
+// sampler1DArray layer_colors;
 // sampler2D heights;
-// sampler2D shadow_map;
+// sampler2DShadow shadow_map;
 // sampler2D layers;
 // mat4 shadow_view_projection
 // mat4 view_projection
@@ -35,6 +35,9 @@ layout(location = 0) out highp vec4 color_buffer;
 
 void main()
 {
+  sampler2DShadow shadow = shadow_map;
+  sampler1DArray  colors = layer_colors;
+
   shadow_pos           = shadow_pos * 0.5 + 0.5;
   vec2  tex_size       = vec2(1.0f / (float)ShadowTextureDim);
   float shadow_contrib = 0.f;
@@ -50,7 +53,7 @@ void main()
   {
     for (int y = -1; y <= 1; ++y)
     {
-      float depth = texture(shadow_map, shadow_pos.xy + vec2(x, y) * tex_size).r;
+      shadow_contrib += texture(shadow, vec3(shadow_pos.xy + vec2(x, y) * tex_size, shadow_pos.z - bias));
       if (shadow_pos.z - bias > depth)
         shadow_contrib += (0.002 / 9.0);
       else
@@ -62,9 +65,11 @@ void main()
   // layer_contrib.x : water
   // layer_contrib.y : rocks
   // layer_contrib.z : grass/vegetation
+  // layer_contrib.w : default color
   vec4 color = texture(layer_colors, vec2(layer_contrib.x, 0.0)) * layer_weight.x +
-               texture(layer_colors, vec2(layer_contrib.y, 0.0)) * layer_weight.y +
-               texture(layer_colors, vec2(layer_contrib.z, 0.0)) * layer_weight.z;
+               texture(layer_colors, vec2(layer_contrib.y, 0.25)) * layer_weight.y +
+               texture(layer_colors, vec2(layer_contrib.z, 2.0)) * layer_weight.z +
+               texture(layer_colors, vec2(layer_contrib.w, 3.0)) * layer_weight.w;
 
   float diff    = ;
   vec3  diffuse = diff;
