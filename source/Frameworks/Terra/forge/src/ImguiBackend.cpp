@@ -174,12 +174,12 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
     serializer.loadImageGray(rows, img.size.x, img.size.y, getMediaPath() / theme.images[i].path);
   }
 
-  font      = renderer->createImage(GfxStorageClass::eStaticDeviceReadonly, (uint32)width, (uint32)height,
+  font      = renderer->create2DImage(GfxStorageClass::eStaticDeviceReadonly, (uint32)width, (uint32)height,
                                     ImageFormatEnum::eUnorm8, (ubyte_t const*)pixels,
-                                    GfxImage2D::Swizzle{.r = GfxImage2D::ComponentValue::eOne,
-                                                        .g = GfxImage2D::ComponentValue::eOne,
-                                                        .b = GfxImage2D::ComponentValue::eOne,
-                                                        .a = GfxImage2D::ComponentValue::eRed},
+                                    GfxImage::Swizzle{.r = GfxImage::ComponentValue::eOne,
+                                                        .g = GfxImage::ComponentValue::eOne,
+                                                        .b = GfxImage::ComponentValue::eOne,
+                                                        .a = GfxImage::ComponentValue::eRed},
                                     1);
   whiteUV.x = io.Fonts->TexUvWhitePixel.x;
   whiteUV.y = io.Fonts->TexUvWhitePixel.y;

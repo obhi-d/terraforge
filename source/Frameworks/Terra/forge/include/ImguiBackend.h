@@ -112,7 +112,7 @@ private:
   Params                                   paramData;
   std::array<PackUV, ImagePackCount>       packUVs;
   std::array<GfxDescriptorSet::rhandle, 2> descriptors;
-  GfxImage2D::handle                       font;
+  GfxImage::handle                       font;
   GfxSampler::handle                       sampler;
   GfxDescriptorSetLayout::handle           descriptorSetLayout;
   GfxDescriptorSet::handle                 descriptorSet;

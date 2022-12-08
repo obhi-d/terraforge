@@ -66,12 +66,12 @@ void main()
   // layer_contrib.y : rocks
   // layer_contrib.z : grass/vegetation
   // layer_contrib.w : default color
-  vec4 color = texture(layer_colors, vec2(layer_contrib.x, 0.0)) * layer_weight.x +
-               texture(layer_colors, vec2(layer_contrib.y, 0.25)) * layer_weight.y +
-               texture(layer_colors, vec2(layer_contrib.z, 2.0)) * layer_weight.z +
-               texture(layer_colors, vec2(layer_contrib.w, 3.0)) * layer_weight.w;
+  vec4 weights = layer_weight * layer_contrib;
+  vec4 color = (texture(layer_colors, vec2(layer_contrib.x, 0.0))  * weights.x +
+               texture(layer_colors, vec2(layer_contrib.y, 0.25)) * weights.y +
+               texture(layer_colors, vec2(layer_contrib.z, 2.0))  * weights.z +
+               texture(layer_colors, vec2(layer_contrib.w, 3.0))  * weights.w) / 
+               (weights.x + weights.y + weights.z + weights.w);
 
-  float diff    = ;
-  vec3  diffuse = diff;
   color_buffer  = (1.0 - shadow_contrib) * max(dot(light_dir, normal), 0.01) * sun_intensity * color;
 }

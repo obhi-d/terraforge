@@ -301,10 +301,10 @@ void DrawableNode::updateThumbnailFromImage(Image& image)
       sampled[x + y * (int)ThumbnailSize] = static_cast<std::uint8_t>(image.sample(u, v) * 255.f);
     }
   }
-  thumbnail = app().getDevice()->createImage(
+  thumbnail = app().getDevice()->create2DImage(
     GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize, (uint32_t)ThumbnailSize, ImageFormatEnum::eUnorm8,
     (ubyte_t const*)sampled.get(),
-    GfxImage2D::Swizzle{GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eRed, GfxImage2D::eOne});
+    GfxImage::Swizzle{GfxImage::eRed, GfxImage::eRed, GfxImage::eRed, GfxImage::eOne});
   thumbnailVersion = image.getVersion();
 }
 */

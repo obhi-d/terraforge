@@ -43,11 +43,11 @@ public:
   void describeImage(HybridBuffer::handle, HDataSource owner, uint32_t width, uint32_t height, ImageFormatEnum format);
 
   GfxBuffer::handle        readBuffer(HybridBuffer::handle);
-  GfxImage2D::handle       readImage(HybridBuffer::handle);
+  GfxImage::handle       readImage(HybridBuffer::handle);
   std::span<ubyte_t const> readBufferData(HybridBuffer::handle);
   std::span<ubyte_t const> readImageData(HybridBuffer::handle);
   GfxBuffer::handle        writeBuffer(HybridBuffer::handle, bool discard);
-  GfxImage2D::handle       writeImage(HybridBuffer::handle, bool discard);
+  GfxImage::handle       writeImage(HybridBuffer::handle, bool discard);
   std::span<ubyte_t>       writeBufferData(HybridBuffer::handle, bool discard);
   std::span<ubyte_t>       writeImageData(HybridBuffer::handle, bool discard);
 

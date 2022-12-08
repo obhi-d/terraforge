@@ -66,7 +66,7 @@ private:
   ImVec2 pos{};
 
   static inline float constexpr ThumbnailSize = 200.f;
-  GfxImage2D::handle thumbnail;
+  GfxImage::handle thumbnail;
   uint32_t           thumbnailVersion = std::numeric_limits<uint32_t>::max();
 
   bool firstDraw = true;

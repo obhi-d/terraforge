@@ -30,13 +30,13 @@ struct GfxDevice
   /// @param width image width
   /// @param height image height
   /// @return Returns the image handle
-  virtual GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
+  virtual GfxImage::handle create2DImage(GfxStorageClass storage, uint32_t width, uint32_t height,
                                          ImageFormatEnum format, ubyte_t const* data = nullptr,
-                                         GfxImage2D::Swizzle swizzle = {}, uint32 mipLevels = 1)      = 0;
-  virtual GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height,
+                                         GfxImage::Swizzle swizzle = {}, uint32 mipLevels = 1)      = 0;
+  virtual GfxImage::handle create1DImageArray(GfxStorageClass storage, uint32_t width, uint32_t numLayer,
                                               ImageFormatEnum format, std::span<ubyte_t const*> data = {},
-                                              GfxImage2D::Swizzle swizzle = {}, uint32 mipLevels = 1) = 0;
-  virtual void               destroy(GfxImage2D::handle)                                              = 0;
+                                              GfxImage::Swizzle swizzle = {}, uint32 mipLevels = 1) = 0;
+  virtual void               destroy(GfxImage::handle)                                              = 0;
   /// @brief Create a sampler
   virtual GfxSampler::handle createSampler(ImageSampling) = 0;
   virtual void               destroy(GfxSampler::handle)  = 0;
@@ -47,7 +47,7 @@ struct GfxDevice
   virtual GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code)                  = 0;
   virtual void               destroy(GfxProgram::handle)                                                = 0;
   /// @brief Create a combined sampler
-  virtual GfxCombinedImage::handle createCombinedTexture(GfxImage2D::handle image, GfxSampler::handle sampler) = 0;
+  virtual GfxCombinedImage::handle createCombinedTexture(GfxImage::handle image, GfxSampler::handle sampler) = 0;
   virtual void                     destroy(GfxCombinedImage::handle)                                           = 0;
   /// @brief Create a descriptor set layout
   /// @param types handle types
@@ -74,13 +74,13 @@ struct GfxDevice
   virtual void     unmapBuffer(GfxBuffer::handle buffer)                               = 0;
 
   /// @brief Update texture
-  virtual void updateImage(GfxImage2D::handle image, std::span<ubyte_t const> data) = 0;
+  virtual void updateImage(GfxImage::handle image, std::span<ubyte_t const> data) = 0;
   /// @brief Update descriptor sett
   virtual void updateDescriptorSet(GfxDescriptorSet::handle, std::span<GfxDescriptorSet::rhandle> handles) = 0;
   /// @brief Readback buffer
   virtual void readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<ubyte_t> out) = 0;
   /// @brief Readback image
-  virtual void readImage(GfxImage2D::handle image, std::span<ubyte_t> out) = 0;
+  virtual void readImage(GfxImage::handle image, std::span<ubyte_t> out) = 0;
 
   /// @brief dispatch a compute shader
   /// @param shader shader handle

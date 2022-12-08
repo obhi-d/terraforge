@@ -36,13 +36,14 @@ struct GfxBufferGl : GfxBuffer
   BindlessHandleGl::handle hdev  = 0;
 };
 
-struct GfxImageGl : GfxImage2D
+struct GfxImageGl : GfxImage
 {
   gl::GLuint               glhandle = {};
   gl::GLenum               target   = gl::GL_TEXTURE_2D;
   GfxStorageClass          storage;
   uint32_t                 width  = {};
   uint32_t                 height = {};
+  uint32_t                 layers = 1;
   ImageFormatEnum          format;
   BindlessHandleGl::handle hdev = 0;
   BindlessHandleGl::handle himg = 0;
@@ -95,7 +96,7 @@ struct GfxBindlessLayoutGl : GfxParamLayout
 
 struct GfxCombinedImageGl : GfxCombinedImage
 {
-  GfxImage2D::handle       image;
+  GfxImage::handle       image;
   GfxSampler::handle       sampler;
   BindlessHandleGl::handle hdev = 0;
 };

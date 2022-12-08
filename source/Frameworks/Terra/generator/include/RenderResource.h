@@ -63,7 +63,7 @@ struct GfxBuffer
   };
 };
 
-struct GfxImage2D
+struct GfxImage
 {
   enum ComponentValue : uint8_t
   {
@@ -83,7 +83,7 @@ struct GfxImage2D
     ComponentValue a = eAlpha;
   };
 
-  using handle = terra::handle<GfxImage2D>;
+  using handle = terra::handle<GfxImage>;
   using Format = ImageFormatEnum;
 };
 
@@ -183,7 +183,7 @@ struct TextureBuffer
 struct StorageImage
 {
   static inline constexpr GfxBindType type = GfxBindType::eStorageImage;
-  GfxImage2D::handle                  texture;
+  GfxImage::handle                  texture;
   uint16_t                            layer   = 0;
   GfxAccess                           access  = GfxAccess::eReadWrite;
   bool                                layered = false;
@@ -191,7 +191,7 @@ struct StorageImage
 
 struct TextureOutput
 {
-  GfxImage2D::handle image;
+  GfxImage::handle image;
   vec4               clearValue;
   bool               clear = false;
 };

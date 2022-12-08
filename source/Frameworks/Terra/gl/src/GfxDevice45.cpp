@@ -36,8 +36,8 @@ GfxBuffer::handle GfxDevice45::createBuffer(GfxStorageClass storage, GfxBuffer::
   return h;
 }
 
-GfxImage2D::handle GfxDevice45::createImage(GfxStorageClass storage, uint32_t width, uint32_t height,
-                                            ImageFormatEnum format, ubyte_t const* data, GfxImage2D::Swizzle swizzle,
+GfxImage::handle GfxDevice45::create2DImage(GfxStorageClass storage, uint32_t width, uint32_t height,
+                                            ImageFormatEnum format, ubyte_t const* data, GfxImage::Swizzle swizzle,
                                             uint32 mipLevels)
 {
   auto  h     = resources.images.emplace();
@@ -134,7 +134,7 @@ void GfxDevice45::unmapBuffer(GfxBuffer::handle buffer)
   auto& res = resources.buffers.at(buffer);
   gl45::glUnmapNamedBuffer(res.glhandle);
 }
-void GfxDevice45::updateImage(GfxImage2D::handle image, std::span<ubyte_t const> data)
+void GfxDevice45::updateImage(GfxImage::handle image, std::span<ubyte_t const> data)
 {
   auto& res = resources.images.at(image);
   gl45::glTextureSubImage2D(res.glhandle, 0, 0, 0, res.width, res.height, toGlDataFormat(res.format),
@@ -146,7 +146,7 @@ void GfxDevice45::readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::spa
   auto& res = resources.buffers.at(buffer);
   gl45::glGetNamedBufferSubData(res.glhandle, offset, out.size_bytes(), out.data());
 }
-void GfxDevice45::readImage(GfxImage2D::handle buffer, std::span<ubyte_t> out)
+void GfxDevice45::readImage(GfxImage::handle buffer, std::span<ubyte_t> out)
 {
   auto& res = resources.images.at(buffer);
   gl45::glTextureSubImage2D(res.glhandle, 0, 0, 0, res.width, res.height, toGlDataFormat(res.format),

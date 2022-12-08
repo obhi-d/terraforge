@@ -22,13 +22,13 @@ public:
 
   GfxBuffer::handle  createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
   void               destroy(GfxBuffer::handle) override;
-  GfxImage2D::handle createImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
-                                 ubyte_t const* data = nullptr, GfxImage2D::Swizzle swizzle = {},
+  GfxImage::handle create2DImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
+                                 ubyte_t const* data = nullptr, GfxImage::Swizzle swizzle = {},
                                  uint32 mipLevels = 1) override;
-  GfxImage2D::handle createImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
-                                      std::span<ubyte_t const*> data = {}, GfxImage2D::Swizzle swizzle = {},
+  GfxImage::handle create1DImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
+                                      std::span<ubyte_t const*> data = {}, GfxImage::Swizzle swizzle = {},
                                       uint32 mipLevels = 1) override;
-  void               destroy(GfxImage2D::handle) override;
+  void               destroy(GfxImage::handle) override;
   GfxSampler::handle createSampler(ImageSampling) override;
   void               destroy(GfxSampler::handle) override;
   GfxDescriptorSetLayout::handle createDescriptorSetLayout(
@@ -42,10 +42,10 @@ public:
   void                     destroy(GfxProgram::handle) override;
   ubyte_t*                 mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint32_t size) override;
   void                     unmapBuffer(GfxBuffer::handle buffer) override;
-  void                     updateImage(GfxImage2D::handle image, std::span<ubyte_t const> data) override;
+  void                     updateImage(GfxImage::handle image, std::span<ubyte_t const> data) override;
   void updateDescriptorSet(GfxDescriptorSet::handle, std::span<GfxDescriptorSet::rhandle> handles) override;
   void readBuffer(GfxBuffer::handle buffer, uint32_t offset, std::span<ubyte_t> out) override;
-  void readImage(GfxImage2D::handle image, std::span<ubyte_t> out) override;
+  void readImage(GfxImage::handle image, std::span<ubyte_t> out) override;
   void dispatchCompute(GfxProgram::handle shader, GfxDescriptorSet::handle descriptorSet, uint32_t numGroupX,
                        uint32_t numGroupY) override;
   void barrier(GfxBarrierFlags flags) override;
@@ -63,7 +63,7 @@ public:
   void                   destroy(GfxParamLayout::handle) override;
   void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout, Blob const& data) override;
   GfxProgram::handle       createFullscreenProgram(std::span<std::string_view> code) override;
-  GfxCombinedImage::handle createCombinedTexture(GfxImage2D::handle image, GfxSampler::handle sampler) override;
+  GfxCombinedImage::handle createCombinedTexture(GfxImage::handle image, GfxSampler::handle sampler) override;
   void                     destroy(GfxCombinedImage::handle) override;
 
   Caps getCaps() const

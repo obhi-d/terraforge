@@ -48,7 +48,7 @@ void HybridBuffer::ensureDev()
     return;
   if (flags & fImage)
   {
-    image = get().getDevice().createImage(GfxStorageClass::eDeviceAccess, width, height, format);
+    image = get().getDevice().create2DImage(GfxStorageClass::eDeviceAccess, width, height, format);
   }
   else
   {

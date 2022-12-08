@@ -15,8 +15,8 @@ bool TextureFile::reload(TerraMainApp const& app)
     if (ser.loadImage(data, path))
     {
       if (image)
-        app.getDevice()->destroy(GfxImage2D::handle(image));
-      image = (uint32_t)app.getDevice()->createImage(GfxStorageClass::eStaticDeviceReadonly, data.width, data.height,
+        app.getDevice()->destroy(GfxImage::handle(image));
+      image = (uint32_t)app.getDevice()->create2DImage(GfxStorageClass::eStaticDeviceReadonly, data.width, data.height,
                                                      data.format, data.data.get());
       return true;
     }

@@ -26,7 +26,7 @@ public:
   void compute(HDataSource, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
 
   // this function is called once results are available
-  virtual bool getResults(GfxImage2D::handle& heights, GfxImage2D::handle& layerContrib) = 0;
+  virtual bool getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) = 0;
   // returns the size of the results available, 0 if no results are available
   virtual bool hasResults() = 0;
 

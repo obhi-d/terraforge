@@ -38,7 +38,7 @@ GfxBuffer::handle HybridPipeline::readBuffer(HybridBuffer::handle item)
   return ii.getBuffer();
 }
 
-GfxImage2D::handle HybridPipeline::readImage(HybridBuffer::handle item)
+GfxImage::handle HybridPipeline::readImage(HybridBuffer::handle item)
 {
   auto& ii = buffers.at(item);
   ii.upload();
@@ -82,7 +82,7 @@ GfxBuffer::handle HybridPipeline::writeBuffer(HybridBuffer::handle item, bool di
   return ii.getBuffer();
 }
 
-GfxImage2D::handle HybridPipeline::writeImage(HybridBuffer::handle item, bool discard)
+GfxImage::handle HybridPipeline::writeImage(HybridBuffer::handle item, bool discard)
 {
   auto& ii = buffers.at(item);
   ii.use(runCount);

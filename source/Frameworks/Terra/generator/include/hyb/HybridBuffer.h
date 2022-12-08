@@ -51,7 +51,7 @@ public:
     return buffer;
   }
 
-  GfxImage2D::handle getImage() const
+  GfxImage::handle getImage() const
   {
     return image;
   }
@@ -89,7 +89,7 @@ private:
   union
   {
     GfxBuffer::handle  buffer = GfxBuffer::handle{};
-    GfxImage2D::handle image;
+    GfxImage::handle image;
   };
 
   HDataSource owner;
