@@ -9,6 +9,11 @@
 namespace terra
 {
 namespace gl45 = gl45core;
+void GfxDevice45::init()
+{
+  features.ARB_clip_control = GlGfxSupport::eCore;
+}
+
 GfxBuffer::handle GfxDevice45::createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size)
 {
   auto  h     = resources.buffers.emplace();
@@ -72,12 +77,12 @@ GfxMesh::handle GfxDevice45::createMeshLayout(GfxMesh::Layout const& mesh)
     res.usageCounter++;
     return exists->second;
   }
-  auto  h   = resources.meshes.emplace();
-  auto& res = resources.meshes.at(h);
-  auto  it  = resources.meshMap.emplace(mesh, h);
-  res.desc  = &it.first->first;
+  auto  h          = resources.meshes.emplace();
+  auto& res        = resources.meshes.at(h);
+  auto  it         = resources.meshMap.emplace(mesh, h);
+  res.desc         = &it.first->first;
   res.usageCounter = 1;
-  gl45::glCreateVertexArrays(1, &res.glhandle);  
+  gl45::glCreateVertexArrays(1, &res.glhandle);
   for (uint32_t i = 0; i < mesh.vertexBufferCount; ++i)
   {
     for (uint32_t s = 0; s < mesh.vertexBuffers[i].elementCount; ++s)
@@ -126,8 +131,8 @@ ubyte_t* GfxDevice45::mapBuffer(GfxBuffer::handle buffer, uint32_t offset, uint3
   auto& res = resources.buffers.at(buffer);
   assert(offset + size <= res.size);
   return (ubyte_t*)gl45::glMapNamedBufferRange(res.glhandle, offset, size,
-                                                 gl45::MapBufferAccessMask::GL_MAP_WRITE_BIT |
-                                                   gl45::MapBufferAccessMask::GL_MAP_INVALIDATE_RANGE_BIT);
+                                               gl45::MapBufferAccessMask::GL_MAP_WRITE_BIT |
+                                                 gl45::MapBufferAccessMask::GL_MAP_INVALIDATE_RANGE_BIT);
 }
 void GfxDevice45::unmapBuffer(GfxBuffer::handle buffer)
 {
@@ -153,12 +158,10 @@ void GfxDevice45::readImage(GfxImage::handle buffer, std::span<ubyte_t> out)
                             toGlType(res.format), out.data());
 }
 
-void GfxDevice45::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
+void GfxDevice45::draw(GfxMesh::Draw const& drawDesc)
 {
-  gl45::glUseProgram(resources.programs[mat.program].glhandle);
-  bindResources(mat.descriptorSet);
   auto& mesh = resources.meshes[drawDesc.layout];
-  
+
   for (uint32_t i = 0; i < mesh.desc->vertexBufferCount; ++i)
   {
     auto bufferOffset = drawDesc.vertexBuffers[i].offset;
@@ -180,7 +183,7 @@ void GfxDevice45::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
       gl45::glVertexArrayElementBuffer(mesh.glhandle, indexBuffer);
       mesh.elementBuffer = drawDesc.indexBuffer.handle;
     }
-    gl45::glBindVertexArray(mesh.glhandle);  
+    gl45::glBindVertexArray(mesh.glhandle);
     if (drawDesc.baseVertex == 0)
       gl45::glDrawElements(mode, drawDesc.indexCount,
                            drawDesc.indexBufferStride == 2 ? gl45::GL_UNSIGNED_SHORT : gl45::GL_UNSIGNED_INT,

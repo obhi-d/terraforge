@@ -56,6 +56,7 @@ public:
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&);
   virtual void            destroy(GfxMesh::handle);
   void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material) override;
+  void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data) override;
   void                    flushStates() override;
 
   GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const>  entries,
@@ -72,7 +73,9 @@ public:
   }
 
 protected:
+  void                     apply(GfxMaterial const&);
   void                     apply(GfxParamLayout::handle descriptorLayout, Blob const& data);
+  virtual void             draw(GfxMesh::Draw const& drawDesc);
   void                     makeResident(BindlessHandleGl::handle, GfxAccess access);
   void                     makeResident(BindlessHandleGl::handle);
   void                     destroy(BindlessHandleGl::handle);

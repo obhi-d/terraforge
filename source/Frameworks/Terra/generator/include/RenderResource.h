@@ -349,9 +349,16 @@ struct GfxMaterial
   GfxDescriptorSet::handle descriptorSet;
 };
 
+struct GfxMaterial2
+{
+  GfxProgram::handle     program;
+  GfxParamLayout::handle layout;
+};
+
 struct GfxFeature
 {
   int          version              = 450; // min version is 430
+  GlGfxSupport ARB_clip_control     = GlGfxSupport::eUnsupported;
   GlGfxSupport ARB_bindless_texture = GlGfxSupport::eUnsupported;
   // GlGfxSupport ARB_program_interface_query      = GlGfxSupport::eUnsupported;
   // GlGfxSupport EXT_shader_image_load_store  = GlGfxSupport::eUnsupported;

@@ -64,6 +64,11 @@ void GfxDevice43::init()
     features.ARB_bindless_texture = GlGfxSupport::eSupported;
   extensions.clear();
 
+  extensions.emplace(gl::GLextension::GL_ARB_clip_control);
+  if (glbinding::aux::ContextInfo::supported(extensions))
+    features.ARB_clip_control = GlGfxSupport::eSupported;
+  extensions.clear();
+
   features.version = (int)version.majorVersion() * 100 + (int)version.minorVersion() * 10;
 #ifndef NDEBUG
   gl43::glEnable(gl43::GL_DEBUG_OUTPUT);
@@ -635,7 +640,24 @@ std::shared_ptr<SourceBuilder> GfxDevice43::createSourceBuilder(ShaderLang)
 void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
 {
   gl43::glUseProgram(resources.programs[mat.program].glhandle);
+  apply(mat);
+  draw(drawDesc);
+}
+
+void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& mat, Blob const& data)
+{
+  gl43::glUseProgram(resources.programs[mat.program].glhandle);
+  apply(mat.layout, data);
+  draw(drawDesc);
+}
+
+void GfxDevice43::apply(GfxMaterial const& mat)
+{
   bindResources(mat.descriptorSet);
+}
+
+void GfxDevice43::draw(GfxMesh::Draw const& drawDesc)
+{
   auto& mesh = resources.meshes[drawDesc.layout];
   gl43::glBindVertexArray(mesh.glhandle);
   for (uint32_t i = 0; i < mesh.desc->vertexBufferCount; ++i)
@@ -672,6 +694,7 @@ void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
     gl43::glDrawArrays(mode, 0, drawDesc.vertexCount);
   gl43::glBindVertexArray(0);
 }
+
 void GfxDevice43::bindResources(GfxDescriptorSet::handle descriptorSet)
 {
   auto& res    = resources.descriptorSets[descriptorSet];

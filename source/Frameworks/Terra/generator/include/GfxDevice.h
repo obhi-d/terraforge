@@ -100,13 +100,14 @@ struct GfxDevice
   virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) = 0;
   virtual std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang) = 0;
 
-  virtual void bindResources(GfxDescriptorSet::handle descriptorSet)            = 0;
-  virtual void destroy(GfxMesh::handle)                                         = 0;
-  virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material) = 0;
-  virtual void flushStates()                                                    = 0;
-  virtual void clearBackbuffer(glm::vec4 color, bool depth = false)             = 0;
-  virtual void setState(GfxState const&)                                        = 0;
+  virtual void bindResources(GfxDescriptorSet::handle descriptorSet)                               = 0;
+  virtual void destroy(GfxMesh::handle)                                                            = 0;
+  virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material)                    = 0;
+  virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data) = 0;
+  virtual void flushStates()                                                                       = 0;
+  virtual void clearBackbuffer(glm::vec4 color, bool depth = false)                                = 0;
+  virtual void setState(GfxState const&)                                                           = 0;
   virtual void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout,
-                               Blob const& data)                                = 0;
+                               Blob const& data)                                                   = 0;
 };
 } // namespace terra
