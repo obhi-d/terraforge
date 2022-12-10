@@ -397,4 +397,13 @@ public:
   static AutoParamRegistry autoRegistry;
 };
 
+struct SemanticContext
+{
+  Parameter height;
+  Parameter water;
+  Parameter rocks;
+  Parameter vegetation;
+  Parameter color;
+};
+
 } // namespace terra

@@ -376,42 +376,12 @@ union DataValue
   DataValue(int val) : ival(val) {}
 };
 
-struct LaunchParams
-{
-  ivec2   tileSize;
-  float   frequency;
-  float   wavelength;
-  int32_t seed;
-};
-
 struct Box
 {
   ivec2 offset{};
   ivec2 size{};
 
   inline constexpr auto operator<=>(Box const&) const noexcept = default;
-};
-
-// Rendering is done 1 tile at a time
-struct EnvParams
-{
-  ivec2 tile{};
-  // Current offset
-  ivec2 startxy{};
-  // Current tile size
-  ivec2 tileSize{};
-  // size of the output buffer
-  ivec2 outputSize{};
-  // The region of data this param represents
-  // relative to output
-  Box region;
-  // The region within the current tile
-  Box tileRegion;
-
-  float   frequency{};
-  int32_t seed{};
-
-  inline constexpr auto operator<=>(EnvParams const&) const noexcept = default;
 };
 
 enum class DrawHint

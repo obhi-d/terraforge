@@ -23,120 +23,72 @@ public:
     cleanup();
   }
 
-  void compute(HDataSource, LaunchParams const&, ivec2 start, ivec2 size); // wrap in Modifiers.toR16
+  virtual void actor(HDataSource);
+  virtual void seed(uint32_t);
+  virtual void frequency(float freq);
+  virtual void size(ivec2);
+  virtual void offset(ivec2);
 
+  // Tick
+  virtual void tick() = 0;
+  // Compute
+  virtual void compute(uvec2 tile) = 0; // wrap in Modifiers.toR16
   // this function is called once results are available
   virtual bool getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) = 0;
   // returns the size of the results available, 0 if no results are available
   virtual bool hasResults() = 0;
-
-  void cancel();
-
   // Read for the given node
   virtual void cleanup();
 
-  uint32_t getIteration() const
+  void cancel();
+
+  uint32_t iteration() const
   {
-    return iteration;
+    return iteration_;
   }
 
-  bool reissue(HDataSource node)
+  float seed() const
   {
-    iterationRequests++;
-    if (!reissueNode)
-    {
-      reissueNode = node;
-      return true;
-    }
-    return reissueNode == node;
+    return seed_;
   }
 
-  void resetIteration()
+  HDataSource actor() const
   {
-    iterationRequests = 0;
-    reissueNode       = {};
+    return actor_;
   }
 
-  void resetLastIssued()
+  ivec2 const& size() const
   {
-    reissueNode = {};
+    return size_;
   }
 
-  bool wasReissued(HDataSource c)
+  ivec2 const& offset() const
   {
-    return c == reissueNode;
+    return offset_;
   }
 
-  float origFrequency() const
+  HDataSource actor() const
   {
-    return launchParams.frequency;
+    return actor_;
   }
 
-  int32_t origSeed() const
+  uint32_t id() const
   {
-    return launchParams.seed;
-  }
-
-  HDataSource getActor() const
-  {
-    return actor;
-  }
-
-  LaunchParams const& params() const
-  {
-    return launchParams;
-  }
-
-  ivec2 const& launchSize() const
-  {
-    return size;
-  }
-
-  ivec2 const& launchOffset() const
-  {
-    return start;
-  }
-
-  bool isActor(HDataSource h) const
-  {
-    return h == actor;
-  }
-
-  uint32_t getId() const
-  {
-    return id;
+    return id_;
   }
 
 protected:
-  void onLaunch()
-  {
-    iterationRequests = 0;
-  }
-
-  bool hasMoreIterations()
-  {
-    return iterationRequests != 0;
-  }
-
-  bool isPrimary(HDataSource h) const
-  {
-    return actor == h;
-  }
-
-  virtual void pushTileTask(EnvParams const&) = 0;
-  virtual void launch()                       = 0;
-
   // main actor
-  HDataSource  reissueNode;
-  HDataSource  actor;
-  uint32_t     iterationRequests = 0;
-  LaunchParams launchParams;
-  ivec2        start;
-  ivec2        size;
-  uint32_t     iteration = 0;
-  uint32_t     tile      = 0;
-  uint32_t     nbTiles   = 0;
-  uint32_t     id        = 0;
+  ivec2       offset_    = ivec2(0);
+  ivec2       size_      = ivec2(0);
+  HDataSource actor_     = HDataSource();
+  float       frequency_ = 0.f;
+  uint32_t    seed_      = 0;
+  uint32_t    iteration_ = 0;
+  uint32_t    tile_      = 0;
+  uint32_t    id_        = 0;
+  uint32_t    version_   = 0xffffffff;
+  uint32_t    cversion_  = 0xffffffff;
 };
 
 } // namespace terra

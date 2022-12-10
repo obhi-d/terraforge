@@ -39,56 +39,43 @@ public:
 
   HybridBuffer::handle declareBuffer();
 
+  void compute(uvec2 tile) final;
+  void tick() final;
+  bool hasResults() final;
+  bool getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) final;
+
   void describeBuffer(HybridBuffer::handle, HDataSource owner, uint32_t size, ImageFormatEnum format);
   void describeImage(HybridBuffer::handle, HDataSource owner, uint32_t width, uint32_t height, ImageFormatEnum format);
 
   GfxBuffer::handle        readBuffer(HybridBuffer::handle);
-  GfxImage::handle       readImage(HybridBuffer::handle);
+  GfxImage::handle         readImage(HybridBuffer::handle);
   std::span<ubyte_t const> readBufferData(HybridBuffer::handle);
   std::span<ubyte_t const> readImageData(HybridBuffer::handle);
   GfxBuffer::handle        writeBuffer(HybridBuffer::handle, bool discard);
-  GfxImage::handle       writeImage(HybridBuffer::handle, bool discard);
+  GfxImage::handle         writeImage(HybridBuffer::handle, bool discard);
   std::span<ubyte_t>       writeBufferData(HybridBuffer::handle, bool discard);
   std::span<ubyte_t>       writeImageData(HybridBuffer::handle, bool discard);
 
-  void compute(HDataSource, uvec2 tileSize, uvec2 start, float freq, uint32_t seed);
+  void cleanup() final;
   void push(HDataSource);
-
-  uvec2 getStart() const
-  {
-    return start;
-  }
-
-  uvec2 getSize() const
-  {
-    return start;
-  }
-
-  uvec2 getTileId() const
-  {
-    return tileId;
-  }
 
 private:
   void execute();
 
-  using UseSet                                  = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
-  using OrderSet                                = std::unordered_set<HDataSource, HHashSource>;
-  size_t                          memoryUsed    = 0;
-  size_t                          devMemoryUsed = 0;
-  HybridNode::Result              result        = HybridNode::Result::eWaiting;
-  uint32_t                        runCount      = 1;
-  float                           frequency     = 0.01f;
-  uint32_t                        seed          = 0;
-  uvec2                           start;
-  uvec2                           size;
-  uvec2                           tileId;
-  HDataSource                     actor;
-  HDataSource                     current;
-  UseSet                          recents;
-  OrderSet                        orderSet;
-  std::vector<Node>               ordered;
-  acl::sparse_table<HybridBuffer> buffers;
+  using UseSet   = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
+  using OrderSet = std::unordered_set<HDataSource, HHashSource>;
+
+  size_t                          memoryUsed_    = 0;
+  size_t                          devMemoryUsed_ = 0;
+  HybridNode::Result              result_        = HybridNode::Result::eWaiting;
+  uint32_t                        tick_          = 1;
+  uvec2                           tileId_;
+  HDataSource                     actor_;
+  HDataSource                     current_;
+  UseSet                          recents_;
+  OrderSet                        orderSet_;
+  std::vector<Node>               ordered_;
+  acl::sparse_table<HybridBuffer> buffers_;
 };
 
 } // namespace terra
