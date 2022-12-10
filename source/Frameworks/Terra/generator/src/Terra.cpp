@@ -118,16 +118,20 @@ std::shared_ptr<Pipeline> Terra::createPipeline() const
 
 void DisplayInfo::from(std::string_view iname)
 {
-  name = get().localizationProvider(iname);
+  id   = iname;
+  name = get().localizationProvider(id);
   std::string tt{iname};
   tt += ".help";
-  help = get().localizationProvider(tt);
+  std::string_view tts = tt;
+  help = get().localizationProvider(tts);
   tt   = iname;
   tt += ".tip";
-  tooltip = get().localizationProvider(tt);
+  tts     = tt;
+  tooltip = get().localizationProvider(tts);
   tt      = iname;
   tt += ".category";
-  category = get().localizationProvider(tt);
+  tts      = tt;
+  category = get().localizationProvider(tts);
 }
 
 } // namespace terra

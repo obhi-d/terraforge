@@ -504,12 +504,13 @@ struct HelpInfo
 
 struct DisplayInfo : HelpInfo
 {
+  std::string_view   id;
   std::u8string_view name;
   std::u8string_view category;
 
   DisplayInfo() = default;
   DisplayInfo(std::string_view n, std::u8string_view h, std::u8string_view t)
-      : name((char8_t const*)n.data(), n.length()), HelpInfo(h, t)
+      : id(n), name((char8_t const*)n.data(), n.length()), HelpInfo(h, t)
   {}
   DisplayInfo(std::u8string_view n, std::u8string_view h, std::u8string_view t) : name(n), HelpInfo(h, t) {}
 

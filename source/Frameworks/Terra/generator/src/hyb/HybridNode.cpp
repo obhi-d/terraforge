@@ -78,7 +78,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   probe(pipe, option, machine);
   pipe.push(self);
 
-  auto&       ndat      = nodeData[pipe.getId()];
+  auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    passCount = gpuMeta.getNumPasses();
   option.hash           = machine.value;
@@ -145,7 +145,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     {
       auto source = std::get<Source>(p).source;
       if (DataSource::isValid(source) &&
-          DataSource::isWithinTile(pipe.getTileId(), constraintTileStart, constraintTileCount))
+          DataSource::isWithinTile(pipe.tile(), constraintTileStart, constraintTileCount))
       {
         //
         auto& node = get().get<GpuNode>(source);
@@ -172,13 +172,13 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       switch (paramAct)
       {
       case Action::eSampleNode:
-        builder.sampleParam(def.name, def.format);
+        builder.sampleParam(def.name(), def.format);
         break;
       case Action::eComputeNode:
-        builder.computeParam(def.name, def.format);
+        builder.computeParam(def.name(), def.format);
         break;
       case Action::ePushConstant:
-        builder.sampleScalar(def.name, def.format);
+        builder.sampleScalar(def.name(), def.format);
         break;
       }
       optionIdx++;
@@ -187,7 +187,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     case DataTypeEnum::eFloat2:
     case DataTypeEnum::eInt:
     case DataTypeEnum::eInt2:
-      builder.sampleScalar(def.name, def.format);
+      builder.sampleScalar(def.name(), def.format);
       break;
     case DataTypeEnum::eBool:
       if (std::get<ScalarValue>(p).bvalue)
@@ -203,7 +203,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
   if (!isSourceModifier())
   {
     for (auto o : code.outputs)
-      builder.writeOutput(meta.outputs[o].name, meta.outputs[o].format);
+      builder.writeOutput(meta.outputs[o].name(), meta.outputs[o].format);
   }
 
   builder.pushExtension(code.extensions);
@@ -213,10 +213,10 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
 
 void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machine)
 {
-  if (pipe.getId() >= nodeData.size())
-    nodeData.resize(pipe.getId() + 1);
+  if (pipe.id() >= nodeData.size())
+    nodeData.resize(pipe.id() + 1);
 
-  auto& ndat = nodeData[pipe.getId()];
+  auto& ndat = nodeData[pipe.id()];
 
   auto const&   gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t      optionIdx = 0;
@@ -229,7 +229,7 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
     {
       auto source = std::get<Source>(p).source;
       if (DataSource::isValid(source) &&
-          DataSource::isWithinTile(pipe.getTileId(), constraintTileStart, constraintTileCount))
+          DataSource::isWithinTile(pipe.tile(), constraintTileStart, constraintTileCount))
       {
         //
 
@@ -277,7 +277,7 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
 
 void GpuNode::executeImpl(HybridPipeline& pipe)
 {
-  auto&       ndat      = nodeData[pipe.getId()];
+  auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    passCount = gpuMeta.getNumPasses();
   auto        gpuPipe   = ndat.gpuPasses.lock();
@@ -353,7 +353,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
 
 void GpuNode::push(HybridPipeline& pipe, ShaderProgramInstance& program, uint32_t paramIdx, uint32_t outIdx)
 {
-  auto&       ndat      = nodeData[pipe.getId()];
+  auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    optionIdx = 0;
 
@@ -406,7 +406,7 @@ void GpuNode::push(HybridPipeline& pipe, ShaderProgramInstance& program, uint32_
 
 void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInstance& program)
 {
-  auto&       ndat    = nodeData[pipe.getId()];
+  auto&       ndat    = nodeData[pipe.id()];
   auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
 
   auto const& code = gpuMeta.getCode(pass);
@@ -414,9 +414,19 @@ void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInst
   {
     if (!ndat.outputs[i])
     {
-      ndat.outputs[i] = pipe.declareBuffer();
-      pipe.describeImage(ndat.outputs[i], getSelf(), pipe.getSize().x, pipe.getSize().y,
-                         meta.outputs[i].format.imageFormat);
+      switch (gpuMeta.outputs[i].format.semantic)
+      {
+      case SemanticEnum::eHeights:
+        ndat.outputs[i] = pipe.heights();
+        break;
+      case SemanticEnum::eLayerContrib:
+        ndat.outputs[i] = pipe.layerContrib();
+        break;
+      default:
+        ndat.outputs[i] = pipe.declareBuffer();
+        pipe.describeImage(ndat.outputs[i], getSelf(), pipe.size().x, pipe.size().y,
+                           meta.outputs[i].format.imageFormat);
+      }
     }
     program.pushOutput(ndat.outputs[i], meta.outputs[i].format);
   }

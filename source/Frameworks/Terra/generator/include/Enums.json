@@ -50,7 +50,9 @@
     "values": [
       "None",
       "Source",
-      "Iteration"
+      "Iteration",
+      "Heights",
+      "LayerContrib"
     ]
   },
   {

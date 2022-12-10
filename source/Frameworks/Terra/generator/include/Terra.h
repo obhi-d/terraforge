@@ -18,7 +18,7 @@ struct ShaderBuilder;
 class Terra
 {
 public:
-  using Localization = std::function<std::u8string_view(std::string_view)>;
+  using Localization = std::function<std::u8string_view(std::string_view&)>;
   void init(Localization loc, std::shared_ptr<GfxDevice> iDev);
 
   inline void addImageCodec(std::string ext, std::shared_ptr<ImageCodec> codec)
@@ -183,12 +183,14 @@ inline Terra& get()
 
 inline std::u8string_view operator""_ls(const char* input, std::size_t len)
 {
-  return get().localizationProvider(std::string_view(input, len));
+  std::string_view l(input, len);
+  return get().localizationProvider(l);
 }
 
 inline const char* operator""_lsc(const char* input, std::size_t len)
 {
-  return (const char*)get().localizationProvider(std::string_view(input, len)).data();
+  std::string_view l(input, len);
+  return (const char*)get().localizationProvider(l).data();
 }
 
 template <typename Meta>

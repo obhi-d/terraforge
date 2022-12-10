@@ -42,7 +42,7 @@ public:
   void compute(uvec2 tile) final;
   void tick() final;
   bool hasResults() final;
-  bool getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) final;
+  void getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) final;
 
   void describeBuffer(HybridBuffer::handle, HDataSource owner, uint32_t size, ImageFormatEnum format);
   void describeImage(HybridBuffer::handle, HDataSource owner, uint32_t width, uint32_t height, ImageFormatEnum format);
@@ -59,12 +59,24 @@ public:
   void cleanup() final;
   void push(HDataSource);
 
+  HybridBuffer::handle heights()
+  {
+    return heights_;
+  }
+
+  HybridBuffer::handle layerContrib()
+  {
+    return layerContrib_;
+  }
+
 private:
   void execute();
 
   using UseSet   = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
   using OrderSet = std::unordered_set<HDataSource, HHashSource>;
 
+  HybridBuffer::handle            heights_;
+  HybridBuffer::handle            layerContrib_;
   size_t                          memoryUsed_    = 0;
   size_t                          devMemoryUsed_ = 0;
   HybridNode::Result              result_        = HybridNode::Result::eWaiting;

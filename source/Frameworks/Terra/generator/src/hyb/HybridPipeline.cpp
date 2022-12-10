@@ -35,7 +35,7 @@ GfxBuffer::handle HybridPipeline::readBuffer(HybridBuffer::handle item)
   ii.upload();
   ii.read(tick_);
   recents_.emplace(item);
-  return ii.getBuffer();
+  return ii.buffer();
 }
 
 GfxImage::handle HybridPipeline::readImage(HybridBuffer::handle item)
@@ -44,7 +44,7 @@ GfxImage::handle HybridPipeline::readImage(HybridBuffer::handle item)
   ii.upload();
   ii.read(tick_);
   recents_.emplace(item);
-  return ii.getImage();
+  return ii.image();
 }
 
 std::span<ubyte_t const> HybridPipeline::readBufferData(HybridBuffer::handle item)
@@ -71,7 +71,7 @@ GfxBuffer::handle HybridPipeline::writeBuffer(HybridBuffer::handle item, bool di
   ii.use(tick_);
   ii.ensureDev();
   auto s = ii.size();
-  if (!ii.getBuffer())
+  if (!ii.buffer())
   {
     memoryUsed_ += s;
     devMemoryUsed_ += s;
@@ -79,7 +79,7 @@ GfxBuffer::handle HybridPipeline::writeBuffer(HybridBuffer::handle item, bool di
   if (!discard)
     ii.upload();
   recents_.emplace(item);
-  return ii.getBuffer();
+  return ii.buffer();
 }
 
 GfxImage::handle HybridPipeline::writeImage(HybridBuffer::handle item, bool discard)
@@ -88,7 +88,7 @@ GfxImage::handle HybridPipeline::writeImage(HybridBuffer::handle item, bool disc
   ii.use(tick_);
   ii.ensureDev();
   auto s = ii.size();
-  if (!ii.getImage())
+  if (!ii.image())
   {
     memoryUsed_ += s;
     devMemoryUsed_ += s;
@@ -96,7 +96,7 @@ GfxImage::handle HybridPipeline::writeImage(HybridBuffer::handle item, bool disc
   if (!discard)
     ii.upload();
   recents_.emplace(item);
-  return ii.getImage();
+  return ii.image();
 }
 
 std::span<ubyte_t> HybridPipeline::writeBufferData(HybridBuffer::handle item, bool discard)
@@ -104,7 +104,7 @@ std::span<ubyte_t> HybridPipeline::writeBufferData(HybridBuffer::handle item, bo
   auto& ii = buffers_.at(item);
   ii.use(tick_);
   auto s = ii.size();
-  if (!ii.getData())
+  if (!ii.data())
   {
     memoryUsed_ += s;
   }
@@ -133,6 +133,11 @@ void HybridPipeline::tick()
     iteration_ = 0;
     buffers_.clear();
     ordered_.clear();
+    heights_ = declareBuffer();
+    layerContrib_ = declareBuffer();
+    describeImage(heights_, {}, size().x, size().y, ImageFormatEnum::eFloat);
+    describeImage(layerContrib_, {}, size().x, size().y, ImageFormatEnum::eRgba32f);
+    
     if (actor_)
     {
       get().get<HybridNode>(actor_).prepare(*this);
@@ -190,7 +195,7 @@ void HybridPipeline::execute()
     {
       auto s = ii.size();
       memoryUsed_ -= s;
-      if (ii.getBuffer())
+      if (ii.buffer())
         devMemoryUsed_ -= s;
       ii.clear();
     }
@@ -214,6 +219,10 @@ bool HybridPipeline::hasResults()
   return (result_ == HybridNode::Result::eContinue || result_ == HybridNode::Result::eDone);
 }
 
-bool HybridPipeline::getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) {}
+void HybridPipeline::getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) 
+{
+  heights      = heights_ ? readImage(heights_) : GfxImage::handle{};
+  layerContrib = layerContrib_ ? readImage(layerContrib_) : GfxImage::handle{};
+}
 
 } // namespace terra

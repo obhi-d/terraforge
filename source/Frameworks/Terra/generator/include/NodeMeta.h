@@ -229,13 +229,11 @@ struct ParameterMeta
     eCount
   };
 
-  std::string name;
   DisplayInfo displayInfo;
 
-  DataFormat                     format;
-  DataValue                      values[ValueType::eCount] = {};
-  std::unique_ptr<std::string[]> enumNames                 = {};
-  std::unique_ptr<DisplayInfo[]> enumDisplayInfo           = {};
+  DataFormat                               format;
+  std::array<DataValue, ValueType::eCount> values          = {};
+  std::unique_ptr<DisplayInfo[]>           enumDisplayInfo = {};
   union
   {
     uint32_t maxEnum = 1;
@@ -244,11 +242,28 @@ struct ParameterMeta
   ParamSetter setter = nullptr;
   ParamGetter getter = nullptr;
 
-  ParameterMeta()                                         = default;
-  ParameterMeta(ParameterMeta const&)                     = default;
-  ParameterMeta(ParameterMeta&&) noexcept                 = default;
-  ParameterMeta& operator=(ParameterMeta const&) noexcept = default;
-  ParameterMeta& operator=(ParameterMeta&&) noexcept      = default;
+  ParameterMeta() = default;
+  ParameterMeta(ParameterMeta const& other)
+  {
+    *this = other;
+  }
+  ParameterMeta(ParameterMeta&&) noexcept = default;
+  ParameterMeta& operator=(ParameterMeta const& other) noexcept
+  {
+    displayInfo = other.displayInfo;
+    format      = other.format;
+    maxEnum     = other.maxEnum;
+    setter      = other.setter;
+    getter      = other.getter;
+    if (other.enumDisplayInfo)
+    {
+      enumDisplayInfo.reset(new DisplayInfo[maxEnum]);
+      for (uint32_t i = 0; i < maxEnum; ++i)
+        enumDisplayInfo[i] = other.enumDisplayInfo[i];
+    }
+    return *this;
+  }
+  ParameterMeta& operator=(ParameterMeta&&) noexcept = default;
 
   template <typename MembPtr>
   ParameterMeta(MembPtr, std::string_view iname, SemanticEnum semantic = SemanticEnum::eNone)
@@ -257,14 +272,14 @@ struct ParameterMeta
 
   template <typename MembPtr, typename Fmt>
   ParameterMeta(MembPtr, std::string_view iname, Fmt format, SemanticEnum semantic = SemanticEnum::eNone)
-      : format(Fmt::get()), name(iname), setter(
-                                           [](Node& node, uint32_t, Parameter param)
-                                           {
-                                             using T       = typename MembPtr::class_t;
-                                             auto  pmember = MembPtr::pmem;
-                                             auto& cnode   = static_cast<T&>(node);
-                                             store(cnode.*pmember, param);
-                                           }),
+      : format(Fmt::get()), setter(
+                              [](Node& node, uint32_t, Parameter param)
+                              {
+                                using T       = typename MembPtr::class_t;
+                                auto  pmember = MembPtr::pmem;
+                                auto& cnode   = static_cast<T&>(node);
+                                store(cnode.*pmember, param);
+                              }),
         getter(
           [](Node const& node, uint32_t) -> Parameter
           {
@@ -279,12 +294,10 @@ struct ParameterMeta
     if constexpr (Fmt::is_enum)
     {
       maxEnum = (uint32)format.enumVals.size();
-      enumNames.reset(new std::string[maxEnum]);
       enumDisplayInfo.reset(new DisplayInfo[maxEnum]);
       for (uint32_t i = 0; i < maxEnum; ++i)
       {
-        enumNames[i] = format.enumVals[i];
-        enumDisplayInfo[i].from(enumNames[i]);
+        enumDisplayInfo[i].from(format.enumVals[i]);
       }
     }
     else
@@ -293,6 +306,11 @@ struct ParameterMeta
       values[ValueType::eMax]  = format.maxVal;
       values[ValueType::eStep] = format.stepVal;
     }
+  }
+
+  std::string_view name() const
+  {
+    return displayInfo.id;
   }
 
   inline bool isValid() const
@@ -330,13 +348,17 @@ struct AutoParam
 
 struct OutputMeta
 {
-  std::string name = "output";
   DisplayInfo displayInfo;
   DataFormat  format     = DataFormat(DataTypeEnum::eBuffer);
   vec4        clearValue = vec4(0.f);
   bool        clear      = false;
 
-  OutputMeta(std::string nam) : name(std::move(nam))
+  std::string_view name() const
+  {
+    return displayInfo.id;
+  }
+
+  OutputMeta(std::string_view name)
   {
     displayInfo.from(name);
   }
@@ -378,6 +400,11 @@ public:
   NodeMeta& operator=(NodeMeta const&) noexcept = default;
   NodeMeta& operator=(NodeMeta&&) noexcept      = default;
 
+  std::string_view name() const
+  {
+    return displayInfo.id;
+  }
+
   void         addDomain();
   virtual void prepare();
 
@@ -399,11 +426,9 @@ public:
 
 struct SemanticContext
 {
-  Parameter height;
-  Parameter water;
-  Parameter rocks;
-  Parameter vegetation;
-  Parameter color;
+  GfxImage::handle height;
+  // water, rocks, vegetation, color;
+  GfxImage::handle layerContrib;
 };
 
 } // namespace terra

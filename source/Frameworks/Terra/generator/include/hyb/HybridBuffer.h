@@ -17,7 +17,7 @@ public:
   HybridBuffer(HybridBuffer const&) = delete;
   HybridBuffer(HybridBuffer&&) noexcept;
   HybridBuffer() = default;
-  HybridBuffer(Source owner, uint32_t width, uint32_t height, ImageFormatEnum type = ImageFormatEnum::eFloat,
+  HybridBuffer(Source owner_, uint32_t width_, uint32_t height_, ImageFormatEnum type = ImageFormatEnum::eFloat,
                bool isImage = true);
 
   HybridBuffer& operator=(HybridBuffer const&) = delete;
@@ -26,7 +26,7 @@ public:
   template <typename T>
   Sampler2D<T> sampler()
   {
-    return Sampler2D<T>(reinterpret_cast<T*>(offload()), width, height);
+    return Sampler2D<T>(reinterpret_cast<T*>(offload()), width_, height_);
   }
 
   std::span<ubyte_t> ensureHost();
@@ -36,50 +36,60 @@ public:
 
   void use(uint32_t now)
   {
-    useCount = now;
-    flags |= fUsed;
+    useCount_ = now;
+    flags_ |= fUsed;
   }
 
   void read(uint32_t now)
   {
     use(now);
-    readCount++;
+    readCount_++;
   }
 
-  GfxBuffer::handle getBuffer() const
+  GfxBuffer::handle buffer() const
   {
-    return buffer;
+    return buffer_;
   }
 
-  GfxImage::handle getImage() const
+  GfxImage::handle image() const
   {
-    return image;
+    return image_;
   }
 
-  ubyte_t const* getData() const
+  ubyte_t const* data() const
   {
-    return data.get();
+    return data_.get();
   }
 
   uint32_t lastUsed() const
   {
-    return useCount;
+    return useCount_;
   }
 
   size_t size() const
   {
-    return height * width * getBaseSize(format);
+    return height_ * width_ * getBaseSize(format_);
   }
 
   bool isDetached() const
   {
-    return (readCount >= readers);
+    return (readCount_ >= readers_);
+  }
+
+  uint32_t width() const
+  {
+    return width_;
+  }
+
+  uint32_t height() const
+  {
+    return height_;
   }
 
   void clear();
 
 private:
-  std::unique_ptr<ubyte_t[]> data;
+  std::unique_ptr<ubyte_t[]> data_;
   enum Flags : uint16_t
   {
     fLocked = 1 << 0,
@@ -88,19 +98,19 @@ private:
   };
   union
   {
-    GfxBuffer::handle  buffer = GfxBuffer::handle{};
-    GfxImage::handle image;
+    GfxBuffer::handle buffer_ = GfxBuffer::handle{};
+    GfxImage::handle  image_;
   };
 
-  HDataSource owner;
+  HDataSource owner_;
 
-  uint32_t        width     = 0;
-  uint32_t        height    = 0;
-  uint32_t        useCount  = 0;
-  uint32_t        readCount = 0;
-  uint32_t        readers   = 0;
-  ImageFormatEnum format    = ImageFormatEnum::eFloat;
-  uint16_t        flags     = 0;
+  uint32_t        width_     = 0;
+  uint32_t        height_    = 0;
+  uint32_t        useCount_  = 0;
+  uint32_t        readCount_ = 0;
+  uint32_t        readers_   = 0;
+  ImageFormatEnum format_    = ImageFormatEnum::eFloat;
+  uint16_t        flags_     = 0;
 };
 
 } // namespace terra

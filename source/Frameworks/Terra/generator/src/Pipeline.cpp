@@ -31,7 +31,7 @@ void Pipeline::frequency(float val)
   }
 }
 
-void Pipeline::size(ivec2 val)
+void Pipeline::size(uvec2 val)
 {
   if (size_ != val)
   {

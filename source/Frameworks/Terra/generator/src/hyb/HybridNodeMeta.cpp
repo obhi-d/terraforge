@@ -19,17 +19,17 @@ void GpuNodeMeta::prepare()
     switch (pdef.format.type)
     {
     case DataTypeEnum::eImage:
-      dict.names.emplace_back(imgPrefix + std::string(pdef.name.substr(1)));
+      dict.names.emplace_back(imgPrefix + std::string(pdef.name()));
       break;
     case DataTypeEnum::eBuffer:
-      dict.names.emplace_back(buffPrefix + std::string(pdef.name.substr(1)));
+      dict.names.emplace_back(buffPrefix + std::string(pdef.name()));
       break;
     case DataTypeEnum::eBool:
-      dict.names.emplace_back(boolPrefix + std::string(pdef.name.substr(1)));
+      dict.names.emplace_back(boolPrefix + std::string(pdef.name()));
       break;
     case DataTypeEnum::eEnum:
       for (uint32_t i = 0; i < pdef.maxEnum; ++i)
-        dict.names.emplace_back(enumPrefix + std::string(pdef.enumNames[i]));
+        dict.names.emplace_back(enumPrefix + std::string(pdef.enumDisplayInfo[i].id));
       break;
     }
   }

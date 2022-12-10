@@ -11,80 +11,80 @@ HybridBuffer::HybridBuffer(HybridBuffer&& hb) noexcept
 }
 
 HybridBuffer::HybridBuffer(Source iowner, uint32_t iwidth, uint32_t iheight, ImageFormatEnum itype, bool iisImage)
-    : owner(iowner.source), width(iwidth), height(iheight), format(itype), flags(iisImage ? fImage : 0)
+    : owner_(iowner.source), width_(iwidth), height_(iheight), format_(itype), flags_(iisImage ? fImage : 0)
 {
   if (DataSource::isValid(iowner.source))
-    readers = get().get<DataSource>(iowner.source).countDependents(iowner.secondary);
+    readers_ = get().get<DataSource>(iowner.source).countDependents(iowner.secondary);
 }
 
 HybridBuffer& HybridBuffer::operator=(HybridBuffer&& other) noexcept
 {
-  if (buffer)
+  if (buffer_)
   {
-    if (flags & fImage)
-      get().getDevice().destroy(image);
+    if (flags_ & fImage)
+      get().getDevice().destroy(image_);
     else
-      get().getDevice().destroy(buffer);
+      get().getDevice().destroy(buffer_);
   }
 
-  data      = std::move(other.data);
-  buffer    = other.buffer;
-  owner     = other.owner;
-  width     = other.width;
-  height    = other.height;
-  format    = other.format;
-  useCount  = other.useCount;
-  readCount = other.readCount;
-  readers   = other.readers;
-  flags     = other.flags;
+  data_      = std::move(other.data_);
+  buffer_    = other.buffer_;
+  owner_     = other.owner_;
+  width_     = other.width_;
+  height_    = other.height_;
+  format_    = other.format_;
+  useCount_  = other.useCount_;
+  readCount_ = other.readCount_;
+  readers_   = other.readers_;
+  flags_     = other.flags_;
 
-  other.buffer = {};
+  other.buffer_ = {};
   return *this;
 }
 
 void HybridBuffer::ensureDev()
 {
-  if (buffer)
+  if (buffer_)
     return;
-  if (flags & fImage)
+  if (flags_ & fImage)
   {
-    image = get().getDevice().create2DImage(GfxStorageClass::eDeviceAccess, width, height, format);
+    image_ = get().getDevice().create2DImage(GfxStorageClass::eDeviceAccess, width_, height_, format_);
   }
   else
   {
-    buffer = get().getDevice().createBuffer(GfxStorageClass::eDeviceAccess, GfxBuffer::fStorage,
-                                            width * height * getBaseSize(format));
+    buffer_ = get().getDevice().createBuffer(GfxStorageClass::eDeviceAccess, GfxBuffer::fStorage,
+                                             width_ * height_ * getBaseSize(format_));
   }
 }
 
 std::span<ubyte_t> HybridBuffer::ensureHost()
 {
   size_t dataSize = size();
-  if (!data)
-    data.reset(new ubyte_t[dataSize]);
-  return std::span<ubyte_t>(data.get(), dataSize);
+  if (!data_)
+    data_.reset(new ubyte_t[dataSize]);
+  return std::span<ubyte_t>(data_.get(), dataSize);
 }
 
 bool HybridBuffer::offload()
 {
-  size_t size = width * height * getBaseSize(format);
-  if (!size || !buffer)
+  size_t size = width_ * height_ * getBaseSize(format_);
+  if (!size || !buffer_)
     return false;
-  if (!data)
+  if (!data_)
   {
-    data.reset(new ubyte_t[size]);
+    data_.reset(new ubyte_t[size]);
     auto& dev = get().getDevice();
-    if (flags & fImage)
+    if (flags_ & fImage)
     {
-      dev.readImage(image, std::span<ubyte_t>(data.get(), size));
-      dev.destroy(image);
+      dev.readImage(image_, std::span<ubyte_t>(data_.get(), size));
+      dev.destroy(image_);
     }
     else
     {
-      dev.readBuffer(buffer, 0, std::span<ubyte_t>(data.get(), size));
-      dev.destroy(buffer);
+      dev.readBuffer(buffer_, 0, std::span<ubyte_t>(data_.get(), size));
+      dev.destroy(buffer_);
     }
-    buffer = {};
+    buffer_ = {};
     return true;
   }
   return false;
@@ -93,25 +93,25 @@ bool HybridBuffer::offload()
 bool HybridBuffer::upload()
 {
   size_t dataSize = size();
-  if (!dataSize || !data)
+  if (!dataSize || !data_)
     return false;
-  if (!buffer)
+  if (!buffer_)
   {
     ensureDev();
-    if (!buffer)
+    if (!buffer_)
       return false;
     auto& dev = get().getDevice();
-    if (flags & fImage)
+    if (flags_ & fImage)
     {
-      dev.updateImage(image, std::span<ubyte_t>(data.get(), dataSize));
+      dev.updateImage(image_, std::span<ubyte_t>(data_.get(), dataSize));
     }
     else
     {
-      ubyte_t* bdata = dev.mapBuffer(buffer, 0, (uint32_t)dataSize);
-      std::memcpy(bdata, data.get(), dataSize);
-      dev.unmapBuffer(buffer);
+      ubyte_t* bdata = dev.mapBuffer(buffer_, 0, (uint32_t)dataSize);
+      std::memcpy(bdata, data_.get(), dataSize);
+      dev.unmapBuffer(buffer_);
     }
-    data = {};
+    data_ = {};
     return true;
   }
   return false;
@@ -120,15 +120,15 @@ bool HybridBuffer::upload()
 void HybridBuffer::clear()
 {
   auto& dev = get().getDevice();
-  if (flags & fImage)
+  if (flags_ & fImage)
   {
-    dev.destroy(image);
+    dev.destroy(image_);
   }
   else
   {
-    dev.destroy(buffer);
+    dev.destroy(buffer_);
   }
-  data = {};
+  data_ = {};
 }
 
 } // namespace terra

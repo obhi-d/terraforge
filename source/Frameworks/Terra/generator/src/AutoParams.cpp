@@ -11,7 +11,7 @@ AutoParam::Result postIteration(Pipeline& pipe, Node& node, uint32_t i)
   auto value = node.param(i);
   if (std::holds_alternative<ScalarValue>(value))
   {
-    if (pipe.getIteration() < (uint32_t)std::get<ScalarValue>(value).ivalue)
+    if (pipe.iteration() < (uint32_t)std::get<ScalarValue>(value).ivalue)
       return AutoParam::eContinueIteration;
   }
   return AutoParam::eOk;

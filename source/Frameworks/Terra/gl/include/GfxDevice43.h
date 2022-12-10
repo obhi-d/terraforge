@@ -20,17 +20,17 @@ public:
   void clearBackbuffer(glm::vec4 color, bool depth = false) override;
   void setState(GfxState const&) override;
 
-  GfxBuffer::handle  createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
-  void               destroy(GfxBuffer::handle) override;
-  GfxImage::handle create2DImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
-                                 ubyte_t const* data = nullptr, GfxImage::Swizzle swizzle = {},
-                                 uint32 mipLevels = 1) override;
-  GfxImage::handle create1DImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
-                                      std::span<ubyte_t const*> data = {}, GfxImage::Swizzle swizzle = {},
-                                      uint32 mipLevels = 1) override;
-  void               destroy(GfxImage::handle) override;
-  GfxSampler::handle createSampler(ImageSampling) override;
-  void               destroy(GfxSampler::handle) override;
+  GfxBuffer::handle createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;
+  void              destroy(GfxBuffer::handle) override;
+  GfxImage::handle  create2DImage(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
+                                  ubyte_t const* data = nullptr, GfxImage::Swizzle swizzle = {},
+                                  uint32 mipLevels = 1) override;
+  GfxImage::handle  create1DImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
+                                       std::span<ubyte_t const*> data = {}, GfxImage::Swizzle swizzle = {},
+                                       uint32 mipLevels = 1) override;
+  void              destroy(GfxImage::handle) override;
+  GfxSampler::handle             createSampler(ImageSampling) override;
+  void                           destroy(GfxSampler::handle) override;
   GfxDescriptorSetLayout::handle createDescriptorSetLayout(
     std::span<GfxDescriptorSetLayout::Descriptor> descriptors) override;
   void                     destroy(GfxDescriptorSetLayout::handle) override;
@@ -95,7 +95,7 @@ protected:
   };
 
   std::vector<UBO> ubo;
-  gl43::GLuint     fullscreenVS = 0;
+  gl::GLuint       fullscreenVS = 0;
   GlGfxState       state;
   GfxFeature       features;
   GfxResources     resources;

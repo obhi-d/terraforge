@@ -51,8 +51,7 @@ NodeCmdExecute(param, builder, state, cmd)
 {
   terra::ParameterMeta meta;
 
-  meta.name = std::string{terra::getIdxParam(cmd, 0)};
-  meta.displayInfo.from(meta.name);
+  meta.displayInfo.from(terra::getIdxParam(cmd, 0));
   auto const& params = cmd.params().value();
   for (auto& p : params)
   {
@@ -109,12 +108,10 @@ NodeCmdExecute(param, builder, state, cmd)
         auto& values  = entry.value();
         auto  maxEnum = values.size();
         meta.maxEnum  = (uint32_t)maxEnum;
-        meta.enumNames.reset(new std::string[maxEnum]);
         meta.enumDisplayInfo.reset(new terra::DisplayInfo[maxEnum]);
         for (int i = 0; i < maxEnum; ++i)
         {
-          meta.enumNames[i] = std::get<neo::single>(values[i]).value();
-          meta.enumDisplayInfo[i].from(meta.enumNames[i]);
+          meta.enumDisplayInfo[i].from(std::get<neo::single>(values[i]).value());
         }
       }
     }
@@ -137,7 +134,7 @@ NodeCmdExecute(param, builder, state, cmd)
   }
   else
   {
-    builder.errorHandler(fmt::format("Parameter info is invalid: {}", meta.name));
+    builder.errorHandler(fmt::format("Parameter info is invalid: {}", meta.name()));
     return neo::retcode::e_fail_and_stop;
   }
 }
@@ -251,13 +248,13 @@ NodeCmdExecute(in, builder, state, cmd)
     [&]()
     {
       for (uint32_t i = 0, end = (uint32_t)builder.meta.parameterDef.size(); i != end; ++i)
-        if (builder.meta.parameterDef[i].name == e)
+        if (builder.meta.parameterDef[i].name() == e)
         {
           builder.meta.passes.back().parameters.emplace_back(i);
           return;
         }
       for (uint32_t i = 0, end = (uint32_t)builder.meta.outputs.size(); i != end; ++i)
-        if (builder.meta.outputs[i].name == e)
+        if (builder.meta.outputs[i].name() == e)
         {
           builder.meta.passes.back().parameters.emplace_back(i | GpuNodeMeta::kOutputMask);
           return;
@@ -273,7 +270,7 @@ NodeCmdExecute(out, builder, state, cmd)
   for (auto& e : names)
   {
     for (uint32_t i = 0, end = (uint32_t)builder.meta.outputs.size(); i != end; ++i)
-      if (builder.meta.outputs[i].name == e)
+      if (builder.meta.outputs[i].name() == e)
       {
         builder.meta.passes.back().outputs.emplace_back(i);
         break;
