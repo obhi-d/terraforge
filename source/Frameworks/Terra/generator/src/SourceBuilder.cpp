@@ -7,6 +7,42 @@
 namespace terra
 {
 
+ShaderProgram::~ShaderProgram()
+{
+  if (program)
+    get().getDevice().destroy(program);
+  if (layout)
+    get().getDevice().destroy(layout);
+}
+
+ShaderProgram& ShaderProgram::operator=(ShaderProgram const& other) noexcept
+{
+  if (program)
+    get().getDevice().destroy(program);
+  if (layout)
+    get().getDevice().destroy(layout);
+  program     = other.program;
+  layout      = other.layout;
+  outputCount = other.outputCount;
+  frame       = other.frame;
+  return *this;
+}
+
+ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept
+{
+  if (program)
+    get().getDevice().destroy(program);
+  if (layout)
+    get().getDevice().destroy(layout);
+  program       = other.program;
+  layout        = other.layout;
+  outputCount   = other.outputCount;
+  frame         = other.frame;
+  other.program = {};
+  other.layout  = {};
+  return *this;
+}
+
 std::string_view toGlsl(DataTypeEnum type)
 {
   switch (type)
@@ -159,6 +195,12 @@ void SourceBuilderAdapter::sampleScalar(std::string_view name, DataFormat df)
   entry.index = ssboBinding++;
   switch (df.scalarSubType)
   {
+  case DataTypeEnum::eUint:
+    entry.type = GfxBindType::eUint;
+    break;
+  case DataTypeEnum::eUint2:
+    entry.type = GfxBindType::eUint2;
+    break;
   case DataTypeEnum::eInt2:
     entry.type = GfxBindType::eInt2;
     break;
@@ -170,6 +212,15 @@ void SourceBuilderAdapter::sampleScalar(std::string_view name, DataFormat df)
     break;
   case DataTypeEnum::eFloat2:
     entry.type = GfxBindType::eFloat2;
+    break;
+  case DataTypeEnum::eFloat3:
+    entry.type = GfxBindType::eFloat3;
+    break;
+  case DataTypeEnum::eFloat4:
+    entry.type = GfxBindType::eFloat4;
+    break;
+  case DataTypeEnum::eMat4:
+    entry.type = GfxBindType::eMat4;
     break;
   }
   entries.push_back(entry);

@@ -1,5 +1,6 @@
 #pragma once
 #include "Common.h"
+#include "ImageSerializer.h"
 #include "Logger.h"
 #include "Property.h"
 #include <cassert>
@@ -21,16 +22,17 @@ struct AppSettings
   Property<bool>        verbose  = Property<bool>("@verbose", true);
 
   // Export
-  Property<glm::ivec2> tileSize       = Property<glm::ivec2>("@tileSize", 257, 257);
-  Property<glm::ivec2> tileOffset     = Property<glm::ivec2>("@tileOffset", 1, 1);
-  Property<glm::ivec2> nbPreviewTiles = Property<glm::ivec2>("@nbPreviewTiles", 1, 1);
+  Property<glm::uvec2> tileSize    = Property<glm::uvec2>("@tileSize", 257, 257);
+  Property<glm::ivec2> tileOffset  = Property<glm::ivec2>("@tileOffset", 1, 1);
+  Property<glm::uvec2> previewTile = Property<glm::uvec2>("@previewTile", 0, 0);
+  // Property<glm::uvec2> nbPreviewTiles = Property<glm::ivec2>("@nbPreviewTiles", 1, 1);
 
   // Generation
-  Property<float> frequency = Property<float>("@frequency", 0.02f);
-  Property<int>   seed      = Property<int>("@seed", 1337);
+  Property<float>    frequency = Property<float>("@frequency", 0.02f);
+  Property<uint32_t> seed      = Property<uint32_t>("@seed", 1337);
 
-  glm::ivec2 viewerSize = glm::ivec2(32, 32);
-  glm::ivec2 viewerPos  = glm::ivec2(20, 20);
+  glm::uvec2 viewerSize = glm::uvec2(32, 32);
+  glm::uvec2 viewerPos  = glm::uvec2(20, 20);
 
   int  glslVersion     = 130;
   bool wasLoaded       = false;
@@ -64,6 +66,8 @@ struct TextureFile
   std::string path;
   glm::ivec2  size{};
   uint32_t    image = 0;
+
+  bool load(ImageData&);
 
   bool reload(TerraMainApp const&);
 };

@@ -2,7 +2,7 @@
 
 #include "NodeMeta.h"
 #include "ShaderOptions.h"
-#include "hyb/ShaderProgram.h"
+#include "hyb/ShaderProgramInstance.h"
 
 namespace terra
 {

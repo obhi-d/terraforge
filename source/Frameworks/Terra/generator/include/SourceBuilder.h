@@ -16,6 +16,14 @@ struct ShaderProgram
   uint32_t               outputCount = 0;
   uint32_t               frame       = 0;
 
+  ShaderProgram()                              = default;
+  ShaderProgram(ShaderProgram const&) noexcept = default;
+  ShaderProgram(ShaderProgram&&) noexcept      = default;
+  ~ShaderProgram();
+
+  ShaderProgram& operator=(ShaderProgram const&) noexcept = default;
+  ShaderProgram& operator=(ShaderProgram&&) noexcept      = default;
+
   void touch();
 };
 
@@ -88,10 +96,10 @@ struct SourceBuilderAdapter : SourceBuilder
   std::vector<GfxParamLayout::Output> output;
   std::vector<std::string>            params;
 
-  SourceType  type        = SourceType::eFullscreenGraphNode;
-  uint32_t    outputIdx   = 0;
-  uint32_t    ssboBinding = 0;
-  uint32_t    id;
+  SourceType type        = SourceType::eFullscreenGraphNode;
+  uint32_t   outputIdx   = 0;
+  uint32_t   ssboBinding = 0;
+  uint32_t   id          = 0;
 
   std::string options;
   std::string extensions;
@@ -105,6 +113,7 @@ struct SourceBuilderAdapter : SourceBuilder
 
 struct SourceBuilderBindless : SourceBuilderAdapter
 {
+  SourceBuilderBindless(SourceType t) : SourceBuilderAdapter(t) {}
   void sampleTexture(std::string_view name, DataFormat df) final;
   void sampleImage(std::string_view name, DataFormat df) final;
   void sampleTextureBuffer(std::string_view name, DataFormat df) final;
@@ -112,6 +121,7 @@ struct SourceBuilderBindless : SourceBuilderAdapter
 
 struct SourceBuilderBindful : SourceBuilderAdapter
 {
+  SourceBuilderBindful(SourceType t) : SourceBuilderAdapter(t) {}
   void sampleTexture(std::string_view name, DataFormat df) final;
   void sampleImage(std::string_view name, DataFormat df) final;
   void sampleTextureBuffer(std::string_view name, DataFormat df) final;

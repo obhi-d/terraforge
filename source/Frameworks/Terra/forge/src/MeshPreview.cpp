@@ -2,8 +2,8 @@
 #include "MeshPreview.h"
 #include "ImageSerializer.h"
 #include "ResourceUtils.h"
-#include "TerraMainApp.h"
 #include "SourceBuilder.h"
+#include "TerraMainApp.h"
 
 namespace tmpl
 {
@@ -13,11 +13,20 @@ namespace tmpl
 namespace terra
 {
 
-static constexpr size_t UboSize = 2 * sizeof(glm::mat4) + sizeof(glm::vec4);
-
 MeshPreview::MeshPreview()
 {
-  heightTexPath->path = (getMediaPath() / heightTexPath->path).string();
+  ShaderOptions::Dictionary dict;
+
+  vegetation->path = (getMediaPath() / vegetation->path).string();
+  water->path      = (getMediaPath() / water->path).string();
+  rocks->path      = (getMediaPath() / rocks->path).string();
+  terrain->path    = (getMediaPath() / terrain->path).string();
+
+  dict.names.emplace_back("Enum_ShadowRes512");
+  dict.names.emplace_back("Enum_ShadowRes1024");
+  dict.names.emplace_back("Enum_ShadowRes2048");
+  dict.names.emplace_back("Enum_ShadowRes4096");
+  shadowProgOptions = ShaderOptions(ShaderOptions::addDictionary(std::move(dict)));
 }
 
 void MeshPreview::init(TerraMainApp& app)
@@ -33,44 +42,38 @@ void MeshPreview::init(TerraMainApp& app)
 void MeshPreview::deinit(TerraMainApp& app)
 {
   app.dispatcher().remove(setActorEventListener);
-  app.getDevice()->destroy(vertex);
   app.getDevice()->destroy(index);
-  app.getDevice()->destroy(material.program);
-  app.getDevice()->destroy(material.descriptorSet);
-  app.getDevice()->destroy(GfxImage::handle(heightTexPath->image));
+  app.getDevice()->destroy(shadowMapImage);
+  app.getDevice()->destroy(shadowMap);
+  app.getDevice()->destroy(sampler);
+  app.getDevice()->destroy(layout);
+  materialProg = {};
+  shadowProg   = {};
 }
 
 void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
 {
   AppSettings const& settings = app.getSettings();
-  if (!generated)
-  {
-    createDeviceObjects(app, *app.getDevice());
-    generated = true;
-  }
 
-  if (settings.tileSize != tileSize || settings.nbPreviewTiles != nbPreviewTiles || !vertex || !index)
+  if (settings.tileSize != tileSize || !index)
   {
-    tileSize       = settings.tileSize;
-    nbPreviewTiles = settings.nbPreviewTiles;
-    vertexCount    = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y);
-    box.x          = (float)(tileSize.x * nbPreviewTiles.x) + 1.f;
-    box.y          = max - min + 1.f;
-    box.z          = (float)(tileSize.y * nbPreviewTiles.y) + 1.f;
-    uint32_t size  = vertexCount * 4;
-    if (vertex)
-      app.getDevice()->destroy(vertex);
-    if (!settings.hasRobustAccess)
-      size *= 2;
-    vertex = app.getDevice()->createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::fVertex, size);
+    tileSize    = settings.tileSize;
+    vertexCount = (tileSize.x) * (tileSize.y);
+    box.x       = (float)(tileSize.x) + 1.f;
+    box.y       = max - min + 1.f;
+    box.z       = (float)(tileSize.y) + 1.f;
     if (index)
       app.getDevice()->destroy(index);
-    auto patchX    = (uint32_t)((tileSize.x * nbPreviewTiles.x) - 1);
-    auto patchY    = (uint32_t)((tileSize.y * nbPreviewTiles.y) - 1);
-    auto indexSize = (uint32_t)((patchX * patchY + patchX + patchY) * 12 * sizeof(uint32_t));
-    index = app.getDevice()->createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::fIndex, indexSize);
+    auto     patchX    = (uint32_t)((tileSize.x) - 1);
+    auto     patchY    = (uint32_t)((tileSize.y) - 1);
+    uint32_t nbPatches = patchX * patchY * 6;
 
-    auto indices = (uint32_t*)app.getDevice()->mapBuffer(index, 0, indexSize);
+    const uint32_t smallIdx = (nbPatches < std::numeric_limits<uint16_t>::max()) ? 2 : 4;
+
+    index =
+      app.getDevice()->createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::fIndex, nbPatches * smallIdx);
+
+    auto indices = (uint32_t*)app.getDevice()->mapBuffer(index, 0, nbPatches * smallIdx);
     for (uint32_t y = 0; y < patchY; ++y)
     {
       for (uint32_t x = 0; x < patchX; ++x)
@@ -88,89 +91,39 @@ void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
       }
     }
 
-    uint32_t offset = patchX * patchY * 6;
-    for (uint32_t y = 0; y < patchY; ++y)
-    {
-      auto patchId = uint32_t(y * 12 + offset);
-      auto vertId  = uint32_t(y * (patchX + 1));
-      // 004, 404
-
-      indices[patchId + 0] = static_cast<uint32_t>(vertId);
-      indices[patchId + 1] = static_cast<uint32_t>(vertId + vertexCount);
-      indices[patchId + 2] = static_cast<uint32_t>(vertId + patchX + 1);
-
-      indices[patchId + 3] = static_cast<uint32_t>(vertId + patchX + 1);
-      indices[patchId + 4] = static_cast<uint32_t>(vertId + vertexCount);
-      indices[patchId + 5] = static_cast<uint32_t>(vertId + patchX + 1 + vertexCount);
-
-      indices[patchId + 6] = static_cast<uint32_t>(vertId + patchX);
-      indices[patchId + 7] = static_cast<uint32_t>(vertId + patchX + patchX + 1);
-      indices[patchId + 8] = static_cast<uint32_t>(vertId + patchX + vertexCount);
-
-      indices[patchId + 9]  = static_cast<uint32_t>(vertId + patchX + vertexCount);
-      indices[patchId + 10] = static_cast<uint32_t>(vertId + patchX + patchX + 1);
-      indices[patchId + 11] = static_cast<uint32_t>(vertId + patchX + patchX + 1 + vertexCount);
-    }
-
-    offset += patchY * 12;
-    auto lastLine = vertexCount - (patchX + 1);
-    for (uint32_t x = 0; x < patchX; ++x)
-    {
-      auto patchId = uint32_t(x * 12 + offset);
-      auto vertId  = uint32_t(x);
-      // 004, 404
-
-      indices[patchId + 0] = static_cast<uint32_t>(vertId);
-      indices[patchId + 1] = static_cast<uint32_t>(vertId + 1);
-      indices[patchId + 2] = static_cast<uint32_t>(vertId + vertexCount);
-
-      indices[patchId + 3] = static_cast<uint32_t>(vertId + vertexCount);
-      indices[patchId + 4] = static_cast<uint32_t>(vertId + 1);
-      indices[patchId + 5] = static_cast<uint32_t>(vertId + 1 + vertexCount);
-
-      indices[patchId + 6] = static_cast<uint32_t>(vertId + lastLine);
-      indices[patchId + 8] = static_cast<uint32_t>(vertId + lastLine + 1);
-      indices[patchId + 7] = static_cast<uint32_t>(vertId + lastLine + vertexCount);
-
-      indices[patchId + 9]  = static_cast<uint32_t>(vertId + lastLine + vertexCount);
-      indices[patchId + 11] = static_cast<uint32_t>(vertId + lastLine + 1);
-      indices[patchId + 10] = static_cast<uint32_t>(vertId + lastLine + 1 + vertexCount);
-    }
-
-    offset += patchX * 12;
-    for (uint32_t y = 0; y < patchY; ++y)
-    {
-      for (uint32_t x = 0; x < patchX; ++x)
-      {
-        auto patchId = offset + uint32_t(y * patchX + x) * 6;
-        auto vertId  = uint32_t(y * (patchX + 1) + x) + vertexCount;
-
-        indices[patchId + 0] = static_cast<uint32_t>(vertId);
-        indices[patchId + 1] = static_cast<uint32_t>(vertId + 1);
-        indices[patchId + 2] = static_cast<uint32_t>(vertId + patchX + 1);
-
-        indices[patchId + 3] = static_cast<uint32_t>(vertId + patchX + 1);
-        indices[patchId + 4] = static_cast<uint32_t>(vertId + 1);
-        indices[patchId + 5] = static_cast<uint32_t>(vertId + patchX + 2);
-      }
-    }
-
     app.getDevice()->unmapBuffer(index);
 
-    drawCall.indexBuffer.handle      = index;
-    drawCall.indexBufferStride       = 4;
-    drawCall.indexCount              = (patchX * patchY + patchX + patchY) * 12;
-    drawCall.layout                  = layout;
-    drawCall.type                    = GfxMesh::eTriangles;
-    drawCall.vertexBuffers[0].handle = vertex;
-    drawCall.vertexCount             = size / 4;
+    drawCall.indexBuffer.handle = index;
+    drawCall.indexBufferStride  = smallIdx;
+    drawCall.indexCount         = nbPatches;
+    drawCall.layout             = {};
+    drawCall.type               = GfxMesh::eTriangles;
   }
-  actor              = iactor;
-  params.frequency   = settings.frequency;
-  params.seed        = settings.seed;
-  params.tileSize[0] = settings.tileSize->x;
-  params.tileSize[1] = settings.tileSize->y;
-  params.wavelength  = 1 / params.frequency;
+
+  auto save = shadowProgOptions;
+  shadowProgOptions.setOption(shadowMapResolution);
+  if (save != shadowProgOptions || !shadowMapImage)
+  {
+    uvec2 res = uvec2{512, 512};
+    switch (shadowMapResolution.get())
+    {
+    case 1:
+      res = uvec2{1024, 1024};
+      break;
+    case 2:
+      res = uvec2{2048, 2048};
+      break;
+    case 3:
+      res = uvec2{4096, 4096};
+      break;
+    }
+    if (shadowMapImage)
+      get().getDevice().destroy(shadowMapImage);
+    shadowMapImage =
+      get().getDevice().create2DImage(GfxStorageClass::eStaticDeviceReadonly, res.x, res.y, ImageFormatEnum::eDepth);
+    buildTerrainDrawProgram();
+  }
+  actor = iactor;
   if (!pipeline)
   {
     pipeline = get().createPipeline();
@@ -178,81 +131,94 @@ void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
 
   if (actor)
   {
-
-    pipeline->compute(actor, params, ivec2{settings.tileOffset->x, settings.tileOffset->y},
-                      ivec2{tileSize.x * nbPreviewTiles.x, tileSize.y * nbPreviewTiles.y});
-  }
-  else
-  {
-    auto size     = (tileSize.x * nbPreviewTiles.x) * (tileSize.y * nbPreviewTiles.y) * 4;
-    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, size);
-    std::memset(vertices, 0, size);
-    app.getDevice()->unmapBuffer(vertex);
+    pipeline->actor(actor);
+    pipeline->frequency(settings.frequency);
+    pipeline->offset(settings.tileOffset);
+    pipeline->size(settings.tileSize);
+    pipeline->seed(settings.seed);
+    pipeline->compute(settings.previewTile);
   }
 }
 
 void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
 {
-  if (!ubo)
-  {
-    ubo = dev.createBuffer(GfxStorageClass::eDynamicDeviceReadonly, GfxBuffer::fUniform, UboSize);
-  }
-
-  auto builder = dev.createShaderBuilder(terra::ShaderLang::eGLSL);
-  builder->beginSection(ShaderBuilder::eDecl);
-  std::array<GfxDescriptorSetLayout::Descriptor, 2> descriptors;
-  auto                                              bindingInfo = builder->declConstants("U", "Params");
-  descriptors[0]                                                = bindingInfo.descriptor;
-  builder->append(bindingInfo.content);
-  builder->append("{ ");
-  builder->append(tmpl::gs_MeshUBO);
-  builder->append("}constants;");
-  builder->endSection();
-
-  builder->begin(ShaderType::eVertex);
-  builder->append(tmpl::gs_MeshVS);
-  builder->end();
-
-  builder->begin(ShaderType::eFragment);
-  bindingInfo    = builder->declTexture("height_colors");
-  descriptors[1] = bindingInfo.descriptor;
-  builder->append(bindingInfo.content);
-  builder->append(";\n");
-  builder->append(tmpl::gs_MeshFS);
-  builder->end();
-  material.program         = dev.createProgram(ShaderOptions{}, *builder);
-  sampler                  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
-  auto descriptorSetLayout = dev.createDescriptorSetLayout(descriptors);
-  dev.applyLayoutToProgram(material.program, descriptorSetLayout);
-  material.descriptorSet = dev.createDescriptorSet(descriptorSetLayout);
   GfxMesh::Layout mesh;
-  mesh.vertexBufferCount             = 1;
-  mesh.vertexBuffers[0].elementCount = 1;
-  mesh.vertexBuffers[0].elements[0] =
-    GfxMesh::VertexElement{.format = GfxVertexFormat::eFloat, .relOffset = 0, .shaderBinding = 0};
-  mesh.vertexBuffers[0].stride = sizeof(float);
-  layout                       = dev.createMeshLayout(mesh);
-  reloadTexture(app);
+  mesh.vertexBufferCount = 0;
+  layout                 = dev.createMeshLayout(mesh);
+  buildShadowMapProgram();
+  sampler = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
 }
 
 void MeshPreview::reloadTexture(TerraMainApp const& app)
 {
-  heightTexPath->reload(app);
+  std::vector<Color> layerColors;
+
+  layerColors.resize(4 * 4, Color(0));
+  if (!nullImage)
+    nullImage = app.getDevice()->create2DImage(GfxStorageClass::eStaticDeviceReadonly, 4, 4, ImageFormatEnum::eRgba8,
+                                               (ubyte_t const*)layerColors.data());
+
+  static constexpr uint32_t Width = 256;
+  layerColors.resize(Width * 4, Color(0));
+  {
+    Image image = Image(water->path);
+    if (image.data && image.isRgba())
+    {
+      for (uint32_t i = 0; i < Width; ++i)
+        layerColors[i] = image.bifilter_rgba((float)i / (float)Width, 0.f);
+    }
+  }
+  {
+    Image image = Image(vegetation->path);
+    if (image.data && image.isRgba())
+    {
+      for (uint32_t i = 0; i < Width; ++i)
+        layerColors[i + 256] = image.bifilter_rgba((float)i / (float)Width, 0.f);
+    }
+  }
+  {
+    Image image = Image(rocks->path);
+    if (image.data && image.isRgba())
+    {
+      for (uint32_t i = 0; i < Width; ++i)
+        layerColors[i + 512] = image.bifilter_rgba((float)i / (float)Width, 0.f);
+    }
+  }
+  {
+    Image image = Image(terrain->path);
+    if (image.data && image.isRgba())
+    {
+      for (uint32_t i = 0; i < Width; ++i)
+        layerColors[i + 768] = image.bifilter_rgba((float)i / (float)Width, 0.f);
+    }
+  }
+  app.getDevice()->destroy(terrainColors);
+  terrainColors = app.getDevice()->create1DImageArray(GfxStorageClass::eStaticDeviceReadonly, Width, 4,
+                                                      ImageFormatEnum::eRgba8, (ubyte_t const*)layerColors.data());
 }
 
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
 {
-  GlGfxState state;
-
+  GfxState state;
+  if (texturesDirty)
+  {
+    reloadTexture(app);
+    texturesDirty = false;
+  }
+  if (!generated)
+  {
+    createDeviceObjects(app, *app.getDevice());
+    generated = true;
+  }
   if (pipeline->hasResults())
   {
-    auto size     = (size_t)(tileSize.x * nbPreviewTiles.x) * (size_t)(tileSize.y * nbPreviewTiles.y);
+    auto size     = (size_t)(tileSize.x) * (size_t)(tileSize.y);
     auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, (uint32_t)(size * sizeof(float)));
     pipeline->getResults(vertices, size, min, max);
     app.getDevice()->unmapBuffer(vertex);
   }
 
-  state.blend           = BlendMode::eDisabled;
+  state.blend[0].mode   = BlendMode::eDisabled;
   state.depthTest       = DepthTestMode::eLessEq;
   state.scissorsEnabled = true;
   state.viewport        = scissor;
@@ -330,23 +296,48 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
   }
 }
 
-void MeshPreview::buildShadowMapProgram() 
+void MeshPreview::buildShadowMapProgram()
 {
-  auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL);
-
+  auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL, SourceType::eShaderProgram);
+  builder->sampleScalar("shadow_view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
+  builder->sampleParam("heights",
+                       DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eTexture));
   builder->sampleScalar("width", DataFormat(DataType::eUint, DataType::eUint));
   builder->sampleScalar("height", DataFormat(DataType::eUint, DataType::eUint));
   builder->sampleScalar("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->sampleScalar("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->sampleScalar("height_multiplier", DataFormat(DataType::eFloat, DataType::eFloat));
-  builder->sampleScalar("shadow_color", DataFormat(DataType::eFloat3, DataType::eFloat3));
-  builder->sampleScalar("shadow_view_projection",
-                        DataFormat(DataType::eMat4, DataType::eMat4));
-  builder->sampleParam("heights",
-                       DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eTexture));
+  auto code = fileContentToString("shaders/shadow.glsl");
+  builder->append(code);
+  shadowProg = builder->finalize();
 }
 
-void MeshPreview::buildTerrainDrawProgram() {}
+void MeshPreview::buildTerrainDrawProgram()
+{
+  auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL, SourceType::eShaderProgram);
+  shadowProgOptions.setOption((uint32_t)shadowMapResolution.get());
 
+  builder->pushOptions(shadowProgOptions);
+  builder->sampleScalar("shadow_view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
+  builder->sampleScalar("view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
+  builder->sampleScalar("layer_weights", DataFormat(DataType::eFloat4, DataType::eFloat4));
+  builder->sampleScalar("sun_data", DataFormat(DataType::eFloat4, DataType::eFloat4));
+  builder->sampleParam("heights",
+                       DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eTexture));
+  builder->sampleParam("layer_colors",
+                       DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eRgba32f, ParamDeclType::eTexture));
+  builder->sampleParam("shadow_map",
+                       DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eTexture));
+  builder->sampleParam("layers",
+                       DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eRgba32f, ParamDeclType::eTexture));
+  builder->sampleScalar("width", DataFormat(DataType::eUint, DataType::eUint));
+  builder->sampleScalar("height", DataFormat(DataType::eUint, DataType::eUint));
+  builder->sampleScalar("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->sampleScalar("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->sampleScalar("height_multiplier", DataFormat(DataType::eFloat, DataType::eFloat));
+  auto code = fileContentToString("shaders/terrain.glsl");
+  builder->append(code);
+  materialProg = builder->finalize();
+}
 
 } // namespace terra

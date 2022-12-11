@@ -26,7 +26,7 @@ public:
                                   ubyte_t const* data = nullptr, GfxImage::Swizzle swizzle = {},
                                   uint32 mipLevels = 1) override;
   GfxImage::handle  create1DImageArray(GfxStorageClass storage, uint32_t width, uint32_t height, ImageFormatEnum format,
-                                       std::span<ubyte_t const*> data = {}, GfxImage::Swizzle swizzle = {},
+                                       ubyte_t const* data = {}, GfxImage::Swizzle swizzle = {},
                                        uint32 mipLevels = 1) override;
   void              destroy(GfxImage::handle) override;
   GfxSampler::handle             createSampler(ImageSampling) override;
@@ -50,7 +50,7 @@ public:
                        uint32_t numGroupY) override;
   void barrier(GfxBarrierFlags flags) override;
   std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) override;
-  std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang) override;
+  std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang, SourceType) override;
   void                    applyLayoutToProgram(GfxProgram::handle program, GfxDescriptorSetLayout::handle) override;
   virtual void            bindResources(GfxDescriptorSet::handle descriptorSet);
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&);

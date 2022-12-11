@@ -21,7 +21,8 @@ struct ShaderProgramInstance
   void pushOutput(HybridBuffer::handle, DataFormat);
   void run();
 
-  ShaderProgramInstance(ShaderProgram const& iprogram) : program(iprogram) {}
+  ShaderProgramInstance(ShaderProgram const& iprogram, HybridPipeline& pipe) : pipeline(pipe), program(iprogram) {}
+  HybridPipeline&      pipeline;
   ShaderProgram const& program;
   std::vector<ubyte_t> data;
   uint32_t             inputIndex  = 0;

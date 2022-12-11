@@ -32,14 +32,18 @@ public:
 
   void createDeviceObjects(TerraMainApp const&, GfxDevice43&);
 
-  Property<Color>       sunColor            = Property<Color>("@sunColor", 112, 82, 111, 255);
-  Property<float>       sunIntensity        = Property<float>("@sunIntensity", 0.4f);
-  Property<Color>       meshTint            = Property<Color>("@meshTint", 111, 111, 111, 255);
-  Property<float>       heightMultiplier    = Property<float>("@heightMultiplier", 20.0f);
-  Property<TextureFile> heightTexPath       = Property<TextureFile>("@heightTexture", "images/default_terrain.png");
+  Property<Color> sunColor         = Property<Color>("@sunColor", 112, 82, 111, 255);
+  Property<float> sunIntensity     = Property<float>("@sunIntensity", 0.4f);
+  Property<Color> meshTint         = Property<Color>("@meshTint", 111, 111, 111, 255);
+  Property<float> heightMultiplier = Property<float>("@heightMultiplier", 20.0f);
+  // in this order: water,grass,rock,default
+  Property<TextureFile> water               = Property<TextureFile>("@waterColor", "images/water_color.png");
+  Property<TextureFile> vegetation          = Property<TextureFile>("@vegetationColor", "images/vegetation_color.png");
+  Property<TextureFile> rocks               = Property<TextureFile>("@rockColor", "images/rocks_color.png");
+  Property<TextureFile> terrain             = Property<TextureFile>("@rockColor", "images/terrain_color.png");
   Property<float>       meshStyle           = Property<float>("@meshStyle", 5.6f);
   Property<Rotation>    sunRotation         = Property<Rotation>("@sunRotation", 40.f);
-  Property<int>         shadowMapResolution = Property<int>("@shadowMapResolution", 2);
+  Property<uint32_t>    shadowMapResolution = Property<uint32_t>("@shadowMapResolution", 2);
 
   Camera& getCamera()
   {
@@ -59,21 +63,23 @@ private:
   Camera                    camera;
   std::shared_ptr<Pipeline> pipeline;
   HDataSource               actor;
-  GfxBuffer::handle         vertex;
   GfxBuffer::handle         index;
+  GfxImage::handle          nullImage;
+  GfxImage::handle          terrainColors;
   GfxImage::handle          shadowMapImage;
   GfxCombinedImage::handle  shadowMap;
   GfxMesh::handle           layout;
   GfxSampler::handle        sampler;
-  GfxMaterial2              material;
-  GfxMaterial2              shadowMat;
-  glm::ivec2                tileSize       = {0, 0};
-  glm::ivec2                nbPreviewTiles = {0, 0};
+  ShaderProgram             materialProg;
+  ShaderProgram             shadowProg;
+  ShaderOptions             shadowProgOptions;
+  uvec2                     tileSize = {0, 0};
   GfxMesh::Draw             drawCall;
   uint64_t                  setActorEventListener = 0;
-  bool                      descriptorsDirty      = true;
-  bool                      shadowMapResDirty     = true;
-  bool                      shadowMapDirty        = true;
-  bool                      generated             = false;
+
+  bool texturesDirty     = true;
+  bool shadowMapResDirty = true;
+  bool shadowMapDirty    = true;
+  bool generated         = false;
 };
 } // namespace terra

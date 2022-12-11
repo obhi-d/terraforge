@@ -250,8 +250,8 @@ GfxImage::handle GfxDevice43::create2DImage(GfxStorageClass storage, uint32_t wi
   return h;
 }
 GfxImage::handle GfxDevice43::create1DImageArray(GfxStorageClass storage, uint32_t width, uint32_t layers,
-                                                 ImageFormatEnum format, std::span<ubyte_t const*> data,
-                                                 GfxImage::Swizzle swizzle, uint32 mipLevels)
+                                                 ImageFormatEnum format, ubyte_t const* data, GfxImage::Swizzle swizzle,
+                                                 uint32 mipLevels)
 {
   auto  h     = resources.images.emplace();
   auto& res   = resources.images.at(h);
@@ -264,7 +264,8 @@ GfxImage::handle GfxDevice43::create1DImageArray(GfxStorageClass storage, uint32
   gl43::glActiveTexture(gl43::GL_TEXTURE0);
   gl43::glBindTexture(gl43::GL_TEXTURE_1D_ARRAY, res.glhandle);
   gl43::glTexStorage2D(gl43::GL_TEXTURE_1D_ARRAY, mipLevels, toGlFormat(format), width, layers);
-  gl43::glTexSubImage2D(gl43::GL_TEXTURE_1D_ARRAY, 0, 0, 0, width, layers, toGlDataFormat(format), toGlType(format), data.data());
+  gl43::glTexSubImage2D(gl43::GL_TEXTURE_1D_ARRAY, 0, 0, 0, width, layers, toGlDataFormat(format), toGlType(format),
+                        data);
   gl43::glTexParameteri(gl43::GL_TEXTURE_1D_ARRAY, gl43::GL_TEXTURE_SWIZZLE_R, toGl(swizzle.r));
   gl43::glTexParameteri(gl43::GL_TEXTURE_1D_ARRAY, gl43::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
   gl43::glTexParameteri(gl43::GL_TEXTURE_1D_ARRAY, gl43::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));
@@ -629,12 +630,12 @@ std::shared_ptr<ShaderBuilder> GfxDevice43::createShaderBuilder(ShaderLang)
   return std::make_shared<GfxShaderBuilder>(features);
 }
 
-std::shared_ptr<SourceBuilder> GfxDevice43::createSourceBuilder(ShaderLang)
+std::shared_ptr<SourceBuilder> GfxDevice43::createSourceBuilder(ShaderLang, SourceType type)
 {
   if (features.ARB_bindless_texture == GlGfxSupport::eSupported)
-    return std::make_shared<SourceBuilderBindless>();
+    return std::make_shared<SourceBuilderBindless>(type);
   else
-    return std::make_shared<SourceBuilderBindful>(features);
+    return std::make_shared<SourceBuilderBindful>(type);
 }
 
 void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
@@ -922,14 +923,29 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
     case GfxBindType::eInt:
       resources.uboData.push(reader.read<int>());
       break;
+    case GfxBindType::eUint:
+      resources.uboData.push(reader.read<uint32_t>());
+      break;
     case GfxBindType::eInt2:
       resources.uboData.push(reader.read<ivec2>());
+      break;
+    case GfxBindType::eUint2:
+      resources.uboData.push(reader.read<uvec2>());
       break;
     case GfxBindType::eFloat:
       resources.uboData.push(reader.read<float>());
       break;
     case GfxBindType::eFloat2:
       resources.uboData.push(reader.read<vec2>());
+      break;
+    case GfxBindType::eFloat3:
+      resources.uboData.push(reader.read<vec3>());
+      break;
+    case GfxBindType::eFloat4:
+      resources.uboData.push(reader.read<vec4>());
+      break;
+    case GfxBindType::eMat4:
+      resources.uboData.push(reader.read<mat4>());
       break;
     }
   }
@@ -1003,7 +1019,8 @@ GfxProgram::handle GfxDevice43::createProgram(std::span<std::string_view> code, 
   res.glhandle = gl43::glCreateProgram();
   for (uint32_t i = 0; i < GfxProgram::MaxStage; ++i)
   {
-    if (!(activeStages & (i << i))) continue;
+    if (!(activeStages & (i << i)))
+      continue;
     sourceFiles.emplace_back((gl43::GLchar const*)version.c_str());
     sourceLengths.emplace_back((gl43::GLint)version.size());
     sourceFiles.emplace_back((gl43::GLchar const*)stages[i].data());

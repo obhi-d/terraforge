@@ -22,6 +22,11 @@ struct ShaderOptions
   struct Dictionary
   {
     std::vector<std::string> names;
+    Dictionary()                                      = default;
+    Dictionary(Dictionary const&) noexcept            = default;
+    Dictionary(Dictionary&&) noexcept                 = default;
+    Dictionary& operator=(Dictionary const&) noexcept = default;
+    Dictionary& operator=(Dictionary&&) noexcept      = default;
   };
 
   Options  options = {};
@@ -29,6 +34,16 @@ struct ShaderOptions
 
   inline ShaderOptions() noexcept {}
   inline ShaderOptions(uint32_t dict) : index(dict) {}
+
+  static uint32_t addDictionary(Dictionary&& other)
+  {
+    assert(other.names.size() < 64);
+    if (optionDictionaries.empty())
+      optionDictionaries.emplace_back();
+    optionDictionaries.emplace_back(std::move(other));
+
+    return (uint32_t)optionDictionaries.size() - 1;
+  }
 
   void setOption(std::string_view option)
   {

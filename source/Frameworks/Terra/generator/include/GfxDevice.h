@@ -34,9 +34,9 @@ struct GfxDevice
                                          ImageFormatEnum format, ubyte_t const* data = nullptr,
                                          GfxImage::Swizzle swizzle = {}, uint32 mipLevels = 1)      = 0;
   virtual GfxImage::handle create1DImageArray(GfxStorageClass storage, uint32_t width, uint32_t numLayer,
-                                              ImageFormatEnum format, std::span<ubyte_t const*> data = {},
+                                              ImageFormatEnum format, ubyte_t const* data = {},
                                               GfxImage::Swizzle swizzle = {}, uint32 mipLevels = 1) = 0;
-  virtual void               destroy(GfxImage::handle)                                              = 0;
+  virtual void             destroy(GfxImage::handle)                                                = 0;
   /// @brief Create a sampler
   virtual GfxSampler::handle createSampler(ImageSampling) = 0;
   virtual void               destroy(GfxSampler::handle)  = 0;
@@ -45,11 +45,11 @@ struct GfxDevice
   /// @return vs/fs handle
   virtual GfxProgram::handle createProgram(std::span<ShaderOptions> options, ShaderBuilder const& code) = 0;
   virtual GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code)                  = 0;
-  virtual GfxProgram::handle createProgram(std::span<std::string_view> code, uint32_t activeStages)                            = 0;
+  virtual GfxProgram::handle createProgram(std::span<std::string_view> code, uint32_t activeStages)     = 0;
   virtual void               destroy(GfxProgram::handle)                                                = 0;
   /// @brief Create a combined sampler
   virtual GfxCombinedImage::handle createCombinedTexture(GfxImage::handle image, GfxSampler::handle sampler) = 0;
-  virtual void                     destroy(GfxCombinedImage::handle)                                           = 0;
+  virtual void                     destroy(GfxCombinedImage::handle)                                         = 0;
   /// @brief Create a descriptor set layout
   /// @param types handle types
   /// @return DescriptorSet handle
@@ -98,8 +98,8 @@ struct GfxDevice
   virtual void             syncFence(GfxFence::handle) = 0;
 
   /// @brief Create a ShaderBuilder for a specific shader
-  virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) = 0;
-  virtual std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang) = 0;
+  virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang)             = 0;
+  virtual std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang, SourceType) = 0;
 
   virtual void bindResources(GfxDescriptorSet::handle descriptorSet)                               = 0;
   virtual void destroy(GfxMesh::handle)                                                            = 0;

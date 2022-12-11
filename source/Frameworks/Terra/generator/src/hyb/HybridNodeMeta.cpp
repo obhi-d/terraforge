@@ -1,6 +1,7 @@
 
 #include "hyb/HybridNodeMeta.h"
 #include "ShaderOptions.h"
+#include "fmt/format.h"
 
 namespace terra
 {
@@ -11,7 +12,7 @@ void GpuNodeMeta::prepare()
   std::string               imgPrefix  = "HasImage_";
   std::string               buffPrefix = "HasBuffer_";
   std::string               boolPrefix = "HasOption_";
-  std::string               enumPrefix = "ActiveEnum_";
+  std::string               enumPrefix = "Enum_";
 
   for (uint32_t i = 0; i < parameterDef.size(); ++i)
   {
@@ -28,14 +29,15 @@ void GpuNodeMeta::prepare()
       dict.names.emplace_back(boolPrefix + std::string(pdef.name()));
       break;
     case DataTypeEnum::eEnum:
+    {
       for (uint32_t i = 0; i < pdef.maxEnum; ++i)
-        dict.names.emplace_back(enumPrefix + std::string(pdef.enumDisplayInfo[i].id));
-      break;
+        dict.names.emplace_back(fmt::format("Enum_{}", pdef.enumDisplayInfo[i].id));
+    }
+    break;
     }
   }
 
-  dictionaryIdx = (uint32_t)ShaderOptions::optionDictionaries.size();
-  ShaderOptions::optionDictionaries.emplace_back(std::move(dict));
+  dictionaryIdx = ShaderOptions::addDictionary(std::move(dict));
 }
 
 } // namespace terra

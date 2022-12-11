@@ -98,7 +98,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   for (uint32_t pass = 0; pass < passCount; ++pass)
   {
     {
-      auto builder = get().getDevice().createSourceBuilder(ShaderLang::eGLSL);
+      auto builder = get().getDevice().createSourceBuilder(ShaderLang::eGLSL, SourceType::eFullscreenGraphNode);
       build(pipe, pass, *builder);
       // use GpuProgramBuilder to build a program
       newProgram->passes[pass] = builder->finalize();
@@ -285,7 +285,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
   {
     auto const& code = gpuMeta.getCode(pass);
 
-    auto     program   = ShaderProgramInstance(gpuPipe->passes[pass]);
+    auto     program   = ShaderProgramInstance(gpuPipe->passes[pass], pipe);
     uint32_t optionIdx = 0;
     // check if any conditions have changed
     for (auto i : code.parameters)
@@ -423,13 +423,21 @@ void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInst
         ndat.outputs[i] = pipe.layerContrib();
         break;
       default:
-        ndat.outputs[i] = pipe.declareBuffer();
-        pipe.describeImage(ndat.outputs[i], getSelf(), pipe.size().x, pipe.size().y,
-                           meta.outputs[i].format.imageFormat);
+        if (!ndat.outputs[i])
+        {
+          ndat.outputs[i] = pipe.declareBuffer();
+          pipe.describeImage(ndat.outputs[i], getSelf(), pipe.size().x, pipe.size().y,
+                             meta.outputs[i].format.imageFormat);
+        }
       }
     }
     program.pushOutput(ndat.outputs[i], meta.outputs[i].format);
   }
+}
+
+HybridNode::Result GpuNode::postExecute(HybridPipeline& pipe)
+{
+  return ClassicHybridNode::postExecute(pipe);
 }
 
 } // namespace terra

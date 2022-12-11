@@ -26,6 +26,15 @@ struct Image : public DataSource
     uint8_t a;
   };
 
+  struct rgb
+  {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+  };
+
+  static_assert(sizeof(rgb) == 3);
+
   Image() = default;
   Image(std::filesystem::path path) : source(std::move(path))
   {
@@ -67,12 +76,71 @@ struct Image : public DataSource
     return *(T const*)(data.get() + ((static_cast<uint32_t>(j) * width + static_cast<uint32_t>(i)) * sizeof(T)));
   }
 
+  inline bool isRgba() const
+  {
+    return format == ImageFormatEnum::eRgba8 || format == ImageFormatEnum::eRgba32f ||
+           format == ImageFormatEnum::eSrgb8Alpha8 || format == ImageFormatEnum::eRgb8;
+  }
+
+  inline Color bifilter_rgba(float u, float v) const
+  {
+    auto               cx    = (int)(u * ((float)width - 0.5f));
+    auto               cy    = (int)(v * ((float)height - 0.5f));
+    constexpr uint32_t N     = 1;
+    vec4               color = vec4(0.f);
+    constexpr float    recip = 1.f / (4);
+
+    for (int sy = -N; sy < N; ++sy)
+    {
+      for (int sx = -N; sx < N; ++sx)
+      {
+        auto x = std::max<int>(0, std::min<int>(cx + sx, width - 1));
+        auto y = std::max<int>(0, std::min<int>(cy + sy, height - 1));
+        switch (format)
+        {
+        case ImageFormat::eRgb8:
+        {
+
+          auto c = get<rgb>(x, y);
+          color.r += c.r / 255.f;
+          color.g += c.g / 255.f;
+          color.b += c.b / 255.f;
+          color.a += 1.f / 255.f;
+        }
+        break;
+        case ImageFormat::eRgba32f:
+        {
+
+          auto c = get<vec4>(x, y);
+          color += c;
+        }
+        break;
+        case ImageFormat::eRgba8:
+        case ImageFormat::eSrgb8Alpha8:
+        {
+
+          auto c = get<rgba>(x, y);
+          color.r += c.r / 255.f;
+          color.g += c.g / 255.f;
+          color.b += c.b / 255.f;
+          color.a += c.a / 255.f;
+        }
+        break;
+        }
+      }
+    }
+
+    color *= recip;
+    return Color(color);
+  }
+
   inline float sample_val(int x, int y) const
   {
     if ((uint32_t)x < width && (uint32_t)y < height)
     {
       switch (format)
       {
+      case ImageFormatEnum::eDepth:
       case ImageFormatEnum::eFloat:
         return (float)get<float>(x, y);
       case ImageFormatEnum::eUnorm8:
@@ -80,6 +148,11 @@ struct Image : public DataSource
       case ImageFormatEnum::eSnorm16:
       case ImageFormatEnum::eUnorm16:
         return (float)((float)get<std::uint16_t>(x, y) / (float)std::numeric_limits<std::uint16_t>::max());
+      case ImageFormatEnum::eRgb8:
+      {
+        auto c = get<rgb>(x, y);
+        return (float)(.299f * ((float)c.r / 255.f) + .587f * ((float)c.g / 255.f) + .114f * ((float)c.b / 255.f));
+      }
       case ImageFormatEnum::eRgba8:
       case ImageFormatEnum::eSrgb8Alpha8:
       {

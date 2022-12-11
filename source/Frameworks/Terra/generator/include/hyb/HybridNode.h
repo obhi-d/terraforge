@@ -4,9 +4,9 @@
 #include "HashMachine.h"
 #include "Node.h"
 #include "ShaderOptions.h"
-#include "ShaderProgram.h"
 #include "hyb/HybridBuffer.h"
 #include "hyb/HybridNodeMeta.h"
+#include "hyb/ShaderProgramInstance.h"
 #include <acl/dynamic_array.hpp>
 #include <unordered_map>
 
@@ -82,12 +82,14 @@ struct GpuNode : public ClassicHybridNode
     uint64_t                          injectMask = 0;
   };
 
-  bool         isSourceModifier() const;
-  bool         prepare(HybridPipeline&) override;
-  void         probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
-  void         build(HybridPipeline&, uint32_t pass, SourceBuilder&);
-  void         executeImpl(HybridPipeline&) override;
-  void         push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override;
+  bool   isSourceModifier() const;
+  bool   prepare(HybridPipeline&) override;
+  void   probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
+  void   build(HybridPipeline&, uint32_t pass, SourceBuilder&);
+  void   executeImpl(HybridPipeline&) override;
+  void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override;
+  Result postExecute(HybridPipeline&) override;
+
   virtual void pushOutputs(HybridPipeline&, uint32_t pass, ShaderProgramInstance&);
 
   std::vector<Data> nodeData;

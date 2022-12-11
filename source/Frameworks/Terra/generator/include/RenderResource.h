@@ -146,9 +146,14 @@ enum class GfxBindType
   eTextureBuffer,
   eStorageImage,
   eInt,
+  eUint,
   eInt2,
+  eUint2,
   eFloat,
   eFloat2,
+  eFloat3,
+  eFloat4,
+  eMat4,
   eDepthBuffer,
   eNone
 };
@@ -184,7 +189,7 @@ struct TextureBuffer
 struct StorageImage
 {
   static inline constexpr GfxBindType type = GfxBindType::eStorageImage;
-  GfxImage::handle                  texture;
+  GfxImage::handle                    texture;
   uint16_t                            layer   = 0;
   GfxAccess                           access  = GfxAccess::eReadWrite;
   bool                                layered = false;
@@ -193,8 +198,8 @@ struct StorageImage
 struct TextureOutput
 {
   GfxImage::handle image;
-  vec4               clearValue;
-  bool               clear = false;
+  vec4             clearValue;
+  bool             clear = false;
 };
 
 struct GfxParamLayout
@@ -223,10 +228,10 @@ struct GfxProgram
 {
   enum Stage
   {
-    fVertex = 1 << 0,
+    fVertex   = 1 << 0,
     fGeometry = 1 << 1,
     fFragment = 1 << 2,
-    fCompute = 1 << 3
+    fCompute  = 1 << 3
   };
 
   static inline constexpr uint32_t MaxStage = 4;
