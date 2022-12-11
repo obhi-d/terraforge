@@ -104,6 +104,7 @@ enum class ShaderLang
 enum class ShaderType
 {
   eVertex,
+  eGeometry,
   eFragment,
   eCompute,
   kCount
@@ -220,6 +221,16 @@ struct GfxFence
 
 struct GfxProgram
 {
+  enum Stage
+  {
+    fVertex = 1 << 0,
+    fGeometry = 1 << 1,
+    fFragment = 1 << 2,
+    fCompute = 1 << 3
+  };
+
+  static inline constexpr uint32_t MaxStage = 4;
+
   using handle = terra::handle<GfxProgram>;
 };
 

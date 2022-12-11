@@ -334,17 +334,20 @@ struct DataFormat
   DataTypeEnum      type          = DataTypeEnum::eInvalid;
   ImageFormatEnum   imageFormat   = ImageFormatEnum::eFloat;
   DataTypeEnum      scalarSubType = DataTypeEnum::eInvalid;
-  SemanticEnum      semantic      = SemanticEnum::eNone;
   ParamDeclTypeEnum declType      = ParamDeclTypeEnum::eNone;
+  SemanticEnum      semantic      = SemanticEnum::eNone;
   bool              preEval       = false;
 
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
   constexpr DataFormat() = default;
   constexpr DataFormat(DataTypeEnum itype, DataTypeEnum iscalarSubType = DataTypeEnum::eFloat,
-                       SemanticEnum isem = SemanticEnum::eNone, ParamDeclTypeEnum iindex = ParamDeclTypeEnum::eNone)
-      : type(itype), scalarSubType(iscalarSubType), semantic(isem), declType(iindex)
+                       ImageFormatEnum   format = ImageFormatEnum::eNone,
+                       ParamDeclTypeEnum iindex = ParamDeclTypeEnum::eNone,
+                       SemanticEnum isem = SemanticEnum::eNone, bool pre = false)
+      : type(itype), scalarSubType(iscalarSubType), imageFormat(format), declType(iindex), semantic(isem), preEval(pre)
   {}
+
   inline constexpr bool isCompatible(DataFormat const& to) const
   {
     return type == to.type && scalarSubType == to.scalarSubType && imageFormat == to.imageFormat;

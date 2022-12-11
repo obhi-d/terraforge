@@ -987,6 +987,69 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
   }
 }
 
+GfxProgram::handle GfxDevice43::createProgram(std::span<std::string_view> code, uint32_t activeStages)
+{
+  GfxProgram::handle h   = resources.programs.emplace();
+  auto&              res = resources.programs.at(h);
+
+  std::vector<gl43::GLchar const*> sourceFiles;
+  std::vector<gl43::GLint>         sourceLengths;
+
+  constexpr std::string_view stages[GfxProgram::MaxStage] = {"#define VertexShader 1\n", "#define GeometryShader 1\n",
+                                                             "#define FragmentShader 1\n", "#define ComputeShader 1\n"};
+
+  std::string version = fmt::format("#version {}\n", this->features.version);
+
+  res.glhandle = gl43::glCreateProgram();
+  for (uint32_t i = 0; i < GfxProgram::MaxStage; ++i)
+  {
+    if (!(activeStages & (i << i))) continue;
+    sourceFiles.emplace_back((gl43::GLchar const*)version.c_str());
+    sourceLengths.emplace_back((gl43::GLint)version.size());
+    sourceFiles.emplace_back((gl43::GLchar const*)stages[i].data());
+    sourceLengths.emplace_back((gl43::GLint)stages[i].size());
+    for (auto c : code)
+    {
+      sourceFiles.emplace_back((gl43::GLchar const*)c.data());
+      sourceLengths.emplace_back((gl43::GLint)c.size());
+    }
+    res.shaders[i] = createShader((ShaderType)i, sourceFiles, sourceLengths);
+    if (res.shaders[i])
+    {
+      gl43::glAttachShader(res.glhandle, res.shaders[i]);
+      gl43::glAttachShader(res.glhandle, res.shaders[i]);
+    }
+  }
+  gl43::glLinkProgram(res.glhandle);
+  gl43::GLint status = {};
+  gl43::glGetProgramiv(res.glhandle, gl43::GL_LINK_STATUS, &status);
+  if (status != gl43::GL_TRUE)
+  {
+    gl43::glGetProgramiv(res.glhandle, gl43::GL_INFO_LOG_LENGTH, &status);
+    std::string   info(status, 0);
+    gl43::GLsizei size = {};
+    gl43::glGetProgramInfoLog(res.glhandle, (gl43::GLsizei)info.length(), &size, (gl43::GLchar*)info.data());
+    logError("Program failed to link: {}", info);
+    for (uint32_t i = 0; i < ShaderTypeCount; ++i)
+    {
+      if (res.shaders[i])
+        gl43::glDeleteShader(res.shaders[i]);
+    }
+    destroy(GfxProgram::handle(h));
+    h = {};
+    return h;
+  }
+  gl43::glValidateProgram(res.glhandle);
+  gl43::glGetProgramiv(res.glhandle, gl43::GL_VALIDATE_STATUS, &status);
+  if (status != gl43::GL_TRUE)
+  {
+    logError("Program validation failed: {}", (uint32_t)h);
+    destroy(GfxProgram::handle(h));
+    h = {};
+  }
+  return h;
+}
+
 GfxProgram::handle GfxDevice43::createFullscreenProgram(std::span<std::string_view> code)
 {
   GfxProgram::handle h   = resources.programs.emplace();

@@ -27,10 +27,15 @@
     "stringModifier": "lower",
     "values": [
       "Invalid",
-      "Int2",
-      "Float2",
       "Int",
+      "Uint",
       "Float",
+      "Int2",
+      "Uint2",
+      "Float2",
+      "Float3",
+      "Float4",
+      "Mat4",
       "Image",
       "Buffer",
       "Input",
@@ -76,5 +81,4 @@
       "DepthOutput"
     ]
   }
-
 ]

@@ -39,13 +39,17 @@ public:
     stringTable[name] = value;
   }
 
-  std::u8string_view getLocalizedString(std::string_view name)
+  std::u8string_view getLocalizedString(std::string_view& name)
   {
     auto it = stringTable.find(std::string(name));
     if (it != stringTable.end())
+    {
+      name = it->first;
       return it->second;
+    }
     logError("Cound not find string entry for: {}", name);
     auto iit = stringTable.emplace(name, std::u8string((char8_t*)name.data(), (char8_t*)name.data() + name.length()));
+    name     = iit.first->first;
     return iit.first->second;
   }
 

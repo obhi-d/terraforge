@@ -32,13 +32,14 @@ public:
 
   void createDeviceObjects(TerraMainApp const&, GfxDevice43&);
 
-  Property<Color>       sunColor         = Property<Color>("@sunColor", 112, 82, 111, 255);
-  Property<float>       sunIntensity     = Property<float>("@sunIntensity", 0.4f);
-  Property<Color>       meshTint         = Property<Color>("@meshTint", 111, 111, 111, 255);
-  Property<float>       heightMultiplier = Property<float>("@heightMultiplier", 20.0f);
-  Property<TextureFile> heightTexPath    = Property<TextureFile>("@heightTexture", "images/default_terrain.png");
-  Property<float>       meshStyle        = Property<float>("@meshStyle", 5.6f);
-  Property<Rotation>    sunRotation      = Property<Rotation>("@sunRotation", 40.f);
+  Property<Color>       sunColor            = Property<Color>("@sunColor", 112, 82, 111, 255);
+  Property<float>       sunIntensity        = Property<float>("@sunIntensity", 0.4f);
+  Property<Color>       meshTint            = Property<Color>("@meshTint", 111, 111, 111, 255);
+  Property<float>       heightMultiplier    = Property<float>("@heightMultiplier", 20.0f);
+  Property<TextureFile> heightTexPath       = Property<TextureFile>("@heightTexture", "images/default_terrain.png");
+  Property<float>       meshStyle           = Property<float>("@meshStyle", 5.6f);
+  Property<Rotation>    sunRotation         = Property<Rotation>("@sunRotation", 40.f);
+  Property<int>         shadowMapResolution = Property<int>("@shadowMapResolution", 2);
 
   Camera& getCamera()
   {
@@ -46,6 +47,8 @@ public:
   }
 
 private:
+  void buildShadowMapProgram();
+  void buildTerrainDrawProgram();
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);
   void reloadTexture(TerraMainApp const&);
 
@@ -54,20 +57,23 @@ private:
   uint32_t                  vertexCount = 0;
   glm::vec3                 box;
   Camera                    camera;
-  LaunchParams              params;
   std::shared_ptr<Pipeline> pipeline;
-  HDataSource                  actor;
+  HDataSource               actor;
   GfxBuffer::handle         vertex;
   GfxBuffer::handle         index;
-  GfxBuffer::handle         ubo;
+  GfxImage::handle          shadowMapImage;
+  GfxCombinedImage::handle  shadowMap;
   GfxMesh::handle           layout;
   GfxSampler::handle        sampler;
-  GfxMaterial               material;
+  GfxMaterial2              material;
+  GfxMaterial2              shadowMat;
   glm::ivec2                tileSize       = {0, 0};
   glm::ivec2                nbPreviewTiles = {0, 0};
   GfxMesh::Draw             drawCall;
   uint64_t                  setActorEventListener = 0;
   bool                      descriptorsDirty      = true;
+  bool                      shadowMapResDirty     = true;
+  bool                      shadowMapDirty        = true;
   bool                      generated             = false;
 };
 } // namespace terra

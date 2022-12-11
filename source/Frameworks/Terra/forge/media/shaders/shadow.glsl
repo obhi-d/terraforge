@@ -7,7 +7,9 @@
 // float height_multiplier
 // sampler2D heights;
 // mat4 shadow_view_projection
-// mat4 view_projection
+
+
+#if VertexShader
 
 layout(location = 0) out highp vec3 world_pos;
 layout(location = 1) out highp vec3 shadow_pos;
@@ -22,8 +24,13 @@ void main()
 
   float height = texture(heights, uv).x * height_multiplier;
   world_pos    = vec3(float(x), height, float(y));
-
-  vec4 swpos  = shadow_view_projection * vec4(world_pos, 1.0);
-  shadow_pos  = swpos.xyz / swpos.w;
-  gl_Position = view_projection * vec4(world_pos, 1.0);
+  gl_Position = shadow_view_projection * vec4(world_pos, 1.0);
 }
+
+#elif FragmentShader
+
+// pass through
+void main()
+{}
+
+#endif

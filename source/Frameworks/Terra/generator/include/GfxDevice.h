@@ -40,11 +40,12 @@ struct GfxDevice
   /// @brief Create a sampler
   virtual GfxSampler::handle createSampler(ImageSampling) = 0;
   virtual void               destroy(GfxSampler::handle)  = 0;
-  /// @brief Should create a compute shader object
-  /// @param sources compute shader sources
-  /// @return compute shader handle
+  /// @brief Should create a vertex/fragment shader object
+  /// @param sources vs/fs shader sources
+  /// @return vs/fs handle
   virtual GfxProgram::handle createProgram(std::span<ShaderOptions> options, ShaderBuilder const& code) = 0;
   virtual GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code)                  = 0;
+  virtual GfxProgram::handle createProgram(std::span<std::string_view> code, uint32_t activeStages)                            = 0;
   virtual void               destroy(GfxProgram::handle)                                                = 0;
   /// @brief Create a combined sampler
   virtual GfxCombinedImage::handle createCombinedTexture(GfxImage::handle image, GfxSampler::handle sampler) = 0;

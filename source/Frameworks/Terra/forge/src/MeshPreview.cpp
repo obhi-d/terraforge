@@ -3,6 +3,7 @@
 #include "ImageSerializer.h"
 #include "ResourceUtils.h"
 #include "TerraMainApp.h"
+#include "SourceBuilder.h"
 
 namespace tmpl
 {
@@ -325,7 +326,27 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
 
     sunRotation->thetaAdd(170.f * y);
     sunRotation->phiAdd(350.f * x);
+    shadowMapDirty = true;
   }
 }
+
+void MeshPreview::buildShadowMapProgram() 
+{
+  auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL);
+
+  builder->sampleScalar("width", DataFormat(DataType::eUint, DataType::eUint));
+  builder->sampleScalar("height", DataFormat(DataType::eUint, DataType::eUint));
+  builder->sampleScalar("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->sampleScalar("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->sampleScalar("height_multiplier", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->sampleScalar("shadow_color", DataFormat(DataType::eFloat3, DataType::eFloat3));
+  builder->sampleScalar("shadow_view_projection",
+                        DataFormat(DataType::eMat4, DataType::eMat4));
+  builder->sampleParam("heights",
+                       DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eTexture));
+}
+
+void MeshPreview::buildTerrainDrawProgram() {}
+
 
 } // namespace terra

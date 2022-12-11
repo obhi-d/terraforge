@@ -11,14 +11,24 @@ std::string_view toGlsl(DataTypeEnum type)
 {
   switch (type)
   {
-  case DataTypeEnum::eInt2:
-    return "ivec2";
   case DataTypeEnum::eInt:
     return "int";
+  case DataTypeEnum::eUint:
+    return "uint";
   case DataTypeEnum::eFloat:
     return "float";
+  case DataTypeEnum::eInt2:
+    return "ivec2";
+  case DataTypeEnum::eUint2:
+    return "uvec2";
   case DataTypeEnum::eFloat2:
     return "vec2";
+  case DataTypeEnum::eFloat3:
+    return "vec3";
+  case DataTypeEnum::eFloat4:
+    return "vec4";
+  case DataTypeEnum::eMat4:
+    return "mat4";
   }
   return "";
 }
@@ -204,21 +214,26 @@ void SourceBuilderAdapter::append(std::string_view fn)
   functions += fn;
 }
 
-void SourceBuilderAdapter::call(std::string_view node)
+void SourceBuilderAdapter::call(std::string_view node, bool acceptInput)
 {
   content += node;
-  content += "(input";
+  if (acceptInput)
+    content += "(input";
+  else
+    content += '(';
+  bool first = !acceptInput;
   for (auto& p : params)
-    content += fmt::format(",{}", p);
-
+  {
+    if (!first)
+      content += ',';
+    content += p;
+    first = false;
+  }
   content += ");\n";
 }
 
-ShaderProgram SourceBuilderAdapter::finalize()
+void SourceBuilderAdapter::packCommon(std::vector<std::string_view>& snapshots)
 {
-  auto&                         dev = get().getDevice();
-  std::vector<std::string_view> snapshots;
-
   if (!extensions.empty())
     snapshots.emplace_back(extensions);
   if (!options.empty())
@@ -234,6 +249,11 @@ ShaderProgram SourceBuilderAdapter::finalize()
     snapshots.emplace_back(resources);
   if (!functions.empty())
     snapshots.emplace_back(functions);
+}
+
+GfxProgram::handle SourceBuilderAdapter::makeGpuNode(std::vector<std::string_view>& code)
+{
+  auto& dev = get().getDevice();
   if (!content.empty())
   {
     content = format(fmt::format(R"_(
@@ -245,9 +265,44 @@ void main()
 }})_",
                                  input, content));
   }
-  GfxProgram::handle program = dev.createFullscreenProgram(snapshots);
+  code.emplace_back(content);
+  return dev.createFullscreenProgram(code);
+}
+GfxProgram::handle SourceBuilderAdapter::makePostProcess(std::vector<std::string_view>& code)
+{
+  auto& dev = get().getDevice();
+  code.emplace_back(content);
+  return dev.createFullscreenProgram(code);
+}
+
+GfxProgram::handle SourceBuilderAdapter::makeShaderProgram(std::vector<std::string_view>& code)
+{
+  auto& dev = get().getDevice();
+  code.emplace_back(content);
+  return dev.createProgram(code, GfxProgram::fVertex | GfxProgram::fFragment);
+}
+
+ShaderProgram SourceBuilderAdapter::finalize()
+{
+  std::vector<std::string_view> snapshots;
+  packCommon(snapshots);
+  GfxProgram::handle program;
+  switch (type)
+  {
+  case SourceType::eFullscreenGraphNode:
+    program = makeGpuNode(snapshots);
+    break;
+  case SourceType::ePostProcess:
+    program = makePostProcess(snapshots);
+    break;
+  case SourceType::eShaderProgram:
+    program = makeShaderProgram(snapshots);
+    break;
+  }
+
   if (program)
   {
+    auto&         dev = get().getDevice();
     ShaderProgram pret;
     pret.program  = program;
     pret.layout   = dev.createLayout(entries, output);
