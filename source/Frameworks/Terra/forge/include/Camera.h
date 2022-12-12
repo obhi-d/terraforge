@@ -9,7 +9,19 @@ namespace terra
 class Camera
 {
 public:
+
+  void setReverseZ()
+  {
+    reverseZ = true;
+  }
+
+  bool isReverseZ() const
+  {
+    return reverseZ;
+  }
+
   void update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState&);
+  mat4 getLightViewProj(glm::vec3 dir, glm::vec3 const& box);
 
   glm::mat4 getViewProj() const
   {
@@ -31,6 +43,8 @@ private:
 
   glm::mat4 view = glm::mat4(1);
   glm::mat4 projection;
+
+  bool reverseZ = false;
 };
 
 } // namespace terra

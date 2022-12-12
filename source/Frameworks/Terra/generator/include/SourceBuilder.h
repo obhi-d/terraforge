@@ -27,6 +27,31 @@ struct ShaderProgram
   void touch();
 };
 
+struct ShaderMaterial
+{
+  ShaderMaterial(ShaderProgram const& prog) : program(prog) {}
+
+  inline void pushBuffer(GfxBuffer::handle buff, uint32_t offset, uint32_t size);
+  inline void pushTexture(GfxCombinedImage::handle handle);
+  inline void pushTexBuffer(GfxBuffer::handle handle, ImageFormatEnum format);
+  inline void pushImage(GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered);
+  inline void pushScalar(int value);
+  inline void pushScalar(uint32_t value);
+  inline void pushScalar(ivec2 value);
+  inline void pushScalar(uvec2 value);
+  inline void pushScalar(float value);
+  inline void pushScalar(vec2 value);
+  inline void pushScalar(vec3 value);
+  inline void pushScalar(vec4 value);
+  inline void pushScalar(mat4 value);
+  inline void pushOutput(GfxImage::handle handle, bool clear = false, vec4 clearVal = vec4(0.f));
+  inline void reset();
+
+  ShaderProgram const& program;
+  uint32_t index = 0;
+  Blob data;
+};
+
 struct GpuPipeline
 {
   std::vector<ShaderProgram> passes;
@@ -129,4 +154,127 @@ struct SourceBuilderBindful : SourceBuilderAdapter
   uint32_t texBinding   = 0;
   uint32_t imageBinding = 0;
 };
+
+ inline void ShaderMaterial::pushBuffer(GfxBuffer::handle buff, uint32_t offset, uint32_t size)
+{
+  assert(program.bindings[index] == StorageBuffer::type);
+  StorageBuffer ssbo;
+  ssbo.buffer = buff;
+  ssbo.offset = offset;
+  ssbo.size   = size;
+  data.push(ssbo);
+  index++;
+}
+
+inline void ShaderMaterial::pushTexture(GfxCombinedImage::handle handle)
+{
+  assert(program.bindings[index] == SampledTexture::type);
+  SampledTexture stex;
+  stex.texture = handle;
+  data.push(stex);
+  index++;
+}
+
+inline void ShaderMaterial::pushTexBuffer(GfxBuffer::handle handle, ImageFormatEnum format)
+{
+  assert(program.bindings[index] == TextureBuffer::type);
+  TextureBuffer tbo;
+  tbo.buffer = handle;
+  tbo.format = format;
+  data.push(tbo);
+  index++;
+}
+
+inline void ShaderMaterial::pushImage(GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered)
+{
+  assert(program.bindings[index] == StorageImage::type);
+  StorageImage image;
+  image.texture = handle;
+  image.layer   = layer;
+  image.access  = access;
+  image.layered = layered;
+  data.push(image);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(int value)
+{
+  assert(program.bindings[index] == GfxBindType::eInt);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(uint32_t value)
+{
+  assert(program.bindings[index] == GfxBindType::eUint);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(ivec2 value)
+{
+  assert(program.bindings[index] == GfxBindType::eInt2);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(uvec2 value)
+{
+  assert(program.bindings[index] == GfxBindType::eUint2);
+  data.push(value);
+  index++;
+}
+
+  inline void ShaderMaterial::pushScalar(float value)
+{
+  assert(program.bindings[index] == GfxBindType::eFloat);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(vec2 value)
+{
+  assert(program.bindings[index] == GfxBindType::eFloat2);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(vec3 value)
+{
+  assert(program.bindings[index] == GfxBindType::eFloat3);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(vec4 value)
+{
+  assert(program.bindings[index] == GfxBindType::eFloat4);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(mat4 value)
+{
+  assert(program.bindings[index] == GfxBindType::eMat4);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushOutput(GfxImage::handle handle, bool clear = false, vec4 clearVal = vec4(0.f))
+{
+  assert(program.bindings.size() >= index && index < (program.bindings.size() + program.outputCount));
+  TextureOutput texture;
+  texture.image      = handle;
+  texture.clear      = clear;
+  texture.clearValue = clearVal;
+  data.push(texture);
+  index++;
+}
+
+inline void ShaderMaterial::reset()
+{
+  index = 0;
+  data.clear();
+}
+
 } // namespace terra

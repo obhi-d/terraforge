@@ -41,7 +41,6 @@ public:
 
   void compute(uvec2 tile) final;
   void tick() final;
-  bool hasResults() final;
   void getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) final;
 
   void describeBuffer(HybridBuffer::handle, HDataSource owner, uint32_t size, ImageFormatEnum format);

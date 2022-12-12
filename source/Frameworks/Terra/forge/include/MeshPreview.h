@@ -5,6 +5,7 @@
 #include "GlGfx.h"
 #include "Pipeline.h"
 #include "Setup.h"
+#include <optional>
 
 namespace terra
 {
@@ -51,31 +52,37 @@ public:
   }
 
 private:
+  void updateShadowMap(TerraMainApp const&);
   void buildShadowMapProgram();
   void buildTerrainDrawProgram();
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);
   void reloadTexture(TerraMainApp const&);
 
-  float                     max         = 1.0f;
-  float                     min         = -1.0f;
-  uint32_t                  vertexCount = 0;
-  glm::vec3                 box;
-  Camera                    camera;
-  std::shared_ptr<Pipeline> pipeline;
-  HDataSource               actor;
-  GfxBuffer::handle         index;
-  GfxImage::handle          nullImage;
-  GfxImage::handle          terrainColors;
-  GfxImage::handle          shadowMapImage;
-  GfxCombinedImage::handle  shadowMap;
-  GfxMesh::handle           layout;
-  GfxSampler::handle        sampler;
-  ShaderProgram             materialProg;
-  ShaderProgram             shadowProg;
-  ShaderOptions             shadowProgOptions;
-  uvec2                     tileSize = {0, 0};
-  GfxMesh::Draw             drawCall;
-  uint64_t                  setActorEventListener = 0;
+  float                         max         = 1.0f;
+  float                         min         = -1.0f;
+  uint32_t                      vertexCount = 0;
+  glm::vec3                     box;
+  Camera                        camera;
+  std::shared_ptr<Pipeline>     pipeline;
+  HDataSource                   actor;
+  GfxBuffer::handle             index;
+  GfxImage::handle              nullImage;
+  GfxImage::handle              terrainColors;
+  GfxImage::handle              shadowMapImage;
+  GfxImage::handle              heights;
+  GfxImage::handle              layerContrib;
+  GfxCombinedImage::handle      shadowMap;
+  GfxMesh::handle               layout;
+  GfxSampler::handle            sampler;
+  GfxSampler::handle            shadowSampler;
+  ShaderProgram                 materialProg;
+  ShaderProgram                 shadowProg;
+  std::optional<ShaderMaterial> terrainMat;
+  std::optional<ShaderMaterial> shadowMat;
+  ShaderOptions                 shadowProgOptions;
+  uvec2                         tileSize = {0, 0};
+  GfxMesh::Draw                 drawCall;
+  uint64_t                      setActorEventListener = 0;
 
   bool texturesDirty     = true;
   bool shadowMapResDirty = true;

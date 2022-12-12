@@ -31,6 +31,9 @@ MeshPreview::MeshPreview()
 
 void MeshPreview::init(TerraMainApp& app)
 {
+  auto caps = app.getDevice()->getCaps();
+  if (caps.ARB_clip_control != GlGfxSupport::eUnsupported)
+    camera.setReverseZ();
   regenerate(app, actor);
   setActorEventListener = app.dispatcher().listen(
     [this](TerraMainApp& app, TerraMainApp::EventRegen const& ev)
@@ -146,7 +149,9 @@ void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
   mesh.vertexBufferCount = 0;
   layout                 = dev.createMeshLayout(mesh);
   buildShadowMapProgram();
-  sampler = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
+  sampler       = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
+  shadowSampler = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
+                                                  camera.isReverseZ() ? SampleCompare::eGEq : SampleCompare::eLEq));
 }
 
 void MeshPreview::reloadTexture(TerraMainApp const& app)
@@ -197,6 +202,14 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
                                                       ImageFormatEnum::eRgba8, (ubyte_t const*)layerColors.data());
 }
 
+void MeshPreview::updateShadowMap(TerraMainApp const& app) 
+{
+  if (!shadowMapDirty)
+    return;
+
+  shadowMapDirty = false;
+}
+
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
 {
   GfxState state;
@@ -210,23 +223,26 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
     createDeviceObjects(app, *app.getDevice());
     generated = true;
   }
-  if (pipeline->hasResults())
-  {
-    auto size     = (size_t)(tileSize.x) * (size_t)(tileSize.y);
-    auto vertices = (float*)app.getDevice()->mapBuffer(vertex, 0, (uint32_t)(size * sizeof(float)));
-    pipeline->getResults(vertices, size, min, max);
-    app.getDevice()->unmapBuffer(vertex);
-  }
+
+  pipeline->getResults(heights, layerContrib);
+  if (!heights)
+    heights = nullImage;
+  if (!layerContrib)
+    layerContrib = nullImage;
 
   state.blend[0].mode   = BlendMode::eDisabled;
-  state.depthTest       = DepthTestMode::eLessEq;
+  state.depthTest       = camera.isReverseZ() ? DepthTestMode::eGreaterEq : DepthTestMode::eLessEq;
   state.scissorsEnabled = true;
   state.viewport        = scissor;
   state.scissor         = scissor;
 
   app.getDevice()->setState(state);
-  app.getDevice()->clearBackbuffer(glm::vec4(app.getTheme().themeColors.clear), true);
+  app.getDevice()->clearBackbuffer(glm::vec4(app.getTheme().themeColors.clear), 
+    camera.isReverseZ() ? DepthClear::eClearZ_0 : DepthClear::eClearZ_1);
   AppSettings const& settings = app.getSettings();
+
+  updateShadowMap(app);
+
   // update buffer
   int width  = tileSize.x * nbPreviewTiles.x;
   int height = tileSize.y * nbPreviewTiles.y;

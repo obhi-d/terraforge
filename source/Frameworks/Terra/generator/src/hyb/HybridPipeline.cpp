@@ -214,11 +214,6 @@ void HybridPipeline::push(HDataSource item)
   }
 }
 
-bool HybridPipeline::hasResults()
-{
-  return (result_ == HybridNode::Result::eContinue || result_ == HybridNode::Result::eDone);
-}
-
 void HybridPipeline::getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) 
 {
   heights      = heights_ ? readImage(heights_) : GfxImage::handle{};

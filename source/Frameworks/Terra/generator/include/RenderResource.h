@@ -19,6 +19,7 @@ enum class Access
 enum class SamplingType
 {
   eLinear,
+  eTrilinear,
   eNearest
 };
 
@@ -29,7 +30,33 @@ enum class Tiling
   eClampToEdge
 };
 
-using ImageSampling = std::pair<SamplingType, Tiling>;
+enum class SampleCompare
+{
+  eNone,
+  eGEq,
+  eLEq,
+  eGT,
+  eLT
+};
+
+enum class DepthClear : uint8_t
+{
+  eNone,
+  eClearZ_1,
+  eClearZ_0
+};
+
+struct ImageSampling
+{
+  SamplingType sampling = SamplingType::eLinear;
+  Tiling       tiling = Tiling::eRepeat;
+  SampleCompare compare  = SampleCompare::eNone;
+
+  ImageSampling() = default;
+  ImageSampling(SamplingType isampling, Tiling itiling = Tiling::eRepeat, SampleCompare icompare = SampleCompare::eNone)
+      : sampling(isampling), tiling(itiling), compare(icompare)
+  {}
+};
 
 enum class GfxStorageClass
 {
@@ -141,10 +168,12 @@ struct GfxDescriptorSet
 
 enum class GfxBindType
 {
+  eNone,
   eStorageBuffer,
   eTexture,
   eTextureBuffer,
   eStorageImage,
+  eDepthBuffer,
   eInt,
   eUint,
   eInt2,
@@ -153,9 +182,7 @@ enum class GfxBindType
   eFloat2,
   eFloat3,
   eFloat4,
-  eMat4,
-  eDepthBuffer,
-  eNone
+  eMat4
 };
 
 enum class GfxAccess : uint8_t

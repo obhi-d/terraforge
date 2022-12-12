@@ -17,7 +17,7 @@ public:
   void beginFrame() override;
   void endFrame() override;
 
-  void clearBackbuffer(glm::vec4 color, bool depth = false) override;
+  void clearBackbuffer(glm::vec4 color, DepthClear depth) override;
   void setState(GfxState const&) override;
 
   GfxBuffer::handle createBuffer(GfxStorageClass storage, GfxBuffer::Usage usage, uint32_t size) override;

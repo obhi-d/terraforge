@@ -77,11 +77,16 @@ void GfxDevice43::init()
   logInfo("OpenGL {}.{} - {}", version.majorVersion(), version.minorVersion(), glbinding::aux::ContextInfo::vendor());
 }
 
-void GfxDevice43::clearBackbuffer(glm::vec4 color, bool depth)
+void GfxDevice43::clearBackbuffer(glm::vec4 color, DepthClear depth)
 {
   gl43::glClearColor(color.r, color.g, color.b, color.a);
-  gl43::glClearDepth(1.0f);
-  gl43::glClear(depth ? gl43::GL_COLOR_BUFFER_BIT | gl43::GL_DEPTH_BUFFER_BIT : gl43::GL_COLOR_BUFFER_BIT);
+  gl43::ClearBufferMask cbm = gl43::GL_COLOR_BUFFER_BIT;
+  if (depth != DepthClear::eNone)
+  {
+    gl43::glClearDepth(depth == DepthClear::eClearZ_1 ? 1.0f : 0.f);
+    cbm |= gl43::GL_DEPTH_BUFFER_BIT;
+  }
+  gl43::glClear(cbm);
 }
 
 void GfxDevice43::flushStates()
@@ -293,9 +298,13 @@ GfxSampler::handle GfxDevice43::createSampler(ImageSampling sampling)
   {
     gl43::GLenum minFilter = gl43::GLenum::GL_NEAREST_MIPMAP_NEAREST;
     gl43::GLenum magFilter = gl43::GLenum::GL_NEAREST;
-    switch (sampling.first)
+    switch (sampling.sampling)
     {
     case SamplingType::eLinear:
+      minFilter = gl43::GLenum::GL_LINEAR_MIPMAP_NEAREST;
+      magFilter = gl43::GLenum::GL_LINEAR;
+      break;
+    case SamplingType::eTrilinear:
       minFilter = gl43::GLenum::GL_LINEAR_MIPMAP_LINEAR;
       magFilter = gl43::GLenum::GL_LINEAR;
       break;
@@ -306,7 +315,7 @@ GfxSampler::handle GfxDevice43::createSampler(ImageSampling sampling)
   }
   {
     gl43::GLenum tiling = gl43::GLenum::GL_REPEAT;
-    switch (sampling.second)
+    switch (sampling.tiling)
     {
     case Tiling::eMirror:
       tiling = gl43::GL_MIRRORED_REPEAT;
@@ -317,6 +326,33 @@ GfxSampler::handle GfxDevice43::createSampler(ImageSampling sampling)
     }
     gl43::glSamplerParameteri(res.glhandle, gl43::GL_TEXTURE_WRAP_S, tiling);
     gl43::glSamplerParameteri(res.glhandle, gl43::GL_TEXTURE_WRAP_T, tiling);
+  }
+  {
+    gl43::GLenum compare = gl43::GL_NONE;
+    gl43::GLenum method  = gl43::GL_NEVER;
+    // GL_TEXTURE_COMPARE_MODE
+    switch (sampling.compare)
+    {
+    case SampleCompare::eGEq:
+      compare = gl43::GL_COMPARE_REF_TO_TEXTURE;
+      method  = gl43::GL_GEQUAL;
+      break;
+    case SampleCompare::eLEq:
+      compare = gl43::GL_COMPARE_REF_TO_TEXTURE;
+      method  = gl43::GL_LEQUAL;
+      break;
+    case SampleCompare::eGT:
+      compare = gl43::GL_COMPARE_REF_TO_TEXTURE;
+      method  = gl43::GL_GREATER;
+      break;
+    case SampleCompare::eLT:
+      compare = gl43::GL_COMPARE_REF_TO_TEXTURE;
+      method  = gl43::GL_LESS;
+      break;
+    }
+    gl43::glSamplerParameteri(res.glhandle, gl43::GL_TEXTURE_COMPARE_MODE, compare);
+    gl43::glSamplerParameteri(res.glhandle, gl43::GL_TEXTURE_COMPARE_FUNC, method);
+ 
   }
   return h;
 }

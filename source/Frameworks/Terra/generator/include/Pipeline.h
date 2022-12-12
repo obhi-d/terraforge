@@ -39,8 +39,6 @@ public:
   // wrap in Modifiers.toR16
   // this function is called once results are available
   virtual void getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) = 0;
-  // returns the size of the results available, 0 if no results are available
-  virtual bool hasResults() = 0;
   // Read for the given node
   virtual void cleanup();
 
