@@ -11,18 +11,17 @@ struct ShaderProgram
 {
   acl::dynamic_array<GfxBindType> bindings;
 
-  GfxProgram::handle     program;
-  GfxParamLayout::handle layout;
-  uint32_t               outputCount = 0;
-  uint32_t               frame       = 0;
+  GfxMaterial2 material;
+  uint32_t     outputCount = 0;
+  uint32_t     frame       = 0;
 
   ShaderProgram()                              = default;
   ShaderProgram(ShaderProgram const&) noexcept = default;
   ShaderProgram(ShaderProgram&&) noexcept      = default;
   ~ShaderProgram();
 
-  ShaderProgram& operator=(ShaderProgram const&) noexcept = default;
-  ShaderProgram& operator=(ShaderProgram&&) noexcept      = default;
+  ShaderProgram& operator=(ShaderProgram const&) noexcept;
+  ShaderProgram& operator=(ShaderProgram&&) noexcept;
 
   void touch();
 };
@@ -31,25 +30,24 @@ struct ShaderMaterial
 {
   ShaderMaterial(ShaderProgram const& prog) : program(prog) {}
 
-  inline void pushBuffer(GfxBuffer::handle buff, uint32_t offset, uint32_t size);
-  inline void pushTexture(GfxCombinedImage::handle handle);
-  inline void pushTexBuffer(GfxBuffer::handle handle, ImageFormatEnum format);
-  inline void pushImage(GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered);
-  inline void pushScalar(int value);
-  inline void pushScalar(uint32_t value);
-  inline void pushScalar(ivec2 value);
-  inline void pushScalar(uvec2 value);
-  inline void pushScalar(float value);
-  inline void pushScalar(vec2 value);
-  inline void pushScalar(vec3 value);
-  inline void pushScalar(vec4 value);
-  inline void pushScalar(mat4 value);
-  inline void pushOutput(GfxImage::handle handle, bool clear = false, vec4 clearVal = vec4(0.f));
+  inline void pushBuffer(uint32_t index, GfxBuffer::handle buff, uint32_t offset, uint32_t size);
+  inline void pushTexture(uint32_t index, GfxCombinedImage::handle handle);
+  inline void pushTexBuffer(uint32_t index, GfxBuffer::handle handle, ImageFormatEnum format);
+  inline void pushImage(uint32_t index, GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered);
+  inline void pushScalar(uint32_t index, int value);
+  inline void pushScalar(uint32_t index, uint32_t value);
+  inline void pushScalar(uint32_t index, ivec2 value);
+  inline void pushScalar(uint32_t index, uvec2 value);
+  inline void pushScalar(uint32_t index, float value);
+  inline void pushScalar(uint32_t index, vec2 value);
+  inline void pushScalar(uint32_t index, vec3 value);
+  inline void pushScalar(uint32_t index, vec4 value);
+  inline void pushScalar(uint32_t index, mat4 value);
+  inline void pushOutput(uint32_t index, GfxImage::handle handle, bool clear = false, vec4 clearVal = vec4(0.f));
   inline void reset();
 
   ShaderProgram const& program;
-  uint32_t index = 0;
-  Blob data;
+  Blob                 data;
 };
 
 struct GpuPipeline
@@ -155,7 +153,7 @@ struct SourceBuilderBindful : SourceBuilderAdapter
   uint32_t imageBinding = 0;
 };
 
- inline void ShaderMaterial::pushBuffer(GfxBuffer::handle buff, uint32_t offset, uint32_t size)
+inline void ShaderMaterial::pushBuffer(uint32_t index, GfxBuffer::handle buff, uint32_t offset, uint32_t size)
 {
   assert(program.bindings[index] == StorageBuffer::type);
   StorageBuffer ssbo;
@@ -166,7 +164,7 @@ struct SourceBuilderBindful : SourceBuilderAdapter
   index++;
 }
 
-inline void ShaderMaterial::pushTexture(GfxCombinedImage::handle handle)
+inline void ShaderMaterial::pushTexture(uint32_t index, GfxCombinedImage::handle handle)
 {
   assert(program.bindings[index] == SampledTexture::type);
   SampledTexture stex;
@@ -175,7 +173,7 @@ inline void ShaderMaterial::pushTexture(GfxCombinedImage::handle handle)
   index++;
 }
 
-inline void ShaderMaterial::pushTexBuffer(GfxBuffer::handle handle, ImageFormatEnum format)
+inline void ShaderMaterial::pushTexBuffer(uint32_t index, GfxBuffer::handle handle, ImageFormatEnum format)
 {
   assert(program.bindings[index] == TextureBuffer::type);
   TextureBuffer tbo;
@@ -185,7 +183,8 @@ inline void ShaderMaterial::pushTexBuffer(GfxBuffer::handle handle, ImageFormatE
   index++;
 }
 
-inline void ShaderMaterial::pushImage(GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered)
+inline void ShaderMaterial::pushImage(uint32_t index, GfxImage::handle handle, uint16_t layer, GfxAccess access,
+                                      bool layered)
 {
   assert(program.bindings[index] == StorageImage::type);
   StorageImage image;
@@ -197,70 +196,70 @@ inline void ShaderMaterial::pushImage(GfxImage::handle handle, uint16_t layer, G
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(int value)
+inline void ShaderMaterial::pushScalar(uint32_t index, int value)
 {
   assert(program.bindings[index] == GfxBindType::eInt);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(uint32_t value)
+inline void ShaderMaterial::pushScalar(uint32_t index, uint32_t value)
 {
   assert(program.bindings[index] == GfxBindType::eUint);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(ivec2 value)
+inline void ShaderMaterial::pushScalar(uint32_t index, ivec2 value)
 {
   assert(program.bindings[index] == GfxBindType::eInt2);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(uvec2 value)
+inline void ShaderMaterial::pushScalar(uint32_t index, uvec2 value)
 {
   assert(program.bindings[index] == GfxBindType::eUint2);
   data.push(value);
   index++;
 }
 
-  inline void ShaderMaterial::pushScalar(float value)
+inline void ShaderMaterial::pushScalar(uint32_t index, float value)
 {
   assert(program.bindings[index] == GfxBindType::eFloat);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(vec2 value)
+inline void ShaderMaterial::pushScalar(uint32_t index, vec2 value)
 {
   assert(program.bindings[index] == GfxBindType::eFloat2);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(vec3 value)
+inline void ShaderMaterial::pushScalar(uint32_t index, vec3 value)
 {
   assert(program.bindings[index] == GfxBindType::eFloat3);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(vec4 value)
+inline void ShaderMaterial::pushScalar(uint32_t index, vec4 value)
 {
   assert(program.bindings[index] == GfxBindType::eFloat4);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushScalar(mat4 value)
+inline void ShaderMaterial::pushScalar(uint32_t index, mat4 value)
 {
   assert(program.bindings[index] == GfxBindType::eMat4);
   data.push(value);
   index++;
 }
 
-inline void ShaderMaterial::pushOutput(GfxImage::handle handle, bool clear = false, vec4 clearVal = vec4(0.f))
+inline void ShaderMaterial::pushOutput(uint32_t index, GfxImage::handle handle, bool clear, vec4 clearVal)
 {
   assert(program.bindings.size() >= index && index < (program.bindings.size() + program.outputCount));
   TextureOutput texture;
@@ -273,7 +272,6 @@ inline void ShaderMaterial::pushOutput(GfxImage::handle handle, bool clear = fal
 
 inline void ShaderMaterial::reset()
 {
-  index = 0;
   data.clear();
 }
 

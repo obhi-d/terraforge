@@ -285,10 +285,16 @@ void GfxDevice43::destroy(GfxImage::handle h)
 {
   if (!h)
     return;
-
+  releaseTexture(h);
+}
+void GfxDevice43::releaseTexture(GfxImage::handle h)
+{
   auto& res = resources.images.at(h);
-  gl43::glDeleteTextures(1, &res.glhandle);
-  resources.images.erase(h);
+  if ((res.ref--) == 0)
+  {
+    gl43::glDeleteTextures(1, &res.glhandle);
+    resources.images.erase(h);
+  }
 }
 GfxSampler::handle GfxDevice43::createSampler(ImageSampling sampling)
 {
@@ -352,7 +358,6 @@ GfxSampler::handle GfxDevice43::createSampler(ImageSampling sampling)
     }
     gl43::glSamplerParameteri(res.glhandle, gl43::GL_TEXTURE_COMPARE_MODE, compare);
     gl43::glSamplerParameteri(res.glhandle, gl43::GL_TEXTURE_COMPARE_FUNC, method);
- 
   }
   return h;
 }
@@ -1187,10 +1192,15 @@ GfxCombinedImage::handle GfxDevice43::createCombinedTexture(GfxImage::handle ima
   auto& res   = resources.texSamplers.at(h);
   res.image   = image;
   res.sampler = sampler;
+  resources.images[res.image].ref++;
   return GfxCombinedImage::handle(h);
 }
 void GfxDevice43::destroy(GfxCombinedImage::handle h)
 {
+  if (!h)
+    return;
+  auto& res = resources.texSamplers.at(h);
+  releaseTexture(res.image);
   resources.texSamplers.erase(h);
 }
 

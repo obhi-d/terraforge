@@ -47,6 +47,7 @@ struct GfxImageGl : GfxImage
   ImageFormatEnum          format;
   BindlessHandleGl::handle hdev = 0;
   BindlessHandleGl::handle himg = 0;
+  uint32_t                 ref  = 0;
 };
 
 struct GfxSamplerGl : GfxSampler
@@ -96,7 +97,7 @@ struct GfxBindlessLayoutGl : GfxParamLayout
 
 struct GfxCombinedImageGl : GfxCombinedImage
 {
-  GfxImage::handle       image;
+  GfxImage::handle         image;
   GfxSampler::handle       sampler;
   BindlessHandleGl::handle hdev = 0;
 };

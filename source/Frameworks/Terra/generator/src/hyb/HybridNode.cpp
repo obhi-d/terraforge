@@ -102,7 +102,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
       build(pipe, pass, *builder);
       // use GpuProgramBuilder to build a program
       newProgram->passes[pass] = builder->finalize();
-      if (!newProgram->passes[pass].program)
+      if (!newProgram->passes[pass].material.program)
       {
         logError("Failed to compile program: {}", gpuMeta.getCode(pass).function);
         return false;

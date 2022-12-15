@@ -74,6 +74,7 @@ public:
   }
 
 protected:
+  void                     releaseTexture(GfxImage::handle);
   void                     apply(GfxMaterial const&);
   void                     apply(GfxParamLayout::handle descriptorLayout, Blob const& data);
   virtual void             draw(GfxMesh::Draw const& drawDesc);

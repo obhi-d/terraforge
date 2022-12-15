@@ -16,6 +16,7 @@
       "Srgb8Alpha8",
       "Rg32f",
       "Rgba32f",
+      "Rgb8",
       "Depth"
     ]
   },

@@ -45,6 +45,7 @@ public:
   Property<float>       meshStyle           = Property<float>("@meshStyle", 5.6f);
   Property<Rotation>    sunRotation         = Property<Rotation>("@sunRotation", 40.f);
   Property<uint32_t>    shadowMapResolution = Property<uint32_t>("@shadowMapResolution", 2);
+  Property<vec4>        layerWeights        = Property<vec4>("@layerWeights", vec4(0.25f));
 
   Camera& getCamera()
   {
@@ -53,6 +54,7 @@ public:
 
 private:
   void updateShadowMap(TerraMainApp const&);
+  void drawTerrain(TerraMainApp const&);
   void buildShadowMapProgram();
   void buildTerrainDrawProgram();
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);
@@ -72,8 +74,12 @@ private:
   GfxImage::handle              heights;
   GfxImage::handle              layerContrib;
   GfxCombinedImage::handle      shadowMap;
+  GfxCombinedImage::handle      heightMap;
+  GfxCombinedImage::handle      layerColorMap;
+  GfxCombinedImage::handle      layerContribMap;
   GfxMesh::handle               layout;
-  GfxSampler::handle            sampler;
+  GfxSampler::handle            heightSampler;
+  GfxSampler::handle            layerSampler;
   GfxSampler::handle            shadowSampler;
   ShaderProgram                 materialProg;
   ShaderProgram                 shadowProg;

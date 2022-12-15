@@ -620,11 +620,13 @@ struct Snorm
 
 union ScalarValue
 {
-  ivec2 ivalue2 = {0, 0};
-  vec2  value2;
-  float value;
-  int   ivalue;
-  bool  bvalue;
+  uvec2    uvalue2 = {0, 0};
+  ivec2    ivalue2;
+  vec2     value2;
+  float    value;
+  int      ivalue;
+  uint32_t uvalue;
+  bool     bvalue;
 
   inline ScalarValue(Angle val) : value(val) {}
   inline ScalarValue(Unorm val) : value(val) {}

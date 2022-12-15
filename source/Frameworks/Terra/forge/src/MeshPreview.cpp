@@ -44,12 +44,23 @@ void MeshPreview::init(TerraMainApp& app)
 
 void MeshPreview::deinit(TerraMainApp& app)
 {
-  app.dispatcher().remove(setActorEventListener);
   app.getDevice()->destroy(index);
+  app.getDevice()->destroy(nullImage);
+  app.getDevice()->destroy(terrainColors);
   app.getDevice()->destroy(shadowMapImage);
+  app.getDevice()->destroy(heights);
+  app.getDevice()->destroy(layerContrib);
   app.getDevice()->destroy(shadowMap);
-  app.getDevice()->destroy(sampler);
+  app.getDevice()->destroy(heightMap);
+  app.getDevice()->destroy(layerColorMap);
+  app.getDevice()->destroy(layerContribMap);
   app.getDevice()->destroy(layout);
+  app.getDevice()->destroy(heightSampler);
+  app.getDevice()->destroy(layerSampler);
+  app.getDevice()->destroy(shadowSampler);
+
+  app.dispatcher().remove(setActorEventListener);
+
   materialProg = {};
   shadowProg   = {};
 }
@@ -103,29 +114,6 @@ void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
     drawCall.type               = GfxMesh::eTriangles;
   }
 
-  auto save = shadowProgOptions;
-  shadowProgOptions.setOption(shadowMapResolution);
-  if (save != shadowProgOptions || !shadowMapImage)
-  {
-    uvec2 res = uvec2{512, 512};
-    switch (shadowMapResolution.get())
-    {
-    case 1:
-      res = uvec2{1024, 1024};
-      break;
-    case 2:
-      res = uvec2{2048, 2048};
-      break;
-    case 3:
-      res = uvec2{4096, 4096};
-      break;
-    }
-    if (shadowMapImage)
-      get().getDevice().destroy(shadowMapImage);
-    shadowMapImage =
-      get().getDevice().create2DImage(GfxStorageClass::eStaticDeviceReadonly, res.x, res.y, ImageFormatEnum::eDepth);
-    buildTerrainDrawProgram();
-  }
   actor = iactor;
   if (!pipeline)
   {
@@ -149,7 +137,8 @@ void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
   mesh.vertexBufferCount = 0;
   layout                 = dev.createMeshLayout(mesh);
   buildShadowMapProgram();
-  sampler       = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
+  layerSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
+  heightSampler = dev.createSampler(ImageSampling(SamplingType::eNearest, Tiling::eClampToEdge));
   shadowSampler = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
                                                   camera.isReverseZ() ? SampleCompare::eGEq : SampleCompare::eLEq));
 }
@@ -197,17 +186,13 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
         layerColors[i + 768] = image.bifilter_rgba((float)i / (float)Width, 0.f);
     }
   }
+
+  app.getDevice()->destroy(layerColorMap);
   app.getDevice()->destroy(terrainColors);
+
   terrainColors = app.getDevice()->create1DImageArray(GfxStorageClass::eStaticDeviceReadonly, Width, 4,
                                                       ImageFormatEnum::eRgba8, (ubyte_t const*)layerColors.data());
-}
-
-void MeshPreview::updateShadowMap(TerraMainApp const& app) 
-{
-  if (!shadowMapDirty)
-    return;
-
-  shadowMapDirty = false;
+  layerColorMap = app.getDevice()->createCombinedTexture(terrainColors, layerSampler);
 }
 
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
@@ -224,11 +209,27 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
     generated = true;
   }
 
-  pipeline->getResults(heights, layerContrib);
-  if (!heights)
-    heights = nullImage;
-  if (!layerContrib)
-    layerContrib = nullImage;
+  auto&            dev = *app.getDevice();
+  GfxImage::handle lheight, llayer;
+  pipeline->getResults(lheight, llayer);
+  if (!lheight)
+    lheight = nullImage;
+  if (!llayer)
+    llayer = nullImage;
+
+  if (lheight != heights)
+  {
+    heights = lheight;
+    dev.destroy(heightMap);
+    heightMap = dev.createCombinedTexture(heights, heightSampler);
+  }
+
+  if (llayer != layerContrib)
+  {
+    layerContrib = llayer;
+    dev.destroy(layerContribMap);
+    layerContribMap = dev.createCombinedTexture(layerContrib, layerSampler);
+  }
 
   state.blend[0].mode   = BlendMode::eDisabled;
   state.depthTest       = camera.isReverseZ() ? DepthTestMode::eGreaterEq : DepthTestMode::eLessEq;
@@ -236,63 +237,15 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
   state.viewport        = scissor;
   state.scissor         = scissor;
 
-  app.getDevice()->setState(state);
-  app.getDevice()->clearBackbuffer(glm::vec4(app.getTheme().themeColors.clear), 
-    camera.isReverseZ() ? DepthClear::eClearZ_0 : DepthClear::eClearZ_1);
   AppSettings const& settings = app.getSettings();
 
   updateShadowMap(app);
 
-  // update buffer
-  int width  = tileSize.x * nbPreviewTiles.x;
-  int height = tileSize.y * nbPreviewTiles.y;
+  app.getDevice()->setState(state);
+  app.getDevice()->clearBackbuffer(glm::vec4(app.getTheme().themeColors.clear),
+                                   camera.isReverseZ() ? DepthClear::eClearZ_0 : DepthClear::eClearZ_1);
 
-  struct Data
-  {
-    glm::mat4 view_projection;
-    int       width;
-    int       height;
-    float     style;
-    float     frequency;
-    glm::vec3 sun_dir;
-    float     height_multiplier;
-    glm::vec4 sun_color;
-    glm::vec4 tint;
-    int       vertexCount;
-    float     max;
-    float     min;
-    float     crust;
-  };
-
-  static_assert(sizeof(Data) == UboSize);
-
-  Data& data = *(Data*)app.getDevice()->mapBuffer(ubo, 0, UboSize);
-
-  data.view_projection   = camera.getViewProj();
-  data.width             = width;
-  data.height            = height;
-  data.style             = meshStyle;
-  data.frequency         = settings.frequency;
-  data.sun_dir           = sunRotation->toDir();
-  data.height_multiplier = heightMultiplier;
-  data.sun_color         = glm::vec4(sunColor->r(), sunColor->g(), sunColor->b(), sunIntensity.get());
-  data.tint              = meshTint.get();
-  data.vertexCount       = vertexCount;
-  data.max               = max;
-  data.min               = min;
-  data.crust             = 1.f;
-  app.getDevice()->unmapBuffer(ubo);
-
-  if (descriptorsDirty)
-  {
-    std::array<GfxDescriptorSet::rhandle, 2> descriptors;
-    descriptors[0].first  = ubo.um_index();
-    descriptors[1].first  = heightTexPath->image;
-    descriptors[1].second = sampler.um_index();
-    app.getDevice()->updateDescriptorSet(material.descriptorSet, descriptors);
-  }
-
-  app.getDevice()->draw(drawCall, material);
+  drawTerrain(app);
 }
 
 void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
@@ -312,6 +265,51 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
   }
 }
 
+void MeshPreview::updateShadowMap(TerraMainApp const& app)
+{
+  if (!shadowMapDirty)
+    return;
+
+  auto save = shadowProgOptions;
+  shadowProgOptions.setOption(shadowMapResolution);
+  if (save != shadowProgOptions || !shadowMapImage)
+  {
+    uvec2 res = uvec2{512, 512};
+    switch (shadowMapResolution.get())
+    {
+    case 1:
+      res = uvec2{1024, 1024};
+      break;
+    case 2:
+      res = uvec2{2048, 2048};
+      break;
+    case 3:
+      res = uvec2{4096, 4096};
+      break;
+    }
+    if (shadowMapImage)
+      get().getDevice().destroy(shadowMapImage);
+    shadowMapImage =
+      get().getDevice().create2DImage(GfxStorageClass::eStaticDeviceReadonly, res.x, res.y, ImageFormatEnum::eDepth);
+    buildTerrainDrawProgram();
+  }
+
+  if (!shadowMat)
+    shadowMat.emplace(shadowProg);
+
+  shadowMat->pushScalar(0, camera.getLightViewProj(sunRotation.get().toDir(), box));
+  shadowMat->pushTexture(1, heightMap);
+  shadowMat->pushScalar(2, tileSize.x);
+  shadowMat->pushScalar(3, tileSize.y);
+  shadowMat->pushScalar(4, 1.f / (float)tileSize.x);
+  shadowMat->pushScalar(5, 1.f / (float)tileSize.y);
+  shadowMat->pushScalar(6, heightMultiplier.get());
+  shadowMat->pushOutput(7, shadowMapImage, true, vec4(camera.isReverseZ() ? 0.f : 1.f));
+  app.getDevice()->draw(drawCall, shadowMat->program.material, shadowMat->data);
+
+  shadowMapDirty = false;
+}
+
 void MeshPreview::buildShadowMapProgram()
 {
   auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL, SourceType::eShaderProgram);
@@ -323,9 +321,33 @@ void MeshPreview::buildShadowMapProgram()
   builder->sampleScalar("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->sampleScalar("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->sampleScalar("height_multiplier", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->writeOutput(
+    "depth", DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eDepth, ParamDeclType::eDepthOutput));
+
   auto code = fileContentToString("shaders/shadow.glsl");
   builder->append(code);
   shadowProg = builder->finalize();
+}
+
+void MeshPreview::drawTerrain(TerraMainApp const& app)
+{
+  if (!terrainMat)
+    terrainMat.emplace(materialProg);
+
+  terrainMat->pushScalar(0, camera.getLightViewProj(sunRotation.get().toDir(), box));
+  terrainMat->pushScalar(1, camera.getViewProj());
+  terrainMat->pushScalar(2, layerWeights.get());
+  terrainMat->pushScalar(3, vec4(sunRotation.get().toDir(), sunIntensity.get()));
+  terrainMat->pushTexture(4, heightMap);
+  terrainMat->pushTexture(5, layerColorMap);
+  terrainMat->pushTexture(6, shadowMap);
+  terrainMat->pushTexture(7, layerContribMap);
+  terrainMat->pushScalar(8, tileSize.x);
+  terrainMat->pushScalar(9, tileSize.y);
+  terrainMat->pushScalar(10, 1.f / (float)tileSize.x);
+  terrainMat->pushScalar(11, 1.f / (float)tileSize.y);
+  terrainMat->pushScalar(12, heightMultiplier.get());
+  app.getDevice()->draw(drawCall, terrainMat->program.material, terrainMat->data);
 }
 
 void MeshPreview::buildTerrainDrawProgram()

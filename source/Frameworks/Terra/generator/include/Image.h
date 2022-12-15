@@ -84,18 +84,18 @@ struct Image : public DataSource
 
   inline Color bifilter_rgba(float u, float v) const
   {
-    auto               cx    = (int)(u * ((float)width - 0.5f));
-    auto               cy    = (int)(v * ((float)height - 0.5f));
-    constexpr uint32_t N     = 1;
-    vec4               color = vec4(0.f);
-    constexpr float    recip = 1.f / (4);
+    auto              cx    = (int)(u * ((float)width - 0.5f));
+    auto              cy    = (int)(v * ((float)height - 0.5f));
+    constexpr int32_t N     = 1;
+    vec4              color = vec4(0.f);
+    constexpr float   recip = 1.f / (4);
 
     for (int sy = -N; sy < N; ++sy)
     {
       for (int sx = -N; sx < N; ++sx)
       {
-        auto x = std::max<int>(0, std::min<int>(cx + sx, width - 1));
-        auto y = std::max<int>(0, std::min<int>(cy + sy, height - 1));
+        auto x = std::max<int>(0, std::min<int>(cx + sx, (int)width - 1));
+        auto y = std::max<int>(0, std::min<int>(cy + sy, (int)height - 1));
         switch (format)
         {
         case ImageFormat::eRgb8:

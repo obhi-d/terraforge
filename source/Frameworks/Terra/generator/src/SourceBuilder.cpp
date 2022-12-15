@@ -9,20 +9,15 @@ namespace terra
 
 ShaderProgram::~ShaderProgram()
 {
-  if (program)
-    get().getDevice().destroy(program);
-  if (layout)
-    get().getDevice().destroy(layout);
+  get().getDevice().destroy(material.program);
+  get().getDevice().destroy(material.layout);
 }
 
 ShaderProgram& ShaderProgram::operator=(ShaderProgram const& other) noexcept
 {
-  if (program)
-    get().getDevice().destroy(program);
-  if (layout)
-    get().getDevice().destroy(layout);
-  program     = other.program;
-  layout      = other.layout;
+  get().getDevice().destroy(material.program);
+  get().getDevice().destroy(material.layout);
+  material    = other.material;
   outputCount = other.outputCount;
   frame       = other.frame;
   return *this;
@@ -30,16 +25,14 @@ ShaderProgram& ShaderProgram::operator=(ShaderProgram const& other) noexcept
 
 ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept
 {
-  if (program)
-    get().getDevice().destroy(program);
-  if (layout)
-    get().getDevice().destroy(layout);
-  program       = other.program;
-  layout        = other.layout;
-  outputCount   = other.outputCount;
-  frame         = other.frame;
-  other.program = {};
-  other.layout  = {};
+  if (material.program)
+    get().getDevice().destroy(material.program);
+  if (material.layout)
+    get().getDevice().destroy(material.layout);
+  material       = other.material;
+  outputCount    = other.outputCount;
+  frame          = other.frame;
+  other.material = {};
   return *this;
 }
 
@@ -236,20 +229,22 @@ void SourceBuilderAdapter::computeParam(std::string_view name, DataFormat df)
 
 void SourceBuilderAdapter::writeOutput(std::string_view name, DataFormat df)
 {
-  auto type = toGlsl(df.scalarSubType);
-  resources += format(fmt::format("layout(location={}) {} {};\n", outputIdx++, type, name));
-  params.emplace_back(format(std::string(name)));
   GfxParamLayout::Output output;
   output.format = df.imageFormat;
   switch (df.declType)
   {
   case ParamDeclTypeEnum::eDepthOutput:
+    if (df.preEval)
+      params.emplace_back("gl_FragDepth");
     output.type = GfxBindType::eDepthBuffer;
     break;
   case ParamDeclTypeEnum::eSSBO:
     output.type = GfxBindType::eStorageBuffer;
     break;
   default:
+    resources += format(fmt::format("layout(location={}) {} {};\n", outputIdx++, toGlsl(df.scalarSubType), name));
+    if (df.preEval)
+      params.emplace_back(format(std::string(name)));
     output.type = GfxBindType::eTexture;
     break;
   }
@@ -355,9 +350,9 @@ ShaderProgram SourceBuilderAdapter::finalize()
   {
     auto&         dev = get().getDevice();
     ShaderProgram pret;
-    pret.program  = program;
-    pret.layout   = dev.createLayout(entries, output);
-    pret.bindings = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
+    pret.material.program = program;
+    pret.material.layout  = dev.createLayout(entries, output);
+    pret.bindings         = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
     for (uint32_t i = 0; i < pret.bindings.size(); ++i)
       pret.bindings[i] = entries[i].type;
     pret.outputCount = outputIdx;
