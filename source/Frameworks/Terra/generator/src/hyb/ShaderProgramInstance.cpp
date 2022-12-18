@@ -1,5 +1,6 @@
 
 #include "hyb/ShaderProgramInstance.h"
+#include "Terra.h"
 #include "hyb/HybridPipeline.h"
 
 namespace terra
@@ -25,11 +26,46 @@ void ShaderProgramInstance::pushValue(ScalarValue value, DataTypeEnum type)
 
 void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
 {
+
   switch (df.declType)
   {
   case ParamDeclTypeEnum::eTexture:
-    program.pushTexture(pipeline.readImage(value),
+    program.pushTexture(index++, pipeline.readImage(value), pipeline.getSampler(df.sampler));
+    break;
+  case ParamDeclTypeEnum::eWriteonlySSBO:
+  case ParamDeclTypeEnum::eReadonlySSBO:
+  case ParamDeclTypeEnum::eSSBO:
+  {
+    auto [buffer, size] = pipeline.readBuffer(value);
+    program.pushBuffer(index++, buffer, 0, size);
   }
+  break;
+  case ParamDeclTypeEnum::eReadonlyImage:
+    program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eReadOnly, false);
+    break;
+  case ParamDeclTypeEnum::eImage:
+    program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eReadWrite, false);
+    break;
+  case ParamDeclTypeEnum::eWriteonlyImage:
+    program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eWriteOnly, false);
+    break;
+  case ParamDeclTypeEnum::eTextureBuffer:
+  {
+    auto [buffer, size] = pipeline.readBuffer(value);
+    program.pushTexBuffer(index++, buffer, df.imageFormat);
+  }
+  break;
+  }
+}
+
+void ShaderProgramInstance::pushOutput(HybridBuffer::handle value, bool clear, vec4 clearVal)
+{
+  program.pushOutput(index++, pipeline.readImage(value), clear, clearVal);
+}
+
+void ShaderProgramInstance::run()
+{
+  get().getDevice().postProcessDraw(program.program.material.program, program.program.material.layout, program.data);
 }
 
 } // namespace terra

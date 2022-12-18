@@ -36,16 +36,16 @@ struct ImagePack
 
 struct ImThemeColors
 {
-  Color tint        = 0xffffffff;
-  Color clear       = 0xffffffff;
-  Color text        = 0xffffffff;
-  Color logo        = 0xffffffff;
-  Color icon        = 0xff212121;
-  Color iconHover   = 0xff2f2f2f;
-  Color iconPressed = 0xff2222ff;
-  Color link        = 0xffffffff;
-  Color texLink     = 0xaaaa11ff;
-  Color dsLink      = 0x616666ff;
+  Color tint           = 0xffffffff;
+  Color clear          = 0xffffffff;
+  Color text           = 0xffffffff;
+  Color logo           = 0xffffffff;
+  Color icon           = 0xff212121;
+  Color iconHover      = 0xff2f2f2f;
+  Color iconPressed    = 0xff2222ff;
+  Color link           = 0xffffffff;
+  Color texLink        = 0xaaaa11ff;
+  Color dsLink         = 0x616666ff;
   Color header         = Color((uint8_t)155, 155, 155, 255);
   Color highlight      = Color((uint8_t)255, 155, 155, 255);
   Color pinLabelReject = Color((uint8_t)45, (uint8_t)32, (uint8_t)32, (uint8_t)180);
@@ -69,7 +69,8 @@ struct NodeStyle
 
 struct ImguiTheme : neo::command_handler
 {
-  using Packs = std::array<ImagePack, ImagePackCount>;
+  using Packs                       = std::array<ImagePack, ImagePackCount>;
+  float                  fixedWidth = 50.f;
   std::filesystem::path  source;
   Packs                  images;
   ImThemeColors          themeColors;

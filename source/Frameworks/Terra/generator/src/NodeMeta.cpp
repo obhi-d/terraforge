@@ -55,13 +55,13 @@ ScalarValue ParameterMeta::getDefault() const
 
 void ParameterMeta::setTypeFromString(std::string_view type, std::string_view scalarType)
 {
-  format.type          = DataType::FromString(type);
-  format.scalarSubType = DataType::FromString(scalarType);
+  format.type          = DataType::fromString(type);
+  format.scalarSubType = DataType::fromString(scalarType);
 }
 
 void ParameterMeta::setDeclFromString(std::string_view type)
 {
-  format.declType = ParamDeclType::FromString(type);
+  format.declType = ParamDeclType::fromString(type);
 }
 
 void ParameterMeta::setValueFromString(ValueType valType, std::string_view value)
@@ -144,5 +144,13 @@ void NodeMeta::prepare()
       }
     }
   }
+
+  categorySorted.resize(parameterDef.size());
+  std::iota(categorySorted.data(), categorySorted.data() + categorySorted.size(), 0);
+  std::sort(categorySorted.begin(), categorySorted.end(),
+            [this](uint32_t a, uint32_t b)
+            {
+              return parameterDef[a].displayInfo.category < parameterDef[b].displayInfo.category;
+            });
 }
 } // namespace terra

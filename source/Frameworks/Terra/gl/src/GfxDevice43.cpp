@@ -113,7 +113,6 @@ void GfxDevice43::setState(GfxState const& newState)
     }
     state.cullMode = newState.cullMode;
   }
-  if (state.flush || newState.nbBlendModes != state.nbBlendModes || newState.blend != state.blend)
   {
     for (uint32_t i = 0; i < newState.nbBlendModes; ++i)
     {
@@ -785,6 +784,8 @@ GfxParamLayout::handle GfxDevice43::createLayout(std::span<GfxParamLayout::Entry
 
 void GfxDevice43::destroy(GfxParamLayout::handle h)
 {
+  if (!h)
+    return;
   resources.bindlessLayout.erase(h);
 }
 
@@ -848,6 +849,8 @@ void GfxDevice43::makeResident(BindlessHandleGl::handle hdl)
 
 void GfxDevice43::destroy(BindlessHandleGl::handle hdl)
 {
+  if (!hdl)
+    return;
   auto& bhdl = resources.bindlessHandles[hdl];
   if (bhdl.resident)
   {
@@ -893,22 +896,26 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
 
       if (features.ARB_bindless_texture == GlGfxSupport::eSupported)
       {
-        auto& combi = resources.texSamplers[tex.texture];
-        if (!combi.hdev)
+        BindlessHandleGl::handle hdev;
+        auto&                    texture = resources.images[tex.texture];
+        auto                     s       = texture.hsamplerMap.find(tex.sampler);
+        if (s == texture.hsamplerMap.end())
         {
-          auto& texture = resources.images[combi.image];
-          auto& sampler = resources.samplers[combi.sampler];
-          combi.hdev    = makeBindless(texture, sampler);
+          auto& sampler                    = resources.samplers[tex.sampler];
+          hdev                             = makeBindless(texture, sampler);
+          texture.hsamplerMap[tex.sampler] = hdev;
         }
-        auto& bhdl = resources.bindlessHandles[combi.hdev];
-        makeResident(combi.hdev);
-        resources.uboData.push(bhdl.hdev);
+        else
+          hdev = s->second;
+
+        auto& bhdl = resources.bindlessHandles[hdev];
+        makeResident(hdev);
+        resources.uboData.push(hdev);
       }
       else
       {
-        auto& combi   = resources.texSamplers[tex.texture];
-        auto& texture = resources.images[combi.image];
-        auto& sampler = resources.samplers[combi.sampler];
+        auto& texture = resources.images[tex.texture];
+        auto& sampler = resources.samplers[tex.sampler];
         gl43::glActiveTexture(gl::GL_TEXTURE0 + e.index);
         gl43::glBindTexture(texture.target, texture.glhandle);
         gl43::glBindSampler(e.index, sampler.glhandle);
@@ -1060,7 +1067,7 @@ GfxProgram::handle GfxDevice43::createProgram(std::span<std::string_view> code, 
   res.glhandle = gl43::glCreateProgram();
   for (uint32_t i = 0; i < GfxProgram::MaxStage; ++i)
   {
-    if (!(activeStages & (i << i)))
+    if (!(activeStages & (1 << i)))
       continue;
     sourceFiles.emplace_back((gl43::GLchar const*)version.c_str());
     sourceLengths.emplace_back((gl43::GLint)version.size());
@@ -1184,24 +1191,6 @@ void GfxDevice43::postProcessDraw(GfxProgram::handle program, GfxParamLayout::ha
   gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
   gl43::glDeleteFramebuffers(1, &resources.framebuffer.glhandle);
   resources.framebuffer.glhandle = 0;
-}
-
-GfxCombinedImage::handle GfxDevice43::createCombinedTexture(GfxImage::handle image, GfxSampler::handle sampler)
-{
-  auto  h     = resources.texSamplers.emplace();
-  auto& res   = resources.texSamplers.at(h);
-  res.image   = image;
-  res.sampler = sampler;
-  resources.images[res.image].ref++;
-  return GfxCombinedImage::handle(h);
-}
-void GfxDevice43::destroy(GfxCombinedImage::handle h)
-{
-  if (!h)
-    return;
-  auto& res = resources.texSamplers.at(h);
-  releaseTexture(res.image);
-  resources.texSamplers.erase(h);
 }
 
 void GfxDevice43::beginFrame()

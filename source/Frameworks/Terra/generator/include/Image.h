@@ -17,6 +17,7 @@ struct Image : public DataSource
   uint32_t                   width  = 0;
   uint32_t                   height = 0;
   ImageFormatEnum            format = ImageFormatEnum::eFloat;
+  GfxImage::handle           handle;
 
   struct rgba
   {
@@ -47,6 +48,15 @@ struct Image : public DataSource
   ~Image()
   {
     unload();
+    destroyHandle();
+  }
+
+  void destroyHandle();
+
+  GfxImage::handle getHandle()
+  {
+    upload();
+    return handle;
   }
 
   Type getType() const final
@@ -206,6 +216,8 @@ struct Image : public DataSource
     unload();
     load();
   }
+
+  void upload();
   // bool        isEnabled(Pipeline const&) const final;
   // bool        ensure(Pipeline&) final;
   // void     remove(HDataSource node) final;

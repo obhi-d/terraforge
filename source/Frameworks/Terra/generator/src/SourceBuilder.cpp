@@ -147,9 +147,9 @@ void SourceBuilderAdapter::sampleSSBO(std::string_view name, DataFormat df)
 
 void SourceBuilderAdapter::sampleParam(std::string_view name, DataFormat df)
 {
-  content += toGlsl(df.scalarSubType);
   if (df.preEval)
   {
+    content += toGlsl(df.scalarSubType);
     content += format(fmt::format(" l{0}_{1} = sample{0}(input);\n", name, id));
     params.emplace_back(format(fmt::format("l{0}_{1}", name, id)));
   }
@@ -177,13 +177,22 @@ void SourceBuilderAdapter::sampleParam(std::string_view name, DataFormat df)
 void SourceBuilderAdapter::sampleScalar(std::string_view name, DataFormat df)
 {
   auto type = toGlsl(df.scalarSubType);
-  content += type;
   if (df.preEval)
   {
+    content += type;
     content += format(fmt::format(" l{0}_{1} = sample{0}(input);\n", name, id));
     params.emplace_back(format(fmt::format("l{0}_{1}", name, id)));
   }
-  ubo += format(fmt::format("  {} bl_{}_{};\n", type, name, id));
+  if (id)
+  {
+    ubo += format(fmt::format("  {} u{}_{};\n", type, name, id));
+    options += fmt::format("#define {0} u{0}_{}\n", name, id);
+  }
+  else
+  {
+    ubo += format(fmt::format("  {} u{};\n", type, name));
+    options += fmt::format("#define {0} u{0}\n", name);
+  }
   GfxParamLayout::Entry entry;
   entry.index = ssboBinding++;
   switch (df.scalarSubType)
@@ -363,10 +372,18 @@ ShaderProgram SourceBuilderAdapter::finalize()
 }
 
 // ====================== SourceBuilderBindless ====================
-void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df)
+void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum type)
 {
-  ubo += format(fmt::format("  uint64_t bl_{}_{};\n", name, id));
-  options += fmt::format("#define {0}_{1} sampler2D(bl_{0}_{1})\n", name, id, toGlsl(df.imageFormat));
+  if (id)
+  {
+    ubo += format(fmt::format("  uint64_t u{}_{};\n", name, id));
+    options += fmt::format("#define {0}_{1} sampler2D(u{0}_{1})\n", name, id);
+  }
+  else
+  {
+    ubo += format(fmt::format("  uint64_t u{};\n", name));
+    options += fmt::format("#define {0} sampler2D(u{0})\n", name);
+  }
 
   GfxParamLayout::Entry entry;
   entry.type = GfxBindType::eTexture;
@@ -375,7 +392,7 @@ void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df)
 
 void SourceBuilderBindless::sampleImage(std::string_view name, DataFormat df)
 {
-  ubo += format(fmt::format("  uint64_t bl_{}_{};\n", name, id));
+  ubo += format(fmt::format("  uint64_t u{}_{};\n", name, id));
   options += fmt::format("#define {0}_{1} layout({2}) {3} image2D(bl_{0}_{1})\n", name, id, toGlsl(df.imageFormat),
                          qualifier(df.declType));
 

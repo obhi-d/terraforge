@@ -88,11 +88,14 @@ void TerraMainApp::scanScripts()
 {
   auto const& path    = getMediaPath();
   auto        effects = path / "scripts";
-  for (auto const& dir_entry : std::filesystem::directory_iterator{effects})
+  if (std::filesystem::exists(effects))
   {
-    auto filepath = dir_entry.path();
-    if (dir_entry.is_regular_file() && filepath.extension() == "gfx")
-      get().scanShader(filepath);
+    for (auto const& dir_entry : std::filesystem::directory_iterator{effects})
+    {
+      auto filepath = dir_entry.path();
+      if (dir_entry.is_regular_file() && filepath.extension() == "gfx")
+        get().scanShader(filepath);
+    }
   }
 }
 
@@ -179,11 +182,11 @@ void TerraMainApp::run()
   initalize();
   createContext();
   terra::get().init(
-    [this](std::string_view name) -> std::u8string_view
+    [this](std::string_view& name) -> std::u8string_view
     {
-      return getLocalizedString(name);
+      return localizeNamed(name);
     },
-    nullptr);
+    device);
 
   viewer.init(*this);
   reloadTheme();

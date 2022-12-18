@@ -25,6 +25,8 @@ inline gl::GLenum toGlFormat(ImageFormatEnum format)
     return gl::GLenum::GL_RG32F;
   case ImageFormatEnum::eRgba32f:
     return gl::GLenum::GL_RGBA32F;
+  case ImageFormatEnum::eDepth:
+    return gl::GLenum::GL_DEPTH_COMPONENT24;
   }
   return gl::GLenum::GL_NONE;
 }
@@ -43,6 +45,8 @@ inline gl::GLenum toGlDataFormat(ImageFormatEnum format)
     return gl::GLenum::GL_RGBA;
   case ImageFormatEnum::eRg32f:
     return gl::GLenum::GL_RG;
+  case ImageFormatEnum::eDepth:
+    return gl::GLenum::GL_DEPTH_COMPONENT;
   }
   return gl::GLenum::GL_NONE;
 }

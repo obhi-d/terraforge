@@ -31,7 +31,7 @@ struct ShaderMaterial
   ShaderMaterial(ShaderProgram const& prog) : program(prog) {}
 
   inline void pushBuffer(uint32_t index, GfxBuffer::handle buff, uint32_t offset, uint32_t size);
-  inline void pushTexture(uint32_t index, GfxCombinedImage::handle handle);
+  inline void pushTexture(uint32_t index, GfxImage::handle handle, GfxSampler::handle);
   inline void pushTexBuffer(uint32_t index, GfxBuffer::handle handle, ImageFormatEnum format);
   inline void pushImage(uint32_t index, GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered);
   inline void pushScalar(uint32_t index, int value);
@@ -103,9 +103,9 @@ struct SourceBuilderAdapter : SourceBuilder
   GfxProgram::handle makePostProcess(std::vector<std::string_view>&);
   GfxProgram::handle makeShaderProgram(std::vector<std::string_view>&);
 
-  virtual void sampleTexture(std::string_view name, DataFormat df)       = 0;
-  virtual void sampleImage(std::string_view name, DataFormat df)         = 0;
-  virtual void sampleTextureBuffer(std::string_view name, DataFormat df) = 0;
+  virtual void sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum) = 0;
+  virtual void sampleImage(std::string_view name, DataFormat df)                    = 0;
+  virtual void sampleTextureBuffer(std::string_view name, DataFormat df)            = 0;
 
   std::string format(std::string data);
 
@@ -137,7 +137,7 @@ struct SourceBuilderAdapter : SourceBuilder
 struct SourceBuilderBindless : SourceBuilderAdapter
 {
   SourceBuilderBindless(SourceType t) : SourceBuilderAdapter(t) {}
-  void sampleTexture(std::string_view name, DataFormat df) final;
+  void sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum) final;
   void sampleImage(std::string_view name, DataFormat df) final;
   void sampleTextureBuffer(std::string_view name, DataFormat df) final;
 };
@@ -145,7 +145,7 @@ struct SourceBuilderBindless : SourceBuilderAdapter
 struct SourceBuilderBindful : SourceBuilderAdapter
 {
   SourceBuilderBindful(SourceType t) : SourceBuilderAdapter(t) {}
-  void sampleTexture(std::string_view name, DataFormat df) final;
+  void sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum) final;
   void sampleImage(std::string_view name, DataFormat df) final;
   void sampleTextureBuffer(std::string_view name, DataFormat df) final;
 
@@ -164,11 +164,12 @@ inline void ShaderMaterial::pushBuffer(uint32_t index, GfxBuffer::handle buff, u
   index++;
 }
 
-inline void ShaderMaterial::pushTexture(uint32_t index, GfxCombinedImage::handle handle)
+inline void ShaderMaterial::pushTexture(uint32_t index, GfxImage::handle handle, GfxSampler::handle sampler)
 {
   assert(program.bindings[index] == SampledTexture::type);
   SampledTexture stex;
   stex.texture = handle;
+  stex.sampler = sampler;
   data.push(stex);
   index++;
 }

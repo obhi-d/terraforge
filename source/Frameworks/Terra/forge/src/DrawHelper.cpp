@@ -285,6 +285,10 @@ bool drawProp(TerraMainApp& app, Property<glm::ivec2>& prop, int min, int max)
 {
   return doProp(ImGui::DragInt2(prop.getDisplayName(), &prop.get().x, 1.f, min, max), prop);
 }
+bool drawProp(TerraMainApp& app, Property<glm::uvec2>& prop, int min, int max)
+{
+  return doProp(ImGui::DragInt2(prop.getDisplayName(), (int*)&prop.get().x, 1.f, min, max), prop);
+}
 bool drawProp(TerraMainApp& app, Property<int>& prop, int min, int max)
 {
   return doProp(ImGui::DragInt(prop.getDisplayName(), &prop.get(), 1.f, min, max), prop);
@@ -292,6 +296,14 @@ bool drawProp(TerraMainApp& app, Property<int>& prop, int min, int max)
 bool drawProp(TerraMainApp& app, Property<float>& prop, float min, float max, float step)
 {
   return doProp(ImGui::DragFloat(prop.getDisplayName(), &prop.get(), step, min, max), prop);
+}
+bool drawProp(TerraMainApp& app, Property<vec4>& prop, float min, float max, float step)
+{
+  return doProp(ImGui::DragFloat4(prop.getDisplayName(), &prop.get().x, step, min, max), prop);
+}
+bool drawProp(TerraMainApp& app, Property<uint32_t>& prop, int min, int max)
+{
+  return doProp(ImGui::DragInt(prop.getDisplayName(), (int*)&prop.get(), 1, (int)min, (int)max), prop);
 }
 bool drawProp(TerraMainApp& app, Property<bool>& prop)
 {
@@ -670,6 +682,7 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
     return data.endEdits(true);
   return data.endEdits(false);
 }
+
 void popNormalFont()
 {
   ImGui::PopFont();
@@ -696,11 +709,11 @@ void setNormalFont()
 
 bool drawTitlebarButton(DisplayInfo const& text, float size)
 {
-  auto const& theme  = app().getTheme();
-  auto        pos    = ImGui::GetCursorPos();
-  auto        wpos   = ImGui::GetCursorScreenPos();
+  auto const& theme = app().getTheme();
+  auto        pos   = ImGui::GetCursorPos();
+  auto        wpos  = ImGui::GetCursorScreenPos();
   bool        hover = ImGui::IsMouseHoveringRect(wpos, ImVec2(wpos.x + size, wpos.y + size));
-  
+
   if (hover)
   {
     if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
@@ -710,7 +723,7 @@ bool drawTitlebarButton(DisplayInfo const& text, float size)
   }
   ImGui::SetCursorPos(pos);
   ImGui::Text(text.getName(), ImVec2(size + 4, size + 4));
-   
+
   if (hover)
   {
     doTooltip(text, ImGuiHoveredFlags_AnyWindow);
@@ -724,14 +737,14 @@ bool drawTitlebarButton(DisplayInfo const& text, float size)
 WindowAction drawTitleMenu(MenuData& state)
 {
   WindowAction act            = WindowAction::eNone;
-  float       width        = ImGui::GetWindowWidth();
-  float       fontSize     = ImGui::GetFontSize();
-  auto const& framePadding = ImGui::GetStyle().FramePadding;
-  bool        canBeMaximized = (state.canBeMaximized && !ImGui::IsWindowDocked()) || state.isMain;
-  float       size           = ((state.delegates.size() + (canBeMaximized ? 3 : 2)) * (fontSize + framePadding.x));
-  float       titlebarHeight = fontSize + framePadding.y * 2.0f;
-  auto        cursorPos      = ImGui::GetCursorPos();
-  auto        pos            = ImGui::GetWindowPos();
+  float        width          = ImGui::GetWindowWidth();
+  float        fontSize       = ImGui::GetFontSize();
+  auto const&  framePadding   = ImGui::GetStyle().FramePadding;
+  bool         canBeMaximized = (state.canBeMaximized && !ImGui::IsWindowDocked()) || state.isMain;
+  float        size           = ((state.delegates.size() + (canBeMaximized ? 3 : 2)) * (fontSize + framePadding.x));
+  float        titlebarHeight = fontSize + framePadding.y * 2.0f;
+  auto         cursorPos      = ImGui::GetCursorPos();
+  auto         pos            = ImGui::GetWindowPos();
   ImGui::PushClipRect(pos, ImVec2(pos.x + width, pos.y + titlebarHeight), false);
   size = width - size;
   for (auto& d : state.delegates)
@@ -790,7 +803,7 @@ WindowAction drawTitleMenu(MenuData& state)
   ImGui::SetCursorPosX(size);
   ImGui::SetCursorPosY(framePadding.y);
   static DisplayInfo info(ICON_FA_XMARK, "close.help"_ls, "close.tip"_ls);
-  if( drawTitlebarButton(info, fontSize) )
+  if (drawTitlebarButton(info, fontSize))
     act = WindowAction::eClose;
   ImGui::PopClipRect();
   ImGui::SetCursorPos(cursorPos);

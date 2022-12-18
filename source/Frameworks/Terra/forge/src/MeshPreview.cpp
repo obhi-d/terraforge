@@ -50,10 +50,6 @@ void MeshPreview::deinit(TerraMainApp& app)
   app.getDevice()->destroy(shadowMapImage);
   app.getDevice()->destroy(heights);
   app.getDevice()->destroy(layerContrib);
-  app.getDevice()->destroy(shadowMap);
-  app.getDevice()->destroy(heightMap);
-  app.getDevice()->destroy(layerColorMap);
-  app.getDevice()->destroy(layerContribMap);
   app.getDevice()->destroy(layout);
   app.getDevice()->destroy(heightSampler);
   app.getDevice()->destroy(layerSampler);
@@ -187,12 +183,9 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
     }
   }
 
-  app.getDevice()->destroy(layerColorMap);
   app.getDevice()->destroy(terrainColors);
-
   terrainColors = app.getDevice()->create1DImageArray(GfxStorageClass::eStaticDeviceReadonly, Width, 4,
                                                       ImageFormatEnum::eRgba8, (ubyte_t const*)layerColors.data());
-  layerColorMap = app.getDevice()->createCombinedTexture(terrainColors, layerSampler);
 }
 
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
@@ -218,18 +211,10 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
     llayer = nullImage;
 
   if (lheight != heights)
-  {
     heights = lheight;
-    dev.destroy(heightMap);
-    heightMap = dev.createCombinedTexture(heights, heightSampler);
-  }
 
   if (llayer != layerContrib)
-  {
     layerContrib = llayer;
-    dev.destroy(layerContribMap);
-    layerContribMap = dev.createCombinedTexture(layerContrib, layerSampler);
-  }
 
   state.blend[0].mode   = BlendMode::eDisabled;
   state.depthTest       = camera.isReverseZ() ? DepthTestMode::eGreaterEq : DepthTestMode::eLessEq;
@@ -298,7 +283,7 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
     shadowMat.emplace(shadowProg);
 
   shadowMat->pushScalar(0, camera.getLightViewProj(sunRotation.get().toDir(), box));
-  shadowMat->pushTexture(1, heightMap);
+  shadowMat->pushTexture(1, heights, heightSampler);
   shadowMat->pushScalar(2, tileSize.x);
   shadowMat->pushScalar(3, tileSize.y);
   shadowMat->pushScalar(4, 1.f / (float)tileSize.x);
@@ -313,6 +298,7 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
 void MeshPreview::buildShadowMapProgram()
 {
   auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL, SourceType::eShaderProgram);
+  builder->pushExtension("#extension GL_ARB_gpu_shader_int64 : require");
   builder->sampleScalar("shadow_view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
   builder->sampleParam("heights",
                        DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eTexture));
@@ -338,10 +324,10 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   terrainMat->pushScalar(1, camera.getViewProj());
   terrainMat->pushScalar(2, layerWeights.get());
   terrainMat->pushScalar(3, vec4(sunRotation.get().toDir(), sunIntensity.get()));
-  terrainMat->pushTexture(4, heightMap);
-  terrainMat->pushTexture(5, layerColorMap);
-  terrainMat->pushTexture(6, shadowMap);
-  terrainMat->pushTexture(7, layerContribMap);
+  terrainMat->pushTexture(4, heights, heightSampler);
+  terrainMat->pushTexture(5, terrainColors, layerSampler);
+  terrainMat->pushTexture(6, shadowMapImage, shadowSampler);
+  terrainMat->pushTexture(7, layerContrib, layerSampler);
   terrainMat->pushScalar(8, tileSize.x);
   terrainMat->pushScalar(9, tileSize.y);
   terrainMat->pushScalar(10, 1.f / (float)tileSize.x);
@@ -355,6 +341,7 @@ void MeshPreview::buildTerrainDrawProgram()
   auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL, SourceType::eShaderProgram);
   shadowProgOptions.setOption((uint32_t)shadowMapResolution.get());
 
+  builder->pushExtension("#extension GL_ARB_gpu_shader_int64 : require");
   builder->pushOptions(shadowProgOptions);
   builder->sampleScalar("shadow_view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
   builder->sampleScalar("view_projection", DataFormat(DataType::eMat4, DataType::eMat4));

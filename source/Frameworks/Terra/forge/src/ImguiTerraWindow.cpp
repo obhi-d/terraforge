@@ -54,8 +54,8 @@ void ImguiTerraWindow::init(TerraMainApp& app)
   nodeEditor.init(app);
   meshPreview.init(app);
   SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
-  settingName                   = app.getLocalizedString("@Settings");
-  mainWindowName                = app.getLocalizedString("@Forge");
+  settingName                   = app.localize("Settings");
+  mainWindowName                = app.localize("Forge");
   meshDrawData.instance         = &app;
   previewWindow.canBeMaximized  = true;
   previewWindow.isMain          = false;
@@ -171,22 +171,23 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
       // Settings
       float item_height = ImGui::GetTextLineHeightWithSpacing();
       {
-        static std::u8string_view header = app.getLocalizedString("@genParams");
+        static std::u8string_view header = app.localize("genParams");
         ImGui::Text("%s", (const char*)header.data());
         ImGui::Separator();
         regenerate |= drawProp(app, settings.frequency, 0, std::numeric_limits<float>::max(), 0.01f);
         regenerate |= drawProp(app, settings.seed, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
       }
       {
-        static std::u8string_view header = app.getLocalizedString("@exportParams");
+        static std::u8string_view header = app.localize("exportParams");
         ImGui::Text("%s", (const char*)header.data());
         ImGui::Separator();
         regenerate |= drawProp(app, settings.tileSize, 4, 8129);
         regenerate |= drawProp(app, settings.tileOffset, 1, std::numeric_limits<int>::max());
-        regenerate |= drawProp(app, settings.nbPreviewTiles, 1, 8);
+        regenerate |=
+          drawProp(app, settings.previewTile, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
       }
       {
-        static std::u8string_view header = app.getLocalizedString("@previewParams");
+        static std::u8string_view header = app.localize("previewParams");
         ImGui::Text("%s", (const char*)header.data());
         ImGui::Separator();
         drawProp(app, meshPreview.sunColor);
@@ -194,11 +195,16 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         drawProp(app, meshPreview.meshTint);
         drawProp(app, meshPreview.heightMultiplier, std::numeric_limits<float>::min(),
                  std::numeric_limits<float>::max(), 0.05f);
-        drawProp(app, meshPreview.heightTexPath);
+        drawProp(app, meshPreview.water);
+        drawProp(app, meshPreview.vegetation);
+        drawProp(app, meshPreview.rocks);
+        drawProp(app, meshPreview.terrain);
+        drawProp(app, meshPreview.layerWeights, 0.0f, 1.0f, .01f);
+        drawProp(app, meshPreview.shadowMapResolution, 0, 3);
         drawProp(app, meshPreview.meshStyle, 1.0f, std::numeric_limits<float>::max(), 0.5f);
       }
       {
-        static std::u8string_view header = app.getLocalizedString("@camera");
+        static std::u8string_view header = app.localize("camera");
         ImGui::Text("%s", (const char*)header.data());
         ImGui::Separator();
         auto& camera = meshPreview.getCamera();
@@ -208,10 +214,10 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         drawProp(app, camera.distanceFactor, 0.01f, 1000000.f, .5f);
       }
       {
-          static std::u8string_view header = app.getLocalizedString("@nodeParams");
-          ImGui::Text("%s", (const char*)header.data());
-          ImGui::Separator();      
-          nodeEditor.drawNodeSettings(app, backend);
+        static std::u8string_view header = app.localize("nodeParams");
+        ImGui::Text("%s", (const char*)header.data());
+        ImGui::Separator();
+        nodeEditor.drawNodeSettings(app, backend);
       }
       popNormalFont();
     }
@@ -221,8 +227,8 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
   if (regenerate)
   {
     // validate settings
-    settings.tileSize.get().x = std::clamp(settings.tileSize.get().x, 2, 8129);
-    settings.tileSize.get().y = std::clamp(settings.tileSize.get().y, 2, 8129);
+    settings.tileSize.get().x = std::clamp<uint32_t>(settings.tileSize.get().x, 2, 8129);
+    settings.tileSize.get().y = std::clamp<uint32_t>(settings.tileSize.get().y, 2, 8129);
     app.regenWithActor({});
   }
 }

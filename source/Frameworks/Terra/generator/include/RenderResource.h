@@ -48,8 +48,8 @@ enum class DepthClear : uint8_t
 
 struct ImageSampling
 {
-  SamplingType sampling = SamplingType::eLinear;
-  Tiling       tiling = Tiling::eRepeat;
+  SamplingType  sampling = SamplingType::eLinear;
+  Tiling        tiling   = Tiling::eRepeat;
   SampleCompare compare  = SampleCompare::eNone;
 
   ImageSampling() = default;
@@ -117,11 +117,6 @@ struct GfxImage
 struct GfxSampler
 {
   using handle = terra::handle<GfxSampler>;
-};
-
-struct GfxCombinedImage
-{
-  using handle = terra::handle<GfxCombinedImage>;
 };
 
 enum class ShaderLang
@@ -203,7 +198,8 @@ struct StorageBuffer
 struct SampledTexture
 {
   static inline constexpr GfxBindType type = GfxBindType::eTexture;
-  GfxCombinedImage::handle            texture;
+  GfxImage::handle                    texture;
+  GfxSampler::handle                  sampler;
 };
 
 struct TextureBuffer

@@ -285,6 +285,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
   {
     auto const& code = gpuMeta.getCode(pass);
 
+    gpuPipe->passes[pass].touch();
     auto     program   = ShaderProgramInstance(gpuPipe->passes[pass], pipe);
     uint32_t optionIdx = 0;
     // check if any conditions have changed
@@ -431,7 +432,8 @@ void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInst
         }
       }
     }
-    program.pushOutput(ndat.outputs[i], meta.outputs[i].format);
+
+    program.pushOutput(ndat.outputs[i], meta.outputs[i].clear, meta.outputs[i].clearValue);
   }
 }
 

@@ -26,32 +26,32 @@ void NodeEditor::init(TerraMainApp& app)
       auto it = std::find_if(names.begin(), names.end(),
                              [&meta](auto const& entry)
                              {
-                               return entry.first == meta.category;
+                               return entry.first == meta.displayInfo.category;
                              });
       if (it != names.end())
         it->second.emplace_back(std::cref(meta));
       else
       {
         names.emplace_back();
-        names.back().first = meta.category;
+        names.back().first = meta.displayInfo.category;
         names.back().second.emplace_back(std::cref(meta));
       }
     });
 
   cachedMetas = std::move(names);
 
-  importNode         = app.getLocalizedString("@Editor.ImportNode");
-  nodeEditor         = app.getLocalizedString("@Editor.Name");
-  pasteNode          = app.getLocalizedString("@Editor.PasteNode");
-  toggleSelectedNode = app.getLocalizedString("@Editor.ToggleSelectedNode");
-  tipIncompatFormat  = app.getLocalizedString("@Editor.TipIncompatFormat");
-  tipIncompatType    = app.getLocalizedString("@Editor.TipIncompatType");
-  tipLink            = app.getLocalizedString("@Editor.TipLink");
-  tipCreateNode      = app.getLocalizedString("@Editor.TipCreateNode");
-  actions            = app.getLocalizedString("@Editor.Actions");
-  dataNode           = app.getLocalizedString("@Editor.DataNode");
-  curveNode          = app.getLocalizedString("@curveData");
-  imageNode          = app.getLocalizedString("@imageData");
+  importNode         = app.localize("Editor.ImportNode");
+  nodeEditor         = app.localize("Editor.Name");
+  pasteNode          = app.localize("Editor.PasteNode");
+  toggleSelectedNode = app.localize("Editor.ToggleSelectedNode");
+  tipIncompatFormat  = app.localize("Editor.TipIncompatFormat");
+  tipIncompatType    = app.localize("Editor.TipIncompatType");
+  tipLink            = app.localize("Editor.TipLink");
+  tipCreateNode      = app.localize("Editor.TipCreateNode");
+  actions            = app.localize("Editor.Actions");
+  dataNode           = app.localize("Editor.DataNode");
+  curveNode          = app.localize("curveData");
+  imageNode          = app.localize("imageData");
   imne::Config config;
   config.SettingsFile = "terra-nodes.json";
   editorContext       = imne::CreateEditor(&config);
@@ -171,6 +171,164 @@ bool NodeEditor::drawNodeEditor(TerraMainApp& app, ImguiBackend& backend)
     nodeRegenRequired = false;
   }
   return true;
+}
+
+void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const& def, Node& node,
+                            uint32_t param)
+{
+  auto const& style = app.getTheme();
+  auto        v     = std::get<ScalarValue>(node.param(param));
+  bool        set   = false;
+  switch (def.format.scalarSubType)
+  {
+  case DataTypeEnum::eInt2:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt2(def.displayInfo.getName(), &v.ivalue2.x, 1.0f, def.values[ParameterMeta::eMin].ival,
+                        def.values[ParameterMeta::eMax].ival))
+      set = true;
+  }
+  break;
+  case DataTypeEnum::eInt:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth);
+    if (ImGui::DragInt(def.displayInfo.getName(), &v.ivalue, 1.0f, def.values[ParameterMeta::eMin].ival,
+                       def.values[ParameterMeta::eMax].ival))
+      set = true;
+  }
+  break;
+  case DataTypeEnum::eFloat2:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.values[ParameterMeta::eStep].fval,
+                          def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
+      set = true;
+  }
+  break;
+  case DataTypeEnum::eFloat:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth);
+    if (ImGui::DragFloat(def.displayInfo.getName(), &v.value, def.values[ParameterMeta::eStep].fval,
+                         def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
+      set = true;
+  }
+  break;
+  case DataTypeEnum::eBool:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth);
+    if (ImGui::Checkbox(def.displayInfo.getName(), &v.bvalue))
+      set = true;
+  }
+  }
+  if (set)
+    node.param(param, v);
+}
+
+void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const& def, Node& node,
+                               uint32_t i)
+{
+  Parameter param = node.param(i);
+  bool      isSrc = std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source);
+  switch (def.format.type)
+  {
+  case DataTypeEnum::eFloat:
+  case DataTypeEnum::eFloat2:
+  case DataTypeEnum::eInt:
+  case DataTypeEnum::eInt2:
+  case DataTypeEnum::eBool:
+  {
+    drawScalar(app, backend, def, node, i);
+  }
+  break;
+  case DataTypeEnum::eEnum:
+    // draw combo
+    {
+      auto sv = std::get<ScalarValue>(node.param(i));
+      if (ImGui::BeginCombo(def.displayInfo.getName(), def.enumDisplayInfo[sv.uvalue].getName()))
+      {
+        for (uint32_t e = 0; e < def.maxEnum; ++e)
+        {
+          bool selected = (e == sv.uvalue);
+          if (ImGui::Selectable(def.enumDisplayInfo[i].getName(), selected))
+          {
+            if (i != sv.uvalue)
+            {
+              sv.uvalue = e;
+              node.param(e, sv);
+            }
+          }
+          if (selected)
+            ImGui::SetItemDefaultFocus();
+        }
+      }
+    }
+    break;
+  case DataTypeEnum::eCurveData:
+
+    if (isSrc)
+    {
+      ImGui::TextUnformatted(ICON_FA_BEZIER_CURVE);
+      ImGui::SameLine();
+      ImGui::TextUnformatted(def.displayInfo.getName());
+      auto& cd = get().get<CurveData>(std::get<Source>(param).source);
+      if (drawCurveEditor(app, cd))
+        node.updateVersion();
+    }
+
+    break;
+  case DataTypeEnum::eInput:
+    break;
+  case DataTypeEnum::ePostProcess:
+    break;
+  case DataTypeEnum::eBuffer:
+    if (!isSrc)
+      drawScalar(app, backend, def, node, i);
+    break;
+  case DataTypeEnum::eImage:
+  {
+    auto& id = get().get<Image>(std::get<Source>(param).source);
+    if (ImGui::Button(ICON_FA_FILE_IMAGE))
+    {
+      changeImage(id.getSelf());
+    }
+    static float constexpr ThumbnailSize = 200.f;
+    ImGui::SameLine();
+    ImGui::TextUnformatted(def.displayInfo.getName());
+    auto h = id.getHandle();
+    if (h)
+    {
+      ImGui::Image((ImTextureID)(std::uintptr_t)h.reserved, ImVec2{ThumbnailSize, ThumbnailSize});
+    }
+    break;
+  }
+  break;
+  }
+}
+
+void NodeEditor::drawNodeSettings(TerraMainApp& app, ImguiBackend& backend)
+{
+  if (previewNode && DataSource::isValid(previewNode))
+  {
+    auto&              node = get().get<Node>(previewNode);
+    std::u8string_view category;
+    bool               skip = false;
+    for (uint32_t i = 0, end = node.getNumParams(); i < end; ++i)
+    {
+      auto  param = node.meta.categorySorted[i];
+      auto& def   = node.meta.parameterDef[param];
+      if (node.meta.parameterDef[i].displayInfo.category != category)
+      {
+        if (!category.empty())
+          ImGui::TreePop();
+        category = node.meta.parameterDef[i].displayInfo.category;
+        skip     = ImGui::TreeNode((const char*)category.data());
+      }
+      if (!skip)
+        drawParameter(app, backend, def, node, param);
+    }
+    if (!category.empty())
+      ImGui::TreePop();
+  }
 }
 
 bool NodeEditor::acceptsAction()
@@ -428,7 +586,7 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
   links.for_each(
     [&](auto& link)
     {
-      imne::Link(link.id, link.start, link.end, link.color, theme.linkThickness);
+      imne::Link(link.id, link.start, link.end, toImgui(link.color), theme.linkThickness);
       return true;
     });
 
@@ -670,8 +828,7 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imn
   {
     for (uint32_t i = 0, end = (uint32_t)node.meta.outputs.size(); i < end; ++i)
     {
-      if (node.getFormat(i).isCompatible(
-          static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second - 1].format))
+      if (node.getFormat(i).isCompatible(static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second - 1].format))
       {
         createLink(col, uintpair(id, indexToOutput(i)), srcPin);
       }

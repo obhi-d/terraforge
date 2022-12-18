@@ -63,10 +63,8 @@ public:
                                       std::span<GfxParamLayout::Output const> outputs) override;
   void                   destroy(GfxParamLayout::handle) override;
   void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout, Blob const& data) override;
-  GfxProgram::handle       createProgram(std::span<std::string_view> code, uint32_t activeStages) override;
-  GfxProgram::handle       createFullscreenProgram(std::span<std::string_view> code) override;
-  GfxCombinedImage::handle createCombinedTexture(GfxImage::handle image, GfxSampler::handle sampler) override;
-  void                     destroy(GfxCombinedImage::handle) override;
+  GfxProgram::handle createProgram(std::span<std::string_view> code, uint32_t activeStages) override;
+  GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code) override;
 
   Caps getCaps() const
   {

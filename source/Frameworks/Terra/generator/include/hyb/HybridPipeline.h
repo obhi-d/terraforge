@@ -46,7 +46,9 @@ public:
   void describeBuffer(HybridBuffer::handle, HDataSource owner, uint32_t size, ImageFormatEnum format);
   void describeImage(HybridBuffer::handle, HDataSource owner, uint32_t width, uint32_t height, ImageFormatEnum format);
 
-  GfxBuffer::handle        readBuffer(HybridBuffer::handle);
+  using BufferAndSize = std::pair<GfxBuffer::handle, uint32_t>;
+  GfxSampler::handle       getSampler(SamplerParamEnum sampler);
+  BufferAndSize            readBuffer(HybridBuffer::handle);
   GfxImage::handle         readImage(HybridBuffer::handle);
   std::span<ubyte_t const> readBufferData(HybridBuffer::handle);
   std::span<ubyte_t const> readImageData(HybridBuffer::handle);
@@ -73,6 +75,8 @@ private:
 
   using UseSet   = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
   using OrderSet = std::unordered_set<HDataSource, HHashSource>;
+
+  std::array<GfxSampler::handle, SamplerParam::kCount> samplers;
 
   HybridBuffer::handle            heights_;
   HybridBuffer::handle            layerContrib_;

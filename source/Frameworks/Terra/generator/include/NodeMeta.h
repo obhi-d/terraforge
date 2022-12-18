@@ -374,6 +374,7 @@ public:
 
   std::vector<ParameterMeta> parameterDef;
 
+  std::vector<uint32_t> categorySorted;
   std::vector<uint32_t> autoParams;
   std::vector<uint32_t> autoOutputs;
 

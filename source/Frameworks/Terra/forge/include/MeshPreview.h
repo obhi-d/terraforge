@@ -33,9 +33,9 @@ public:
 
   void createDeviceObjects(TerraMainApp const&, GfxDevice43&);
 
-  Property<Color> sunColor         = Property<Color>("@sunColor", 112, 82, 111, 255);
+  Property<Color> sunColor         = Property<Color>("@sunColor", (uint8_t)112, 82, 111, 255);
   Property<float> sunIntensity     = Property<float>("@sunIntensity", 0.4f);
-  Property<Color> meshTint         = Property<Color>("@meshTint", 111, 111, 111, 255);
+  Property<Color> meshTint         = Property<Color>("@meshTint", (uint8_t)111, 111, 111, 255);
   Property<float> heightMultiplier = Property<float>("@heightMultiplier", 20.0f);
   // in this order: water,grass,rock,default
   Property<TextureFile> water               = Property<TextureFile>("@waterColor", "images/water_color.png");
@@ -73,10 +73,6 @@ private:
   GfxImage::handle              shadowMapImage;
   GfxImage::handle              heights;
   GfxImage::handle              layerContrib;
-  GfxCombinedImage::handle      shadowMap;
-  GfxCombinedImage::handle      heightMap;
-  GfxCombinedImage::handle      layerColorMap;
-  GfxCombinedImage::handle      layerContribMap;
   GfxMesh::handle               layout;
   GfxSampler::handle            heightSampler;
   GfxSampler::handle            layerSampler;

@@ -82,5 +82,33 @@
       "Scalar",
       "DepthOutput"
     ]
+  },
+  {
+    "name": "SamplerParam",
+    "namespace": "terra",
+    "type": "uint8_t",
+    "usage": "enum",
+    "default": "None",
+    "stringModifier": "lower",
+    "values": [
+      "None",
+      "LinearWrap",
+      "NearestWrap",
+      "TrilinearWrap"
+    ]
+  },
+  {
+    "name": "SamplerType",
+    "namespace": "terra",
+    "type": "uint8_t",
+    "usage": "enum",
+    "default": "None",
+    "stringModifier": "lowerCamelCase",
+    "values": [
+      "Sampler1D",
+      "Sampler2D",
+      "Sampler3D",
+      "ShadowSampler2D"
+    ]
   }
 ]

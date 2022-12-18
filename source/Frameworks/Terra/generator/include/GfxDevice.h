@@ -47,9 +47,6 @@ struct GfxDevice
   virtual GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code)                  = 0;
   virtual GfxProgram::handle createProgram(std::span<std::string_view> code, uint32_t activeStages)     = 0;
   virtual void               destroy(GfxProgram::handle)                                                = 0;
-  /// @brief Create a combined sampler
-  virtual GfxCombinedImage::handle createCombinedTexture(GfxImage::handle image, GfxSampler::handle sampler) = 0;
-  virtual void                     destroy(GfxCombinedImage::handle)                                         = 0;
   /// @brief Create a descriptor set layout
   /// @param types handle types
   /// @return DescriptorSet handle
@@ -106,7 +103,7 @@ struct GfxDevice
   virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material)                    = 0;
   virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data) = 0;
   virtual void flushStates()                                                                       = 0;
-  virtual void clearBackbuffer(glm::vec4 color, DepthClear depth = DepthClear::eNone)                     = 0;
+  virtual void clearBackbuffer(glm::vec4 color, DepthClear depth = DepthClear::eNone)              = 0;
   virtual void setState(GfxState const&)                                                           = 0;
   virtual void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout,
                                Blob const& data)                                                   = 0;

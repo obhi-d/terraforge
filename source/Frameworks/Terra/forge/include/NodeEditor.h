@@ -88,7 +88,10 @@ public:
     return previewNodeStyle;
   }
 
- private:
+private:
+  void drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const&, Node&, uint32_t param);
+  void drawParameter(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const&, Node&, uint32_t param);
+
   void createLink(ImThemeColors const&, uintpair start, uintpair end);
   void deleteLink(imne::LinkId);
   void deleteNode(imne::NodeId);
@@ -128,7 +131,7 @@ public:
   {
     Action      action;
     ImVec2      position;
-    HDataSource    node;
+    HDataSource node;
     imne::PinId linkTo;
   };
 
@@ -136,16 +139,16 @@ public:
   ActionData pendingAction;
 
   HDataSource previewNode;
-  uint32_t previewNodeVersion = 0;
-  uint32_t previewNodeStyle   = 0;
+  uint32_t    previewNodeVersion = 0;
+  uint32_t    previewNodeStyle   = 0;
 
   using CategoryMap = std::vector<std::pair<std::u8string_view, std::vector<std::reference_wrapper<NodeMeta const>>>>;
-  using NodeList = std::vector<std::unique_ptr<DrawableNode>>;
+  using NodeList    = std::vector<std::unique_ptr<DrawableNode>>;
 
-  CategoryMap               cachedMetas;
-  NodeList                  drawableNodes;
-  table<Link>               links;
-  std::string               lastImagePath;
+  CategoryMap        cachedMetas;
+  NodeList           drawableNodes;
+  table<Link>        links;
+  std::string        lastImagePath;
   std::u8string_view tipIncompatFormat;
   std::u8string_view tipIncompatType;
   std::u8string_view tipLink;

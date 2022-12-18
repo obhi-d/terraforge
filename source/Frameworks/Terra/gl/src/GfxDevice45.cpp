@@ -58,7 +58,8 @@ GfxImage::handle GfxDevice45::create2DImage(GfxStorageClass storage, uint32_t wi
   gl45::glBindTexture(gl45::GL_TEXTURE_2D, res.glhandle);
 
   gl45::glTextureStorage2D(res.glhandle, 1, toGlFormat(format), width, height);
-  gl45::glTextureSubImage2D(res.glhandle, 0, 0, 0, width, height, toGlDataFormat(format), toGlType(format), data);
+  if (data)
+    gl45::glTextureSubImage2D(res.glhandle, 0, 0, 0, width, height, toGlDataFormat(format), toGlType(format), data);
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_R, toGl(swizzle.r));
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));

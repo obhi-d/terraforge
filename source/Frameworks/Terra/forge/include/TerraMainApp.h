@@ -39,7 +39,7 @@ public:
     stringTable[name] = value;
   }
 
-  std::u8string_view getLocalizedString(std::string_view& name)
+  std::u8string_view localizeNamed(std::string_view& name)
   {
     auto it = stringTable.find(std::string(name));
     if (it != stringTable.end())
@@ -51,6 +51,11 @@ public:
     auto iit = stringTable.emplace(name, std::u8string((char8_t*)name.data(), (char8_t*)name.data() + name.length()));
     name     = iit.first->first;
     return iit.first->second;
+  }
+
+  std::u8string_view localize(std::string_view name)
+  {
+    return localizeNamed(name);
   }
 
   std::string_view getIcon(uint32_t icon) const

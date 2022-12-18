@@ -3,6 +3,7 @@
 #include "Table.h"
 #include <acl/dynamic_array.hpp>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace terra
 {
@@ -38,6 +39,8 @@ struct GfxBufferGl : GfxBuffer
 
 struct GfxImageGl : GfxImage
 {
+  using BindlessSamplerMap = std::unordered_map<GfxSampler::handle, BindlessHandleGl::handle, HandleHash<GfxSampler>>;
+
   gl::GLuint               glhandle = {};
   gl::GLenum               target   = gl::GL_TEXTURE_2D;
   GfxStorageClass          storage;
@@ -48,6 +51,8 @@ struct GfxImageGl : GfxImage
   BindlessHandleGl::handle hdev = 0;
   BindlessHandleGl::handle himg = 0;
   uint32_t                 ref  = 0;
+
+  BindlessSamplerMap hsamplerMap;
 };
 
 struct GfxSamplerGl : GfxSampler
@@ -95,13 +100,6 @@ struct GfxBindlessLayoutGl : GfxParamLayout
   uint32_t                  nbOutput = 0;
 };
 
-struct GfxCombinedImageGl : GfxCombinedImage
-{
-  GfxImage::handle         image;
-  GfxSampler::handle       sampler;
-  BindlessHandleGl::handle hdev = 0;
-};
-
 struct GfxFramebufferGl
 {
   gl::GLuint glhandle;
@@ -115,10 +113,9 @@ struct GfxResources
 
   GfxFramebufferGl framebuffer;
 
-  table<GfxBufferGl>        buffers;
-  table<GfxImageGl>         images;
-  table<GfxSamplerGl>       samplers;
-  table<GfxCombinedImageGl> texSamplers;
+  table<GfxBufferGl>  buffers;
+  table<GfxImageGl>   images;
+  table<GfxSamplerGl> samplers;
 
   table<GfxDescriptorSetLayoutGl> descriptorSetLayouts;
   table<GfxDescriptorSetGl>       descriptorSets;

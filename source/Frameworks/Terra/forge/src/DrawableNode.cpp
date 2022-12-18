@@ -162,51 +162,6 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
   }
 }
 /*
-bool drawScalar(NodeStyle const& style, ParameterMeta const& def, DataTypeEnum type, ScalarValue& v)
-{
-  switch (type)
-  {
-  case DataTypeEnum::eInt2:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt2(def.displayInfo.getName(), &v.ivalue2.x, 1.0f, def.values[ParameterMeta::eMin].ival,
-                        def.values[ParameterMeta::eMax].ival))
-      return true;
-  }
-  break;
-  case DataTypeEnum::eInt:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragInt(def.displayInfo.getName(), &v.ivalue, 1.0f, def.values[ParameterMeta::eMin].ival,
-                       def.values[ParameterMeta::eMax].ival))
-      return true;
-  }
-  break;
-  case DataTypeEnum::eFloat2:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.values[ParameterMeta::eStep].fval,
-                          def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
-      return true;
-  }
-  break;
-  case DataTypeEnum::eFloat:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragFloat(def.displayInfo.getName(), &v.value, def.values[ParameterMeta::eStep].fval,
-                         def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
-      return true;
-  }
-  break;
-  case DataTypeEnum::eBool:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::Checkbox(def.displayInfo.getName(), &v.bvalue))
-      return true;
-  }
-  }
-  return false;
-}
 
 void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& node, uint32_t i)
 {

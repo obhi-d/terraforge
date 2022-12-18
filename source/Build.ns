@@ -10,6 +10,7 @@ frameworks_dir : "Frameworks";
 manifests_dir  : "media/Plugins";
 plugin_dir     : "media/Plugins/bin"; // plugins will be placed in Plugins/bin, manifests will be placed in 
 verbose        : true;
+style          : lower_camel_case;
 
 preset linux-asan
 {

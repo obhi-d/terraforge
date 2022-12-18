@@ -72,11 +72,11 @@ NodeCmdExecute(param, builder, state, cmd)
       }
       else if (entry.name() == "format")
       {
-        meta.format.imageFormat = ImageFormat::FromString(entry.value());
+        meta.format.imageFormat = ImageFormat::fromString(entry.value());
       }
       else if (entry.name() == "semantic")
       {
-        meta.format.semantic = Semantic::FromString(entry.value());
+        meta.format.semantic = Semantic::fromString(entry.value());
       }
       else if (entry.name() == "min")
       {
@@ -150,11 +150,11 @@ NodeCmdExecute(output, builder, state, cmd)
       auto const& entry = std::get<neo::single>(p);
       if (entry.name() == "type")
       {
-        output.format.type = DataType::FromString(entry.value());
+        output.format.type = DataType::fromString(entry.value());
       }
       else if (entry.name() == "decltype")
       {
-        output.format.declType = ParamDeclType::FromString(entry.value());
+        output.format.declType = ParamDeclType::fromString(entry.value());
       }
       else if (entry.name() == "preeval")
       {
@@ -162,11 +162,11 @@ NodeCmdExecute(output, builder, state, cmd)
       }
       else if (entry.name() == "format")
       {
-        output.format.imageFormat = ImageFormat::FromString(entry.value());
+        output.format.imageFormat = ImageFormat::fromString(entry.value());
       }
       else if (entry.name() == "semantic")
       {
-        output.format.semantic = Semantic::FromString(entry.value());
+        output.format.semantic = Semantic::fromString(entry.value());
       }
       else if (entry.name() == "clear")
       {
@@ -183,8 +183,8 @@ NodeCmdExecute(output, builder, state, cmd)
       if (entry.name() == "type")
       {
         auto const& values          = entry.value();
-        output.format.type          = DataType::FromString(std::get<neo::single>(values[0]).value());
-        output.format.scalarSubType = DataType::FromString(std::get<neo::single>(values[1]).value());
+        output.format.type          = DataType::fromString(std::get<neo::single>(values[0]).value());
+        output.format.scalarSubType = DataType::fromString(std::get<neo::single>(values[1]).value());
       }
       else if (entry.name() == "clear")
       {

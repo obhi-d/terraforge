@@ -338,6 +338,7 @@ struct DataFormat
   DataTypeEnum      scalarSubType = DataTypeEnum::eInvalid;
   ParamDeclTypeEnum declType      = ParamDeclTypeEnum::eNone;
   SemanticEnum      semantic      = SemanticEnum::eNone;
+  SamplerParamEnum  sampler       = SamplerParamEnum::eNone;
   bool              preEval       = false;
 
   inline auto operator<=>(const DataFormat&) const noexcept = default;

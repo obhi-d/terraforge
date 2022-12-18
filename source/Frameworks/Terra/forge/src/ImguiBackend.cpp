@@ -28,11 +28,12 @@ void ImguiBackend::init(std::shared_ptr<GfxDevice43> renderer)
     auto self = (ImguiBackend*)backend;
     self->renderer->flushStates();
     if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
-      self->renderer->clearBackbuffer(self->clearColor, true);
+      self->renderer->clearBackbuffer(self->clearColor, DepthClear::eNone);
     self->draw(glm::vec2(viewport->Size.x, viewport->Size.y), viewport->DrawData);
   };
   createDeviceObjects();
-  state.blend           = BlendMode::eAdditive;
+  state.nbBlendModes    = 1;
+  state.blend[0].mode   = BlendMode::eAdditive;
   state.depthTest       = DepthTestMode::eDisabled;
   state.scissorsEnabled = true;
 }
@@ -57,7 +58,7 @@ void ImguiBackend::applyTheme(ImguiTheme const& theme)
   paramData.tint              = theme.themeColors.tint;
   clearColor                  = theme.themeColors.clear;
   auto& style                 = ImGui::GetStyle();
-  style.Colors[ImGuiCol_Text] = theme.themeColors.text;
+  style.Colors[ImGuiCol_Text] = toImgui(theme.themeColors.text);
   style.FramePadding.y *= 2;
   uploadFonts(theme);
 }
@@ -139,7 +140,7 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   }
 
   ImageSerializer                 serializer;
-  std::vector<ubyte_t>          imageData;
+  std::vector<ubyte_t>            imageData;
   std::array<int, ImagePackCount> packIDs;
   for (uint32 i = ImageName::eLogo; i < theme.images.size(); ++i)
   {
@@ -175,12 +176,12 @@ void ImguiBackend::uploadFonts(ImguiTheme const& theme)
   }
 
   font      = renderer->create2DImage(GfxStorageClass::eStaticDeviceReadonly, (uint32)width, (uint32)height,
-                                    ImageFormatEnum::eUnorm8, (ubyte_t const*)pixels,
-                                    GfxImage::Swizzle{.r = GfxImage::ComponentValue::eOne,
+                                      ImageFormatEnum::eUnorm8, (ubyte_t const*)pixels,
+                                      GfxImage::Swizzle{.r = GfxImage::ComponentValue::eOne,
                                                         .g = GfxImage::ComponentValue::eOne,
                                                         .b = GfxImage::ComponentValue::eOne,
                                                         .a = GfxImage::ComponentValue::eRed},
-                                    1);
+                                      1);
   whiteUV.x = io.Fonts->TexUvWhitePixel.x;
   whiteUV.y = io.Fonts->TexUvWhitePixel.y;
   io.Fonts->SetTexID((ImTextureID)0);
@@ -209,7 +210,7 @@ void ImguiBackend::createDeviceObjects()
   builder->append(";\n");
   builder->append(tmpl::gs_2dFS);
   builder->end();
-  effect              = renderer->createProgram(ShaderOptions{}, *builder);
+  effect              = renderer->createProgram({}, *builder);
   sampler             = renderer->createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
   descriptorSetLayout = renderer->createDescriptorSetLayout(descriptors);
   renderer->applyLayoutToProgram(effect, descriptorSetLayout);

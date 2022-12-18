@@ -29,13 +29,13 @@ void HybridPipeline::describeImage(HybridBuffer::handle item, HDataSource owner,
   ii       = HybridBuffer(owner, width, height, format, true);
 }
 
-GfxBuffer::handle HybridPipeline::readBuffer(HybridBuffer::handle item)
+HybridPipeline::BufferAndSize HybridPipeline::readBuffer(HybridBuffer::handle item)
 {
   auto& ii = buffers_.at(item);
   ii.upload();
   ii.read(tick_);
   recents_.emplace(item);
-  return ii.buffer();
+  return BufferAndSize(ii.buffer(), (uint32_t)ii.size());
 }
 
 GfxImage::handle HybridPipeline::readImage(HybridBuffer::handle item)
@@ -133,11 +133,11 @@ void HybridPipeline::tick()
     iteration_ = 0;
     buffers_.clear();
     ordered_.clear();
-    heights_ = declareBuffer();
+    heights_      = declareBuffer();
     layerContrib_ = declareBuffer();
     describeImage(heights_, {}, size().x, size().y, ImageFormatEnum::eFloat);
     describeImage(layerContrib_, {}, size().x, size().y, ImageFormatEnum::eRgba32f);
-    
+
     if (actor_)
     {
       get().get<HybridNode>(actor_).prepare(*this);
@@ -214,10 +214,45 @@ void HybridPipeline::push(HDataSource item)
   }
 }
 
-void HybridPipeline::getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) 
+void HybridPipeline::getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib)
 {
   heights      = heights_ ? readImage(heights_) : GfxImage::handle{};
   layerContrib = layerContrib_ ? readImage(layerContrib_) : GfxImage::handle{};
+}
+
+GfxSampler::handle HybridPipeline::getSampler(SamplerParamEnum sampler)
+{
+  if (!samplers[sampler])
+  {
+    switch (sampler)
+    {
+    case SamplerParamEnum::eLinearWrap:
+      samplers[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eLinear));
+      break;
+    case SamplerParamEnum::eTrilinearWrap:
+      samplers[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eTrilinear));
+      break;
+    case SamplerParamEnum::eNearestWrap:
+      samplers[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eNearest));
+      break;
+    }
+  }
+  return samplers[sampler];
+}
+
+void HybridPipeline::cleanup()
+{
+  buffers_.clear();
+  ordered_.clear();
+  for (auto& sampler : samplers)
+  {
+    get().getDevice().destroy(sampler);
+    sampler = {};
+  }
+  actor_   = {};
+  current_ = {};
+  recents_.clear();
+  Pipeline::cleanup();
 }
 
 } // namespace terra
