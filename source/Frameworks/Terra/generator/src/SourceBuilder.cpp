@@ -110,7 +110,7 @@ void ShaderProgram::touch()
 // ====================== SourceBuilderAdapter ====================
 std::string SourceBuilderAdapter::format(std::string data)
 {
-  constexpr std::string_view from      = "__id_";
+  constexpr std::string_view from      = "__id";
   std::string                to        = std::to_string(id);
   size_t                     start_pos = 0;
   while ((start_pos = data.find(from, start_pos)) != std::string::npos)
@@ -160,7 +160,10 @@ void SourceBuilderAdapter::sampleParam(std::string_view name, DataFormat df)
   case ParamDeclTypeEnum::eReadonlySSBO:
     sampleSSBO(name, df);
     break;
-  case ParamDeclTypeEnum::eTexture:
+  case ParamDeclTypeEnum::eTexture1D:
+  case ParamDeclTypeEnum::eTexture2D:
+  case ParamDeclTypeEnum::eTexture1DArray:
+  case ParamDeclTypeEnum::eShadowTexture:
     sampleTexture(name, df);
     break;
   case ParamDeclTypeEnum::eWriteonlyImage:
@@ -372,17 +375,19 @@ ShaderProgram SourceBuilderAdapter::finalize()
 }
 
 // ====================== SourceBuilderBindless ====================
-void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum type)
+void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df)
 {
+  std::string_view sampler = ParamDeclType::toString(df.declType);
+
   if (id)
   {
     ubo += format(fmt::format("  uint64_t u{}_{};\n", name, id));
-    options += fmt::format("#define {0}_{1} sampler2D(u{0}_{1})\n", name, id);
+    options += fmt::format("#define {0}_{1} {2}(u{0}_{1})\n", name, id, sampler);
   }
   else
   {
     ubo += format(fmt::format("  uint64_t u{};\n", name));
-    options += fmt::format("#define {0} sampler2D(u{0})\n", name);
+    options += fmt::format("#define {0} {1}(u{0})\n", name, sampler);
   }
 
   GfxParamLayout::Entry entry;

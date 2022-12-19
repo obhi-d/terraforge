@@ -77,7 +77,10 @@
       "ReadonlyImage",
       "WriteonlyImage",
       "Image",
-      "Texture",
+      "Sampler1D",
+      "Sampler2D",
+      "Sampler1DArray",
+      "Sampler2DShadow",
       "TextureBuffer",
       "Scalar",
       "DepthOutput"
@@ -95,20 +98,6 @@
       "LinearWrap",
       "NearestWrap",
       "TrilinearWrap"
-    ]
-  },
-  {
-    "name": "SamplerType",
-    "namespace": "terra",
-    "type": "uint8_t",
-    "usage": "enum",
-    "default": "None",
-    "stringModifier": "lowerCamelCase",
-    "values": [
-      "Sampler1D",
-      "Sampler2D",
-      "Sampler3D",
-      "ShadowSampler2D"
     ]
   }
 ]

@@ -75,7 +75,7 @@ struct SourceBuilder
   virtual void          writeOutput(std::string_view name, DataFormat df)    = 0;
   virtual void          computeInput(std::string_view)                       = 0;
   virtual void          append(std::string_view)                             = 0;
-  virtual uint32_t      swapId(uint32_t with)                                = 0;
+  virtual void          pushScope(std::string_view)                          = 0;
   virtual void          call(std::string_view node, bool acceptInput = true) = 0;
   virtual ShaderProgram finalize()                                           = 0;
 };
@@ -103,9 +103,9 @@ struct SourceBuilderAdapter : SourceBuilder
   GfxProgram::handle makePostProcess(std::vector<std::string_view>&);
   GfxProgram::handle makeShaderProgram(std::vector<std::string_view>&);
 
-  virtual void sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum) = 0;
-  virtual void sampleImage(std::string_view name, DataFormat df)                    = 0;
-  virtual void sampleTextureBuffer(std::string_view name, DataFormat df)            = 0;
+  virtual void sampleTexture(std::string_view name, DataFormat df)       = 0;
+  virtual void sampleImage(std::string_view name, DataFormat df)         = 0;
+  virtual void sampleTextureBuffer(std::string_view name, DataFormat df) = 0;
 
   std::string format(std::string data);
 
@@ -137,7 +137,7 @@ struct SourceBuilderAdapter : SourceBuilder
 struct SourceBuilderBindless : SourceBuilderAdapter
 {
   SourceBuilderBindless(SourceType t) : SourceBuilderAdapter(t) {}
-  void sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum) final;
+  void sampleTexture(std::string_view name, DataFormat df) final;
   void sampleImage(std::string_view name, DataFormat df) final;
   void sampleTextureBuffer(std::string_view name, DataFormat df) final;
 };
@@ -145,7 +145,7 @@ struct SourceBuilderBindless : SourceBuilderAdapter
 struct SourceBuilderBindful : SourceBuilderAdapter
 {
   SourceBuilderBindful(SourceType t) : SourceBuilderAdapter(t) {}
-  void sampleTexture(std::string_view name, DataFormat df, SamplerTypeEnum) final;
+  void sampleTexture(std::string_view name, DataFormat df) final;
   void sampleImage(std::string_view name, DataFormat df) final;
   void sampleTextureBuffer(std::string_view name, DataFormat df) final;
 
