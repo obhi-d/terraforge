@@ -109,14 +109,14 @@ struct SourceBuilderAdapter : SourceBuilder
   virtual void sampleTextureBuffer(std::string_view name, DataFormat df) = 0;
 
   std::string format(std::string_view data);
-  void        pushScope(std::string_view);
-  void        popScope();
+  void        pushScope(std::string_view) final;
+  void        popScope() final;
 
   std::vector<GfxParamLayout::Entry>  entries;
   std::vector<GfxParamLayout::Output> output;
   std::vector<std::string>            params;
   std::vector<std::string>            scopes;
-  
+
   SourceType type        = SourceType::eFullscreenGraphNode;
   uint32_t   outputIdx   = 0;
   uint32_t   ssboBinding = 0;
@@ -130,7 +130,6 @@ struct SourceBuilderAdapter : SourceBuilder
   std::string functions;
   std::string input;
   std::string content;
-
 };
 
 struct SourceBuilderBindless : SourceBuilderAdapter
