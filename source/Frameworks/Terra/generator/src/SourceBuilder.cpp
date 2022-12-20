@@ -108,10 +108,11 @@ void ShaderProgram::touch()
 }
 
 // ====================== SourceBuilderAdapter ====================
-std::string SourceBuilderAdapter::format(std::string data)
+std::string SourceBuilderAdapter::format(std::string_view data)
 {
-  constexpr std::string_view from      = "__id";
-  std::string                to        = std::to_string(id);
+  if (scopes.empty())
+    return std::string{data};
+  return 
   size_t                     start_pos = 0;
   while ((start_pos = data.find(from, start_pos)) != std::string::npos)
   {
@@ -126,7 +127,7 @@ void SourceBuilderAdapter::pushOptions(ShaderOptions option)
   for (uint32_t i = 0; i < option.size(); ++i)
   {
     if (option.isSet(i))
-      options += format(fmt::format("#define {}\n", option.name(i)));
+      options += fmt::format("#define {}\n", format(option.name(i)));
   }
 }
 

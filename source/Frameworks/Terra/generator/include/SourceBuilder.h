@@ -76,6 +76,7 @@ struct SourceBuilder
   virtual void          computeInput(std::string_view)                       = 0;
   virtual void          append(std::string_view)                             = 0;
   virtual void          pushScope(std::string_view)                          = 0;
+  virtual void          popScope()                                           = 0;
   virtual void          call(std::string_view node, bool acceptInput = true) = 0;
   virtual ShaderProgram finalize()                                           = 0;
 };
@@ -107,18 +108,15 @@ struct SourceBuilderAdapter : SourceBuilder
   virtual void sampleImage(std::string_view name, DataFormat df)         = 0;
   virtual void sampleTextureBuffer(std::string_view name, DataFormat df) = 0;
 
-  std::string format(std::string data);
-
-  uint32_t swapId(uint32_t with)
-  {
-    std::swap(id, with);
-    return with;
-  }
+  std::string format(std::string_view data);
+  void        pushScope(std::string_view);
+  void        popScope();
 
   std::vector<GfxParamLayout::Entry>  entries;
   std::vector<GfxParamLayout::Output> output;
   std::vector<std::string>            params;
-
+  std::vector<std::string>            scopes;
+  
   SourceType type        = SourceType::eFullscreenGraphNode;
   uint32_t   outputIdx   = 0;
   uint32_t   ssboBinding = 0;
@@ -132,6 +130,7 @@ struct SourceBuilderAdapter : SourceBuilder
   std::string functions;
   std::string input;
   std::string content;
+
 };
 
 struct SourceBuilderBindless : SourceBuilderAdapter
