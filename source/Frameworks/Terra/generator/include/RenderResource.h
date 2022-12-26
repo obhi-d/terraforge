@@ -165,10 +165,14 @@ enum class GfxBindType
 {
   eNone,
   eStorageBuffer,
-  eTexture,
+  eTexture1D,
+  eTexture1DArray,
+  eTexture2D,
+  eShadowTexture2D,
   eTextureBuffer,
-  eStorageImage,
+  eStorageImage2D,
   eDepthBuffer,
+  eUBO,
   eInt,
   eUint,
   eInt2,
@@ -197,9 +201,10 @@ struct StorageBuffer
 
 struct SampledTexture
 {
-  static inline constexpr GfxBindType type = GfxBindType::eTexture;
-  GfxImage::handle                    texture;
-  GfxSampler::handle                  sampler;
+  static inline constexpr std::array<GfxBindType, 4> type = {GfxBindType::eTexture2D, GfxBindType::eTexture1DArray,
+                                                             GfxBindType::eShadowTexture2D, GfxBindType::eTexture1D};
+  GfxImage::handle                                   texture;
+  GfxSampler::handle                                 sampler;
 };
 
 struct TextureBuffer
@@ -211,18 +216,11 @@ struct TextureBuffer
 
 struct StorageImage
 {
-  static inline constexpr GfxBindType type = GfxBindType::eStorageImage;
+  static inline constexpr GfxBindType type = GfxBindType::eStorageImage2D;
   GfxImage::handle                    texture;
   uint16_t                            layer   = 0;
   GfxAccess                           access  = GfxAccess::eReadWrite;
   bool                                layered = false;
-};
-
-struct TextureOutput
-{
-  GfxImage::handle image;
-  vec4             clearValue;
-  bool             clear = false;
 };
 
 struct GfxParamLayout
@@ -231,12 +229,6 @@ struct GfxParamLayout
   {
     GfxBindType type;
     uint32_t    index;
-  };
-
-  struct Output
-  {
-    GfxBindType     type;
-    ImageFormatEnum format;
   };
 
   using handle = terra::handle<GfxParamLayout>;
@@ -303,6 +295,21 @@ struct GfxBlendState
   BlendMode mode = BlendMode::eDisabled;
 };
 
+struct GfxPass
+{
+  using handle = terra::handle<GfxPass>;
+  struct Attachment
+  {
+    GfxImage::handle image;
+    union
+    {
+      vec4  colorVal;
+      float depthVal;
+    };
+    bool clear = false;
+  };
+};
+
 struct GfxState
 {
   CullMode                     cullMode  = CullMode::eCullBack;
@@ -313,6 +320,7 @@ struct GfxState
   uint16_t                     nbBlendModes    = 0;
   bool                         scissorsEnabled = false;
   bool                         flush           = false;
+  bool                         depthWrite      = true;
 };
 
 struct GfxMesh

@@ -29,7 +29,10 @@ void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
 
   switch (df.declType)
   {
-  case ParamDeclTypeEnum::eTexture:
+  case ParamDeclTypeEnum::eSampler1D:
+  case ParamDeclTypeEnum::eSampler2D:
+  case ParamDeclTypeEnum::eSampler1DArray:
+  case ParamDeclTypeEnum::eSampler2DShadow:
     program.pushTexture(index++, pipeline.readImage(value), pipeline.getSampler(df.sampler));
     break;
   case ParamDeclTypeEnum::eWriteonlySSBO:
@@ -40,13 +43,13 @@ void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
     program.pushBuffer(index++, buffer, 0, size);
   }
   break;
-  case ParamDeclTypeEnum::eReadonlyImage:
+  case ParamDeclTypeEnum::eReadonlyImage2D:
     program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eReadOnly, false);
     break;
-  case ParamDeclTypeEnum::eImage:
+  case ParamDeclTypeEnum::eImage2D:
     program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eReadWrite, false);
     break;
-  case ParamDeclTypeEnum::eWriteonlyImage:
+  case ParamDeclTypeEnum::eWriteonlyImage2D:
     program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eWriteOnly, false);
     break;
   case ParamDeclTypeEnum::eTextureBuffer:
@@ -58,14 +61,34 @@ void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
   }
 }
 
-void ShaderProgramInstance::pushOutput(HybridBuffer::handle value, bool clear, vec4 clearVal)
+void ShaderProgramInstance::pushOutput(HybridBuffer::handle value, DataFormat format, bool clear, vec4 clearVal)
 {
-  program.pushOutput(index++, pipeline.readImage(value), clear, clearVal);
+  auto const& sett = get().getSettings();
+
+  if (format.declType == ParamDeclTypeEnum::eDepthOutput)
+  {
+    depth.clear    = clear;
+    depth.depthVal = sett.reverseZ ? 1 - clearVal.x : clearVal.x;
+    depth.image    = pipeline.readImage(value);
+  }
+  else
+  {
+    outputs[outputIdx].clear    = clear;
+    outputs[outputIdx].colorVal = clearVal;
+    outputs[outputIdx].image    = pipeline.readImage(value);
+
+    outputIdx++;
+  }
 }
 
 void ShaderProgramInstance::run()
 {
-  get().getDevice().postProcessDraw(program.program.material.program, program.program.material.layout, program.data);
+  auto& dev  = get().getDevice();
+  auto  pass = dev.createPass(std::span<GfxPass::Attachment>(outputs.data(), outputs.data() + outputIdx), depth);
+  dev.beginPass(pass);
+  dev.postProcessDraw(program.program.material.program, program.program.material.layout, program.data);
+  dev.endPass();
+  dev.destroy(pass);
 }
 
 } // namespace terra

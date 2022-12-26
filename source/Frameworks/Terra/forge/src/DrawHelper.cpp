@@ -361,55 +361,25 @@ bool drawProp(TerraMainApp& app, Property<TextureFile>& prop)
   return result;
 }
 
-bool drawNodeEditorCombo(std::u8string_view name, std::span<std::u8string_view const> items, int& result,
-                         int& displayPopup)
+bool drawNodeEditorCombo(std::u8string_view name, std::span<std::u8string_view const> items, int& result)
 {
   int iselect = result;
-  if (ImGui::Button((const char*)items[result].data()))
+  if (ImGui::BeginCombo((const char*)name.data(), (const char*)items[iselect].data()))
   {
-    displayPopup = true;
-  }
-
-  ImGui::SameLine();
-  ImGui::TextUnformatted((const char*)name.data(), (const char*)(name.data() + name.length()));
-
-  if (displayPopup) // kinda expensive with suspend resume, so do it if necessary
-  {
-    imne::Suspend();
-    ImGui::OpenPopup((const char*)name.data());
-    if (ImGui::BeginPopup((const char*)name.data(), ImGuiWindowFlags_Popup))
+    for (uint32_t e = 0; e < (uint32_t)items.size(); ++e)
     {
-
-      for (int i = 0; i < (int)items.size(); ++i)
+      bool selected = (e == iselect);
+      if (ImGui::Selectable((const char*)items[e].data(), selected))
       {
-        bool selected = iselect == i;
-        ImGui::PushID((void*)(intptr_t)i);
-        ImGui::AlignTextToFramePadding();
-        if (ImGui::Selectable((const char*)items[i].data(), selected, ImGuiSelectableFlags_SelectOnClick))
+        if (iselect != e)
         {
-          iselect = i;
-          ImGui::CloseCurrentPopup();
-          displayPopup = 0;
+          iselect = e;
         }
-
-        // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-        if (selected)
-          ImGui::SetItemDefaultFocus();
-        ImGui::PopID();
       }
-
-      bool hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup);
-      if (displayPopup && !hovered && ImGui::IsMouseClicked(0))
-      {
-        ImGui::CloseCurrentPopup();
-        displayPopup = 0;
-      }
-      ImGui::EndPopup();
+      if (selected)
+        ImGui::SetItemDefaultFocus();
     }
-    else
-      displayPopup = 0;
-
-    imne::Resume();
+    ImGui::EndCombo();
   }
 
   if (result != iselect)
@@ -440,14 +410,11 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
 
   data.beginEdit();
 
-  auto& edits           = data.edits;
-  auto& curve           = edits.spline;
-  int   type            = 0;
-  int   leftBound       = edits.left - 1;
-  int   rightBound      = edits.right - 1;
-  int   typeState       = edits.popupType;
-  int   leftBoundState  = edits.popupLeftBound;
-  int   rightBoundState = edits.popupRightBound;
+  auto& edits      = data.edits;
+  auto& curve      = edits.spline;
+  int   type       = 0;
+  int   leftBound  = edits.left - 1;
+  int   rightBound = edits.right - 1;
 
   switch (curve.get_type())
   {
@@ -464,23 +431,22 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
   float fixedX = ImGui::GetCursorPosX();
   float firstY = ImGui::GetCursorPosY() + 2;
   ImGui::PushID("#type");
-  static std::array<std::u8string_view const, 3> curveTypes = {"@linearCurve"_ls, "@cubicCurve"_ls, "@hermiteCurve"_ls};
-  static std::u8string_view                      typeName   = "@type"_ls;
-  if (drawNodeEditorCombo(typeName, curveTypes, type, typeState))
+  static std::array<std::u8string_view const, 3> curveTypes = {"linearCurve"_ls, "cubicCurve"_ls, "hermiteCurve"_ls};
+  static std::u8string_view                      typeName   = "type"_ls;
+  if (drawNodeEditorCombo(typeName, curveTypes, type))
   {
     edits.dirty = true;
   }
   ImGui::PopID();
-  ImGui::SameLine();
   static const char* monotonic = "@monotonic"_lsc;
   if (ImGui::Checkbox(monotonic, &edits.monotonic))
   {
     edits.dirty = true;
   }
   ImGui::PushID("#left");
-  static std::array<std::u8string_view const, 3> derivType = {"@first"_ls, "@second"_ls, "@notAKnot"_ls};
-  static std::u8string_view                      derivName = "@leftDerivative"_ls;
-  if (drawNodeEditorCombo(derivName, derivType, leftBound, leftBoundState))
+  static std::array<std::u8string_view const, 3> derivType = {"first"_ls, "second"_ls, "notAKnot"_ls};
+  static std::u8string_view                      derivName = "leftDerivative"_ls;
+  if (drawNodeEditorCombo(derivName, derivType, leftBound))
   {
     edits.dirty = true;
   }
@@ -492,7 +458,7 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
   ImGui::PopID();
   ImGui::PopID();
   ImGui::PushID("#right");
-  if (drawNodeEditorCombo(derivName, derivType, rightBound, rightBoundState))
+  if (drawNodeEditorCombo(derivName, derivType, rightBound))
   {
     edits.dirty = true;
   }
@@ -503,7 +469,7 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
     edits.dirty = true;
   ImGui::PopID();
   ImGui::PopID();
-  static const char* liveUpdate = "@liveUpdate"_lsc;
+  static const char* liveUpdate = "liveUpdate"_lsc;
   if (ImGui::Checkbox(liveUpdate, &edits.liveUpdate))
   {
     edits.dirty = true;
@@ -647,9 +613,6 @@ bool drawCurveEditor(TerraMainApp& app, CurveData& data)
     }
   }
 
-  edits.popupLeftBound  = leftBoundState != 0;
-  edits.popupRightBound = rightBoundState != 0;
-  edits.popupType       = typeState != 0;
   if (edits.dirty)
   {
     switch (type)

@@ -64,6 +64,12 @@ GfxImage::handle GfxDevice45::create2DImage(GfxStorageClass storage, uint32_t wi
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));
   gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_SWIZZLE_A, toGl(swizzle.a));
+  gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_MAG_FILTER, gl45::GL_NEAREST);
+  gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_MIN_FILTER, gl45::GL_NEAREST);
+  gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_WRAP_S, gl45::GL_CLAMP_TO_EDGE);
+  gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_WRAP_T, gl45::GL_CLAMP_TO_EDGE);
+  gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_COMPARE_MODE, gl45::GL_NONE);
+  gl45::glTextureParameteri(res.glhandle, gl45::GL_TEXTURE_COMPARE_FUNC, gl45::GL_LEQUAL);
   if (mipLevels > 1)
     gl45::glGenerateTextureMipmap(res.glhandle);
   return h;

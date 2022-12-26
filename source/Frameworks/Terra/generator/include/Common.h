@@ -375,7 +375,7 @@ std::string_view typeToString(DataTypeEnum);
 union DataValue
 {
   float fval;
-  int   ival = 0;
+  int   ival;
 
   DataValue() = default;
   DataValue(float val) : fval(val) {}
@@ -519,6 +519,7 @@ struct DisplayInfo : HelpInfo
       : id(n), name((char8_t const*)n.data(), n.length()), HelpInfo(h, t)
   {}
   DisplayInfo(std::u8string_view n, std::u8string_view h, std::u8string_view t) : name(n), HelpInfo(h, t) {}
+  DisplayInfo(std::string_view);
 
   const char* getName() const
   {

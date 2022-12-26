@@ -17,7 +17,8 @@
       "Rg32f",
       "Rgba32f",
       "Rgb8",
-      "Depth"
+      "Depth32f",
+      "Depth24"
     ]
   },
   {
@@ -74,9 +75,9 @@
       "ReadonlySSBO",
       "WriteonlySSBO",
       "SSBO",
-      "ReadonlyImage",
-      "WriteonlyImage",
-      "Image",
+      "ReadonlyImage2D",
+      "WriteonlyImage2D",
+      "Image2D",
       "Sampler1D",
       "Sampler2D",
       "Sampler1DArray",

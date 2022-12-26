@@ -82,7 +82,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    passCount = gpuMeta.getNumPasses();
   option.hash           = machine.value;
-  auto program          = ndat.gpuPasses.lock();
+  auto program          = ndat.gpuPasses;
   if (!program || ndat.key != option)
     program = gpuMeta.findProgram(option);
   if (program)
@@ -116,12 +116,6 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   return true;
 }
 
-bool GpuNode::isSourceModifier() const
-{
-  auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
-  return gpuMeta.isSourceModifier;
-}
-
 void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
 {
   auto const&   gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
@@ -130,7 +124,6 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
 
   enum class Action : uint8_t
   {
-    eComputeNode,
     ePushConstant,
     eSampleNode
   };
@@ -144,18 +137,12 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     if (std::holds_alternative<Source>(p))
     {
       auto source = std::get<Source>(p).source;
+      auto outid  = std::get<Source>(p).secondary;
       if (DataSource::isValid(source) &&
           DataSource::isWithinTile(pipe.tile(), constraintTileStart, constraintTileCount))
       {
         //
         auto& node = get().get<GpuNode>(source);
-        if (node.isSourceModifier())
-        {
-          auto oldid = builder.swapId(optionIdx + 1);
-          node.build(pipe, 0, builder);
-          builder.swapId(oldid);
-          paramAct = Action::eComputeNode;
-        }
         shoption.setOption(optionIdx);
       }
       else
@@ -172,13 +159,10 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       switch (paramAct)
       {
       case Action::eSampleNode:
-        builder.sampleParam(def.name(), def.format);
-        break;
-      case Action::eComputeNode:
-        builder.computeParam(def.name(), def.format);
+        builder.param(def.name(), def.format);
         break;
       case Action::ePushConstant:
-        builder.sampleScalar(def.name(), def.format);
+        builder.param(def.name(), def.format);
         break;
       }
       optionIdx++;
@@ -187,7 +171,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     case DataTypeEnum::eFloat2:
     case DataTypeEnum::eInt:
     case DataTypeEnum::eInt2:
-      builder.sampleScalar(def.name(), def.format);
+      builder.param(def.name(), def.format);
       break;
     case DataTypeEnum::eBool:
       if (std::get<ScalarValue>(p).bvalue)
@@ -200,11 +184,8 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       break;
     }
   }
-  if (!isSourceModifier())
-  {
-    for (auto o : code.outputs)
-      builder.writeOutput(meta.outputs[o].name(), meta.outputs[o].format);
-  }
+  for (auto o : code.outputs)
+    builder.output(meta.outputs[o].name(), meta.outputs[o].format);
 
   builder.pushExtension(code.extensions);
   builder.append(code.shaderContent);
@@ -234,12 +215,6 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
         //
 
         auto& node = get().get<GpuNode>(source);
-        if (node.isSourceModifier())
-        {
-          node.probe(pipe, option, machine);
-          option.probeMask |= 1ull << i;
-          option.probeCount++;
-        }
         node.prepare(pipe);
         option.active++;
         shoption.setOption(optionIdx);
@@ -280,7 +255,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
   auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    passCount = gpuMeta.getNumPasses();
-  auto        gpuPipe   = ndat.gpuPasses.lock();
+  auto&       gpuPipe   = ndat.gpuPasses;
   for (uint32_t pass = 0; pass < passCount; ++pass)
   {
     auto const& code = gpuMeta.getCode(pass);
@@ -346,8 +321,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
         }
       }
     }
-    if (!isSourceModifier())
-      pushOutputs(pipe, pass, program);
+    pushOutputs(pipe, pass, program);
     program.run();
   }
 }
@@ -357,52 +331,7 @@ void GpuNode::push(HybridPipeline& pipe, ShaderProgramInstance& program, uint32_
   auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    optionIdx = 0;
-
-  if (isSourceModifier())
-  {
-    for (uint32_t i = 0; i < meta.parameterDef.size(); ++i)
-    {
-      auto const& def = meta.parameterDef[i];
-      auto        p   = param(i);
-
-      switch (def.format.type)
-      {
-      case DataTypeEnum::eCurveData:
-      case DataTypeEnum::eImage:
-      case DataTypeEnum::eInput:
-      case DataTypeEnum::ePostProcess:
-      case DataTypeEnum::eBuffer:
-        if (ndat.activeOptions.isSet(optionIdx))
-        {
-          auto  source = std::get<Source>(p);
-          auto& node   = get().get<HybridNode>(source.source);
-          node.push(pipe, program, i, source.secondary);
-        }
-        else
-        {
-          program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
-        }
-        optionIdx++;
-        break;
-      case DataTypeEnum::eFloat:
-      case DataTypeEnum::eFloat2:
-      case DataTypeEnum::eInt:
-      case DataTypeEnum::eInt2:
-        program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
-        break;
-      case DataTypeEnum::eBool:
-        optionIdx++;
-        break;
-      case DataTypeEnum::eEnum:
-        optionIdx += def.maxEnum;
-        break;
-      }
-    }
-  }
-  else
-  {
-    program.pushValue(ndat.outputs[outIdx], meta.parameterDef[outIdx].format);
-  }
+  program.pushValue(ndat.outputs[outIdx], meta.parameterDef[outIdx].format);
 }
 
 void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInstance& program)
@@ -433,13 +362,46 @@ void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInst
       }
     }
 
-    program.pushOutput(ndat.outputs[i], meta.outputs[i].clear, meta.outputs[i].clearValue);
+    program.pushOutput(ndat.outputs[i], meta.outputs[i].format, meta.outputs[i].clear, meta.outputs[i].clearValue);
   }
 }
 
 HybridNode::Result GpuNode::postExecute(HybridPipeline& pipe)
 {
   return ClassicHybridNode::postExecute(pipe);
+}
+
+//============== GpuScriptNode ==================
+GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
+{
+  parameters.reserve(m.parameterDef.size());
+  for (size_t i = 0; i < m.parameterDef.size(); ++i)
+    parameters.emplace_back(m.parameterDef[i].getDefault());
+}
+
+//============== GpuImageNode ==================
+GpuImageNode::GpuImageNode(NodeMeta const& m) : GpuNode(m)
+{
+  image  = get().createImage();
+  scale  = vec2(1.f, 1.f);
+  offset = vec2(0.f, 0.f);
+}
+
+GpuImageNode::~GpuImageNode()
+{
+  get().destroy(image);
+}
+
+//============== GpuCurveNode ==================
+GpuCurveNode::GpuCurveNode(NodeMeta const& m) : GpuNode(m)
+{
+  curve = get().createCurve();
+  scale = vec2(1.f, 1.f);
+}
+
+GpuCurveNode::~GpuCurveNode()
+{
+  get().destroy(curve);
 }
 
 } // namespace terra

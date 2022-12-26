@@ -35,8 +35,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
     {
       auto const& def = meta.parameterDef[param];
       if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
-          def.format.type == DataTypeEnum::ePostProcess || def.format.type == DataTypeEnum::eImage ||
-          def.format.type == DataTypeEnum::eCurveData)
+          def.format.type == DataTypeEnum::ePostProcess)
       {
         PinData p = pack(id.um_index(), indexToInput(param));
         imne::SetPinFlags(p, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -47,8 +46,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
     {
       auto const& def = meta.outputs[out];
       if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
-          def.format.type == DataTypeEnum::ePostProcess || def.format.type == DataTypeEnum::eImage ||
-          def.format.type == DataTypeEnum::eCurveData)
+          def.format.type == DataTypeEnum::ePostProcess)
       {
         PinData p = pack(id.um_index(), indexToOutput(out));
         imne::SetPinFlags(p, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
@@ -100,6 +98,8 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
 
   if (output)
   {
+    ImGui::SetCursorPosX(std::max(
+      headerMaxX - ((style.pinSize * 1.1f) + ImGui::CalcTextSize(name).x + imne::GetStyle().NodePadding.y + 2), 0.f));
     ImGui::Text(name);
     ImGui::SameLine();
   }
@@ -154,8 +154,8 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
 
     if (!output)
     {
-      ImGui::Text(name);
       ImGui::SameLine();
+      ImGui::Text(name);
     }
 
     imne::EndPin();
@@ -333,8 +333,8 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
 void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, uint32_t selectedStyle)
 {
   ImGui::EndGroup();
-  auto min = ImGui::GetItemRectMin();
-  auto max = ImGui::GetItemRectMax();
+  // auto min = ImGui::GetItemRectMin();
+  headerMaxX = ImGui::GetItemRectMax().x;
 
   auto const& style  = app.getTheme().getNodeStyle(selectedStyle ? selectedStyle - 1 : this->style);
   auto&       source = get().get<DataSource>(id);
@@ -361,7 +361,7 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
       id           = outputToIndex(id);
       auto src     = node.param(i);
       drawPinIcon(ne, style, outputs[i], (const char*)meta.outputs[id].displayInfo.name.data(), meta.outputs[id].format,
-                  false, std::holds_alternative<Source>(src) && std::get<Source>(src).source);
+                  true, std::holds_alternative<Source>(src) && std::get<Source>(src).source);
     }
   }
   }
@@ -373,13 +373,14 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
 
   imne::EndNode();
   imne::PopStyleColor();
-  auto padding = imne::GetStyle().NodePadding.y * 0.5f;
-  min          = imne::GetLastNodeDrawMin();
-  max          = imne::GetLastNodeDrawMax();
-  min.y -= padding;
-  max.y = headerMaxY - padding;
-  // Header
-  drawHeader(ne, style, min, max);
+
+  // auto padding = imne::GetStyle().NodePadding.y * 0.5f;
+  // min          = imne::GetLastNodeDrawMin();
+  // max          = imne::GetLastNodeDrawMax();
+  // min.y -= padding;
+  // max.y = headerMaxY - padding;
+  // // Header
+  // drawHeader(ne, style, min, max);
 
   ImGui::PopID();
   firstDraw = false;

@@ -28,6 +28,9 @@ void Terra::init(Localization l, std::shared_ptr<GfxDevice> iDev)
   localizationProvider = l;
   device               = iDev;
   NodeRegister(GpuScript, registry);
+  // setup default stuff, and then read settings
+  settings.reverseZ = device->getCaps().ARB_clip_control != GlGfxSupport::eUnsupported;
+  GpuNodeMeta::registerKnownMeta();
 }
 
 void Terra::destroy()
@@ -55,6 +58,7 @@ void Terra::scanShader(std::filesystem::path path)
     sm.parse(path.string(), f1_str);
     if (!sm.fail_bit())
     {
+      newMeta.as<GpuScriptNode>();
       addMeta(path.stem().string(), newMeta);
     }
   }
@@ -100,6 +104,13 @@ HDataSource Terra::createCurve()
   return ptr->getSelf();
 }
 
+HDataSource Terra::createImage()
+{
+  auto ptr = std::make_shared<Image>();
+  ptr->setSelf(dataSources.emplace(ptr));
+  return ptr->getSelf();
+}
+
 uint32_t Terra::getSemantic(std::string_view from)
 {
   for (uint32_t i = 0; i < semantics.size(); ++i)
@@ -116,6 +127,11 @@ std::shared_ptr<Pipeline> Terra::createPipeline() const
   return std::make_shared<HybridPipeline>();
 }
 
+DisplayInfo::DisplayInfo(std::string_view f)
+{
+  from(f);
+}
+
 void DisplayInfo::from(std::string_view iname)
 {
   id   = iname;
@@ -123,8 +139,8 @@ void DisplayInfo::from(std::string_view iname)
   std::string tt{iname};
   tt += ".help";
   std::string_view tts = tt;
-  help = get().localizationProvider(tts);
-  tt   = iname;
+  help                 = get().localizationProvider(tts);
+  tt                   = iname;
   tt += ".tip";
   tts     = tt;
   tooltip = get().localizationProvider(tts);

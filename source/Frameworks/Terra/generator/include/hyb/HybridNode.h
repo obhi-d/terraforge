@@ -37,6 +37,8 @@ struct HybridNode : public Node
     eWaiting
   };
 
+  HybridNode(NodeMeta const& m) : Node(m) {}
+
   virtual Queue  getQueue() const                                                                  = 0;
   virtual Result execute(HybridPipeline&)                                                          = 0;
   virtual bool   preExecute(HybridPipeline&)                                                       = 0;
@@ -49,6 +51,8 @@ struct HybridNode : public Node
 
 struct ClassicHybridNode : public HybridNode
 {
+  ClassicHybridNode(NodeMeta const& m) : HybridNode(m) {}
+
   Queue getQueue() const override
   {
     return Queue::eGraphics;
@@ -77,12 +81,13 @@ struct GpuNode : public ClassicHybridNode
   {
     ProgramKey                        key;
     ShaderOptions                     activeOptions;
-    GpuPipelineRef                    gpuPasses;
+    GpuPipelinePtr                    gpuPasses;
     std::vector<HybridBuffer::handle> outputs;
     uint64_t                          injectMask = 0;
   };
 
-  bool   isSourceModifier() const;
+  GpuNode(NodeMeta const& m) : ClassicHybridNode(m) {}
+
   bool   prepare(HybridPipeline&) override;
   void   probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
   void   build(HybridPipeline&, uint32_t pass, SourceBuilder&);
@@ -98,5 +103,27 @@ struct GpuNode : public ClassicHybridNode
 struct GpuScriptNode : public GpuNode
 {
   std::vector<Parameter> parameters;
+
+  GpuScriptNode(NodeMeta const& m);
 };
+
+struct GpuImageNode : public GpuNode
+{
+  HDataSource image;
+  glm::vec2   offset;
+  glm::vec2   scale;
+
+  GpuImageNode(NodeMeta const& m);
+  ~GpuImageNode();
+};
+
+struct GpuCurveNode : public GpuNode
+{
+  HDataSource curve;
+  glm::vec2   scale;
+
+  GpuCurveNode(NodeMeta const& m);
+  ~GpuCurveNode();
+};
+
 } // namespace terra

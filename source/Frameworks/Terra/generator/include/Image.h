@@ -150,7 +150,7 @@ struct Image : public DataSource
     {
       switch (format)
       {
-      case ImageFormatEnum::eDepth:
+      case ImageFormatEnum::eDepth32f:
       case ImageFormatEnum::eFloat:
         return (float)get<float>(x, y);
       case ImageFormatEnum::eUnorm8:

@@ -1,10 +1,15 @@
 
 #include "hyb/HybridNodeMeta.h"
+#include "ResourceUtils.h"
 #include "ShaderOptions.h"
+#include "Terra.h"
 #include "fmt/format.h"
+#include "hyb/HybridNode.h"
 
 namespace terra
 {
+
+GpuNodeMeta::GpuPipelineMap GpuNodeMeta::shaderMaps;
 
 void GpuNodeMeta::prepare()
 {
@@ -38,6 +43,72 @@ void GpuNodeMeta::prepare()
   }
 
   dictionaryIdx = ShaderOptions::addDictionary(std::move(dict));
+  HybridNodeMeta::prepare();
+}
+
+void GpuNodeMeta::registerKnownMeta()
+{
+  auto inf = std::numeric_limits<float>::infinity();
+  {
+    GpuNodeMeta meta;
+
+    meta.displayInfo.from("ImageMask");
+    meta.as<GpuImageNode>();
+
+    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::image>(), "source", ValueRange(), DataType::eImage,
+                                   DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D);
+    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
+                                   DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
+    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::offset>(), "offset", ValueRange(0.0f, -inf, inf, 0.1f),
+                                   DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
+
+    meta.outputs.emplace_back("output", DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
+                                                   ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+    meta.passes.emplace_back();
+    GpuPass& pass      = meta.passes.back();
+    pass.function      = "node";
+    pass.shaderContent = fileContentToString("shaders/image_node.glsl");
+    pass.outputs.emplace_back(0);
+    pass.parameters = {0, 1, 2};
+
+    terra::get().addMeta(meta);
+  }
+
+  {
+    GpuNodeMeta meta;
+
+    meta.displayInfo.from("CurveMask");
+    meta.as<GpuCurveNode>();
+    meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::curve>(), "source", ValueRange(), DataType::eCurveData,
+                                   DataType::eFloat, ImageFormat::eNone, ParamDeclType::eReadonlySSBO);
+    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
+                                   DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
+    meta.outputs.emplace_back("output", DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
+                                                   ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+    meta.passes.emplace_back();
+    GpuPass& pass      = meta.passes.back();
+    pass.function      = "node";
+    pass.shaderContent = fileContentToString("shaders/curve_node.glsl");
+    pass.outputs.emplace_back(0);
+    pass.parameters = {0, 1};
+
+    terra::get().addMeta(meta);
+  }
+}
+
+GpuPipelinePtr GpuNodeMeta::findProgram(ProgramKey const& key) const
+{
+  auto it = shaderMaps.find(key);
+  if (it != shaderMaps.end())
+  {
+    return it->second.lock();
+  }
+  return GpuPipelinePtr{};
+}
+
+void GpuNodeMeta::addProgram(ProgramKey const& key, GpuPipelinePtr program) const
+{
+  shaderMaps[key] = program;
 }
 
 } // namespace terra

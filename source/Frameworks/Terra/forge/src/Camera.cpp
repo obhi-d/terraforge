@@ -36,14 +36,13 @@ void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState& m
     cameraRotation.phiAdd(350.f * x);
   }
 
-  view = glm::lookAt(cameraRotation.toDir() * radius, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+  view               = glm::lookAt(cameraRotation.toDir() * radius, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+  this->viewportSize = viewportSize;
 
   // if (viewportSize != this->viewportSize)
   {
     float n = 0.01f;
     float f = 10000.f;
-    if (reverseZ)
-      std::swap(n, f);
     if (ortho)
     {
 
@@ -61,13 +60,13 @@ void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState& m
       float max = std::max(maxx, maxy);
       float r = max * imageAspectRatio, t = max;
       float l = -r, b = -t;
-      this->viewportSize = viewportSize;
-      projection         = reverseZ ? glm::orthoRH_ZO(l, r, b, t, n, f) : glm::orthoRH(l, r, b, t, n, f);
+      projection = reverseZ ? glm::orthoRH_ZO(l, r, b, t, f, n) : glm::orthoRH(l, r, b, t, n, f);
     }
     else
     {
-      projection = reverseZ ? glm::perspectiveFovRH_ZO(fov.get(), (float)viewportSize.x, (float)viewportSize.y, n, f)
-                            : glm::perspectiveFovRH(fov.get(), (float)viewportSize.x, (float)viewportSize.y, n, f);
+      projection =
+        reverseZ ? reverseZRH_ZO(glm::radians(fov.get()), (float)viewportSize.x / (float)viewportSize.y, n)
+                 : glm::perspectiveFovRH(glm::radians(fov.get()), (float)viewportSize.x, (float)viewportSize.y, n, f);
     }
   }
 }

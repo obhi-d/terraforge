@@ -58,10 +58,11 @@ struct GfxDevice
   virtual GfxDescriptorSet::handle createDescriptorSet(GfxDescriptorSetLayout::handle descriptorLayout) = 0;
   virtual void                     destroy(GfxDescriptorSet::handle)                                    = 0;
 
-  virtual GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const>  entries,
-                                              std::span<GfxParamLayout::Output const> outputs) = 0;
-  virtual void                   destroy(GfxParamLayout::handle)                               = 0;
-  // @brief Bindless descriptor gets deleted at the end of the frame
+  virtual GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const> entries) = 0;
+  virtual void                   destroy(GfxParamLayout::handle)                              = 0;
+  // @brief Creat a pass
+  virtual GfxPass::handle createPass(std::span<GfxPass::Attachment>, GfxPass::Attachment depth = {}) = 0;
+  virtual void            destroy(GfxPass::handle)                                                   = 0;
 
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&) = 0;
 
@@ -98,14 +99,18 @@ struct GfxDevice
   virtual std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang)             = 0;
   virtual std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang, SourceType) = 0;
 
-  virtual void bindResources(GfxDescriptorSet::handle descriptorSet)                               = 0;
-  virtual void destroy(GfxMesh::handle)                                                            = 0;
-  virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material)                    = 0;
-  virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data) = 0;
-  virtual void flushStates()                                                                       = 0;
-  virtual void clearBackbuffer(glm::vec4 color, DepthClear depth = DepthClear::eNone)              = 0;
-  virtual void setState(GfxState const&)                                                           = 0;
+  virtual void bindResources(GfxDescriptorSet::handle descriptorSet)                                      = 0;
+  virtual void destroy(GfxMesh::handle)                                                                   = 0;
+  virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material)                           = 0;
+  virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data)        = 0;
+  virtual void flushStates()                                                                              = 0;
+  virtual void clearBackbuffer(glm::vec4 color, DepthClear depth = DepthClear::eNone)                     = 0;
+  virtual void setState(GfxState const&)                                                                  = 0;
   virtual void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout,
-                               Blob const& data)                                                   = 0;
+                               Blob const& data)                                                          = 0;
+  virtual void blit(GfxImage::handle src, GfxImage::handle dst, Rect const& srcZone, Rect const& dstZone) = 0;
+  // all draw calls must be within a pass
+  virtual void beginPass(GfxPass::handle) = 0;
+  virtual void endPass()                  = 0;
 };
 } // namespace terra

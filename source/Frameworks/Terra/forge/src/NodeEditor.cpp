@@ -49,9 +49,6 @@ void NodeEditor::init(TerraMainApp& app)
   tipLink            = app.localize("Editor.TipLink");
   tipCreateNode      = app.localize("Editor.TipCreateNode");
   actions            = app.localize("Editor.Actions");
-  dataNode           = app.localize("Editor.DataNode");
-  curveNode          = app.localize("curveData");
-  imageNode          = app.localize("imageData");
   imne::Config config;
   config.SettingsFile = "terra-nodes.json";
   editorContext       = imne::CreateEditor(&config);
@@ -184,32 +181,30 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   case DataTypeEnum::eInt2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt2(def.displayInfo.getName(), &v.ivalue2.x, 1.0f, def.values[ParameterMeta::eMin].ival,
-                        def.values[ParameterMeta::eMax].ival))
+    if (ImGui::DragInt2(def.displayInfo.getName(), &v.ivalue2.x, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
       set = true;
   }
   break;
   case DataTypeEnum::eInt:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragInt(def.displayInfo.getName(), &v.ivalue, 1.0f, def.values[ParameterMeta::eMin].ival,
-                       def.values[ParameterMeta::eMax].ival))
+    if (ImGui::DragInt(def.displayInfo.getName(), &v.ivalue, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
       set = true;
   }
   break;
   case DataTypeEnum::eFloat2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.values[ParameterMeta::eStep].fval,
-                          def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
+    if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
       set = true;
   }
   break;
   case DataTypeEnum::eFloat:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragFloat(def.displayInfo.getName(), &v.value, def.values[ParameterMeta::eStep].fval,
-                         def.values[ParameterMeta::eMin].fval, def.values[ParameterMeta::eMax].fval))
+    if (ImGui::DragFloat(def.displayInfo.getName(), &v.value, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                         def.ranges.maxVal.fval))
       set = true;
   }
   break;
@@ -260,6 +255,7 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
           if (selected)
             ImGui::SetItemDefaultFocus();
         }
+        ImGui::EndCombo();
       }
     }
     break;
@@ -311,22 +307,22 @@ void NodeEditor::drawNodeSettings(TerraMainApp& app, ImguiBackend& backend)
   {
     auto&              node = get().get<Node>(previewNode);
     std::u8string_view category;
-    bool               skip = false;
+    bool               process = false;
     for (uint32_t i = 0, end = node.getNumParams(); i < end; ++i)
     {
       auto  param = node.meta.categorySorted[i];
       auto& def   = node.meta.parameterDef[param];
-      if (node.meta.parameterDef[i].displayInfo.category != category)
+      if (def.displayInfo.category != category)
       {
-        if (!category.empty())
+        if (!category.empty() && process)
           ImGui::TreePop();
-        category = node.meta.parameterDef[i].displayInfo.category;
-        skip     = ImGui::TreeNode((const char*)category.data());
+        category = def.displayInfo.category;
+        process  = ImGui::TreeNode((const char*)category.data());
       }
-      if (!skip)
+      if (process)
         drawParameter(app, backend, def, node, param);
     }
-    if (!category.empty())
+    if (!category.empty() && process)
       ImGui::TreePop();
   }
 }
@@ -423,24 +419,6 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
               }
             }
           }
-        }
-        ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
-        ImGui::TextUnformatted((const char*)dataNode.data());
-        ImGui::PopStyleColor();
-        ImGui::Separator();
-        if (ImGui::MenuItemEx((const char*)imageNode.data(), ICON_FA_FILE_IMAGE))
-        {
-          pendingAction.action   = Action::eImageData;
-          pendingAction.position = openPopupPosition;
-          pendingAction.linkTo   = frameCache.linkTo;
-          ImGui::CloseCurrentPopup();
-        }
-        if (ImGui::MenuItemEx((const char*)curveNode.data(), ICON_FA_BEZIER_CURVE))
-        {
-          pendingAction.action   = Action::eCurveData;
-          pendingAction.position = openPopupPosition;
-          pendingAction.linkTo   = frameCache.linkTo;
-          ImGui::CloseCurrentPopup();
         }
         ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)theme.themeColors.header);
         ImGui::TextUnformatted((const char*)actions.data());

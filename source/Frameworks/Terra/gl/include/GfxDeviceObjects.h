@@ -42,7 +42,6 @@ struct GfxImageGl : GfxImage
   using BindlessSamplerMap = std::unordered_map<GfxSampler::handle, BindlessHandleGl::handle, HandleHash<GfxSampler>>;
 
   gl::GLuint               glhandle = {};
-  gl::GLenum               target   = gl::GL_TEXTURE_2D;
   GfxStorageClass          storage;
   uint32_t                 width  = {};
   uint32_t                 height = {};
@@ -51,8 +50,23 @@ struct GfxImageGl : GfxImage
   BindlessHandleGl::handle hdev = 0;
   BindlessHandleGl::handle himg = 0;
   uint32_t                 ref  = 0;
+  gl::GLuint               fbo  = 0; // any related fbo
 
   BindlessSamplerMap hsamplerMap;
+};
+
+struct GfxPassGl : GfxPass
+{
+  std::array<GfxImage::handle, 8> images;
+  std::array<vec4, 8>             imageClearColors = {};
+  std::array<bool, 8>             imageClears      = {};
+
+  GfxImage::handle depth;
+  float            depthClearValue = 0.f;
+
+  gl::GLuint glhandle   = 0;
+  uint32_t   nbImages   = 0;
+  bool       depthClear = false;
 };
 
 struct GfxSamplerGl : GfxSampler
@@ -96,26 +110,21 @@ struct GfxMeshLayoutGl : GfxMesh
 struct GfxBindlessLayoutGl : GfxParamLayout
 {
   acl::dynamic_array<Entry> entries;
-  std::array<Output, 8>     outputs;
-  uint32_t                  nbOutput = 0;
 };
 
 struct GfxFramebufferGl
 {
-  gl::GLuint glhandle;
+  gl::GLuint glhandle           = 0;
   uint8_t    activeAttachments  = 0;
   bool       hasDepthAttachment = false;
 };
 
 struct GfxResources
 {
-  Blob uboData;
-
-  GfxFramebufferGl framebuffer;
-
   table<GfxBufferGl>  buffers;
   table<GfxImageGl>   images;
   table<GfxSamplerGl> samplers;
+  table<GfxPassGl>    passes;
 
   table<GfxDescriptorSetLayoutGl> descriptorSetLayouts;
   table<GfxDescriptorSetGl>       descriptorSets;

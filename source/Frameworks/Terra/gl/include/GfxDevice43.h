@@ -59,8 +59,7 @@ public:
   void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data) override;
   void                    flushStates() override;
 
-  GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const>  entries,
-                                      std::span<GfxParamLayout::Output const> outputs) override;
+  GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const> entries) override;
   void                   destroy(GfxParamLayout::handle) override;
   void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout, Blob const& data) override;
   GfxProgram::handle createProgram(std::span<std::string_view> code, uint32_t activeStages) override;
@@ -71,10 +70,19 @@ public:
     return features;
   }
 
+  void            blit(GfxImage::handle src, GfxImage::handle dst, Rect const& srcZone, Rect const& dstZone) override;
+  GfxPass::handle createPass(std::span<GfxPass::Attachment>, GfxPass::Attachment depth = {}) override;
+  void            destroy(GfxPass::handle) override;
+  void            beginPass(GfxPass::handle) override;
+  void            endPass() override;
+
 protected:
+  void                     setTextureParameters(gl::GLenum target, GfxImage::Swizzle);
   void                     releaseTexture(GfxImage::handle);
   void                     apply(GfxMaterial const&);
   void                     apply(GfxParamLayout::handle descriptorLayout, Blob const& data);
+  void                     bindSampledTexture(gl::GLenum target, uint32_t index, SampledTexture const&);
+  void                     bindTextureBuffer(uint32_t index, TextureBuffer const&);
   virtual void             draw(GfxMesh::Draw const& drawDesc);
   void                     makeResident(BindlessHandleGl::handle, GfxAccess access);
   void                     makeResident(BindlessHandleGl::handle);
@@ -94,11 +102,17 @@ protected:
     uint32_t   available = 0;
   };
 
+  enum Flags
+  {
+    HasFramebuffer = 1 << 0,
+  };
+
   std::vector<UBO> ubo;
   gl::GLuint       fullscreenVS = 0;
   GlGfxState       state;
   GfxFeature       features;
   GfxResources     resources;
   uint32_t         frame = 0;
+  uint32_t         flags = 0;
 };
 } // namespace terra

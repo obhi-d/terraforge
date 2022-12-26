@@ -17,13 +17,13 @@ layout(location = 2) out highp vec2 uv;
 
 void main()
 {
-  int x = gl_VertexID % width;
-  int y = gl_VertexID / width;
+  uint x = gl_VertexID % width;
+  uint y = gl_VertexID / width;
 
-  uv = vec2((float)x * rwidth, (float)y * rheight);
+  uv = vec2(float(x) * rwidth, float(y) * rheight);
 
-  float height = (texture(heights, uv).x * height_multiplier);
-  world_pos    = vec3(float(x), height, float(y));
+  float z   = (texture(heights, uv).x * height_multiplier);
+  world_pos = vec3(float(x) - float(width - 1) * 0.5, z, float(y) - float(height - 1) * 0.5);
   gl_Position = shadow_view_projection * vec4(world_pos, 1.0);
 }
 

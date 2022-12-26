@@ -2,6 +2,7 @@
 #include "SourceBuilder.h"
 #include "Terra.h"
 #include <fmt/format.h>
+#include <iterator>
 #include <regex>
 
 namespace terra
@@ -9,18 +10,10 @@ namespace terra
 
 ShaderProgram::~ShaderProgram()
 {
-  get().getDevice().destroy(material.program);
-  get().getDevice().destroy(material.layout);
-}
-
-ShaderProgram& ShaderProgram::operator=(ShaderProgram const& other) noexcept
-{
-  get().getDevice().destroy(material.program);
-  get().getDevice().destroy(material.layout);
-  material    = other.material;
-  outputCount = other.outputCount;
-  frame       = other.frame;
-  return *this;
+  if (material.program)
+    get().getDevice().destroy(material.program);
+  if (material.layout)
+    get().getDevice().destroy(material.layout);
 }
 
 ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept
@@ -30,8 +23,8 @@ ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept
   if (material.layout)
     get().getDevice().destroy(material.layout);
   material       = other.material;
-  outputCount    = other.outputCount;
   frame          = other.frame;
+  bindings       = std::move(other.bindings);
   other.material = {};
   return *this;
 }
@@ -88,17 +81,47 @@ std::string_view qualifier(ParamDeclTypeEnum type)
 {
   switch (type)
   {
-  case ParamDeclTypeEnum::eReadonlyImage:
+  case ParamDeclTypeEnum::eReadonlyImage2D:
   case ParamDeclTypeEnum::eReadonlySSBO:
     return "restrict readonly";
-  case ParamDeclTypeEnum::eImage:
+  case ParamDeclTypeEnum::eImage2D:
   case ParamDeclTypeEnum::eSSBO:
     return "restrict";
   case ParamDeclTypeEnum::eWriteonlySSBO:
-  case ParamDeclTypeEnum::eWriteonlyImage:
+  case ParamDeclTypeEnum::eWriteonlyImage2D:
     return "restrict writeonly";
   }
   return "";
+}
+
+GfxBindType toBindType(ParamDeclTypeEnum type)
+{
+  switch (type)
+  {
+  case ParamDeclTypeEnum::eDepthOutput:
+    return GfxBindType::eDepthBuffer;
+  case ParamDeclTypeEnum::eWriteonlyImage2D:
+  case ParamDeclTypeEnum::eReadonlyImage2D:
+  case ParamDeclTypeEnum::eImage2D:
+    return GfxBindType::eStorageImage2D;
+  case ParamDeclTypeEnum::eSSBO:
+  case ParamDeclTypeEnum::eWriteonlySSBO:
+  case ParamDeclTypeEnum::eReadonlySSBO:
+    return GfxBindType::eStorageBuffer;
+  case ParamDeclTypeEnum::eScalar:
+    return GfxBindType::eFloat;
+  case ParamDeclTypeEnum::eSampler2DShadow:
+    return GfxBindType::eShadowTexture2D;
+  case ParamDeclTypeEnum::eSampler1D:
+    return GfxBindType::eTexture1D;
+  case ParamDeclTypeEnum::eSampler2D:
+    return GfxBindType::eTexture2D;
+  case ParamDeclTypeEnum::eSampler1DArray:
+    return GfxBindType::eTexture1DArray;
+  case ParamDeclTypeEnum::eTextureBuffer:
+    return GfxBindType::eStorageBuffer;
+  }
+  return GfxBindType::eFloat;
 }
 
 // ====================== ShaderProgram ====================
@@ -108,340 +131,328 @@ void ShaderProgram::touch()
 }
 
 // ====================== SourceBuilderAdapter ====================
-std::string SourceBuilderAdapter::format(std::string_view data)
-{
-  if (scopes.empty())
-    return std::string{data};
+SourceBuilderAdapter::SourceBuilderAdapter(SourceType itype) : type(itype) {}
+//
+// std::string SourceBuilderAdapter::addVariable(std::string_view data)
+// {
+//   std::string ret = fmt::format("v_{}", data);
+//   if (!regex.empty())
+//     regex += "|";
+//   regex.append(data);
+//   return ret;
+// }
+//
+// std::string SourceBuilderAdapter::addContent(std::string_view data)
+// {
+//   std::string fullrx = "(?![a-zA-Z0-9_])(" + regex + ")(?![a-zA-Z0-9_])";
+//   auto        rx     = std::regex(fullrx);
+//
+//   std::string replace = "v_$1";
+//   std::string ss;
+//   std::regex_replace(std::back_inserter(ss), data.begin(), data.end(), rx, replace);
+//   return ss;
+// }
 
-  std::string ret = scopes.back();
-  ret.append(data);
-  return ret;
-}
-
-void SourceBuilderAdapter::pushOptions(ShaderOptions option)
+// todo Bindless / bindful both should declare global handles
+void SourceBuilderAdapter::options(ShaderOptions option)
 {
   for (uint32_t i = 0; i < option.size(); ++i)
   {
     if (option.isSet(i))
     {
-      options += fmt::format("#define {}\n", format(option.name(i)));
+      optionHeader += fmt::format("#define {}\n", option.name(i));
     }
   }
+}
 
-  void SourceBuilderAdapter::pushExtension(std::string_view ext)
+void SourceBuilderAdapter::pushExtension(std::string_view ext)
+{
+  extensions += ext;
+  extensions += '\n';
+}
+
+void SourceBuilderAdapter::sampleSSBO(std::string_view name, DataFormat df)
+{
+  optionHeader += fmt::format("#define {} {}\n", std::string(name) + "_b", ssboBinding);
+
+  GfxParamLayout::Entry entry;
+  entry.index = ssboBinding++;
+  entry.type  = GfxBindType::eStorageBuffer;
+  entries.push_back(entry);
+}
+
+void SourceBuilderAdapter::param(std::string_view name, DataFormat df)
+{
+  if (df.preEval)
   {
-    extensions += ext;
+    auto lname = localName(name);
+    content += fmt::format("{} {} = sample_{}(input);\n", toGlsl(df.scalarSubType), lname, name);
+    params.emplace_back(std::move(lname));
   }
 
-  void SourceBuilderAdapter::sampleSSBO(std::string_view name, DataFormat df)
+  switch (df.declType)
   {
-    options += fmt::format("#define {}Binding_{} {}\n", name, id, ssboBinding);
-
-    GfxParamLayout::Entry entry;
-    entry.index = ssboBinding++;
-    entry.type  = GfxBindType::eStorageBuffer;
-    entries.push_back(entry);
+  case ParamDeclTypeEnum::eWriteonlySSBO:
+  case ParamDeclTypeEnum::eSSBO:
+  case ParamDeclTypeEnum::eReadonlySSBO:
+    sampleSSBO(name, df);
+    break;
+  case ParamDeclTypeEnum::eSampler1D:
+  case ParamDeclTypeEnum::eSampler2D:
+  case ParamDeclTypeEnum::eSampler1DArray:
+  case ParamDeclTypeEnum::eSampler2DShadow:
+    sampleTexture(name, df);
+    break;
+  case ParamDeclTypeEnum::eWriteonlyImage2D:
+  case ParamDeclTypeEnum::eImage2D:
+  case ParamDeclTypeEnum::eReadonlyImage2D:
+    sampleImage(name, df);
+    break;
+  case ParamDeclTypeEnum::eTextureBuffer:
+    sampleTextureBuffer(name, df);
+    break;
+  default:
+    sampleScalar(name, df);
+    break;
   }
+}
 
-  void SourceBuilderAdapter::sampleParam(std::string_view name, DataFormat df)
+void SourceBuilderAdapter::sampleScalar(std::string_view name, DataFormat df)
+{
+  auto type = toGlsl(df.scalarSubType);
+  auto sv   = name;
+  resources += fmt::format("layout(location={}) uniform  {} {};\n", location, type, sv);
+  if (df.preEval)
+    params.emplace_back(sv);
+
+  GfxParamLayout::Entry entry;
+  entry.index = location++;
+
+  switch (df.scalarSubType)
   {
+  case DataTypeEnum::eUint:
+    entry.type = GfxBindType::eUint;
+    break;
+  case DataTypeEnum::eUint2:
+    entry.type = GfxBindType::eUint2;
+    break;
+  case DataTypeEnum::eInt2:
+    entry.type = GfxBindType::eInt2;
+    break;
+  case DataTypeEnum::eInt:
+    entry.type = GfxBindType::eInt;
+    break;
+  case DataTypeEnum::eFloat:
+    entry.type = GfxBindType::eFloat;
+    break;
+  case DataTypeEnum::eFloat2:
+    entry.type = GfxBindType::eFloat2;
+    break;
+  case DataTypeEnum::eFloat3:
+    entry.type = GfxBindType::eFloat3;
+    break;
+  case DataTypeEnum::eFloat4:
+    entry.type = GfxBindType::eFloat4;
+    break;
+  case DataTypeEnum::eMat4:
+    entry.type = GfxBindType::eMat4;
+    break;
+  }
+  entries.push_back(entry);
+}
+
+void SourceBuilderAdapter::output(std::string_view name, DataFormat df)
+{
+  switch (df.declType)
+  {
+  case ParamDeclTypeEnum::eDepthOutput:
     if (df.preEval)
-    {
-      content += toGlsl(df.scalarSubType);
-      content += format(fmt::format(" l{0}_{1} = sample{0}(input);\n", name, id));
-      params.emplace_back(format(fmt::format("l{0}_{1}", name, id)));
-    }
-    switch (df.declType)
-    {
-    case ParamDeclTypeEnum::eWriteonlySSBO:
-    case ParamDeclTypeEnum::eSSBO:
-    case ParamDeclTypeEnum::eReadonlySSBO:
-      sampleSSBO(name, df);
-      break;
-    case ParamDeclTypeEnum::eTexture1D:
-    case ParamDeclTypeEnum::eTexture2D:
-    case ParamDeclTypeEnum::eTexture1DArray:
-    case ParamDeclTypeEnum::eShadowTexture:
-      sampleTexture(name, df);
-      break;
-    case ParamDeclTypeEnum::eWriteonlyImage:
-    case ParamDeclTypeEnum::eImage:
-    case ParamDeclTypeEnum::eReadonlyImage:
-      sampleImage(name, df);
-      break;
-    case ParamDeclTypeEnum::eTextureBuffer:
-      sampleTextureBuffer(name, df);
-      break;
-    }
-  }
-
-  void SourceBuilderAdapter::sampleScalar(std::string_view name, DataFormat df)
-  {
-    auto type = toGlsl(df.scalarSubType);
+      params.emplace_back("gl_FragDepth");
+    break;
+  default:
+    resources += fmt::format("#if defined(FragmentShader)\n  layout(location={}) out {} {};\n#endif\n", outputIdx++,
+                             toGlsl(df.scalarSubType), name);
     if (df.preEval)
-    {
-      content += type;
-      content += format(fmt::format(" l{0}_{1} = sample{0}(input);\n", name, id));
-      params.emplace_back(format(fmt::format("l{0}_{1}", name, id)));
-    }
-    if (id)
-    {
-      ubo += format(fmt::format("  {} u{}_{};\n", type, name, id));
-      options += fmt::format("#define {0} u{0}_{}\n", name, id);
-    }
-    else
-    {
-      ubo += format(fmt::format("  {} u{};\n", type, name));
-      options += fmt::format("#define {0} u{0}\n", name);
-    }
-    GfxParamLayout::Entry entry;
-    entry.index = ssboBinding++;
-    switch (df.scalarSubType)
-    {
-    case DataTypeEnum::eUint:
-      entry.type = GfxBindType::eUint;
-      break;
-    case DataTypeEnum::eUint2:
-      entry.type = GfxBindType::eUint2;
-      break;
-    case DataTypeEnum::eInt2:
-      entry.type = GfxBindType::eInt2;
-      break;
-    case DataTypeEnum::eInt:
-      entry.type = GfxBindType::eInt;
-      break;
-    case DataTypeEnum::eFloat:
-      entry.type = GfxBindType::eFloat;
-      break;
-    case DataTypeEnum::eFloat2:
-      entry.type = GfxBindType::eFloat2;
-      break;
-    case DataTypeEnum::eFloat3:
-      entry.type = GfxBindType::eFloat3;
-      break;
-    case DataTypeEnum::eFloat4:
-      entry.type = GfxBindType::eFloat4;
-      break;
-    case DataTypeEnum::eMat4:
-      entry.type = GfxBindType::eMat4;
-      break;
-    }
-    entries.push_back(entry);
+      params.emplace_back(std::string(name));
+    break;
   }
+}
 
-  void SourceBuilderAdapter::computeParam(std::string_view name, DataFormat df)
+void SourceBuilderAdapter::computeInput(std::string_view call)
+{
+  content += fmt::format("input = {}(input);\n", call);
+}
+
+void SourceBuilderAdapter::append(std::string_view fn)
+{
+  functions += fn;
+}
+
+void SourceBuilderAdapter::call(std::string_view node, bool acceptInput)
+{
+  content += node;
+  if (acceptInput)
+    content += "(input";
+  else
+    content += '(';
+  bool first = !acceptInput;
+  for (auto& p : params)
   {
-    auto type = toGlsl(df.scalarSubType);
-    content += type;
-    content += format(fmt::format(" l{0}_{1} = ", name, id));
-    params.emplace_back(format(fmt::format("l{0}_{1}", name, id)));
+    if (!first)
+      content += ',';
+    content += p;
+    first = false;
   }
+  content += ");\n";
+}
 
-  void SourceBuilderAdapter::writeOutput(std::string_view name, DataFormat df)
-  {
-    GfxParamLayout::Output output;
-    output.format = df.imageFormat;
-    switch (df.declType)
-    {
-    case ParamDeclTypeEnum::eDepthOutput:
-      if (df.preEval)
-        params.emplace_back("gl_FragDepth");
-      output.type = GfxBindType::eDepthBuffer;
-      break;
-    case ParamDeclTypeEnum::eSSBO:
-      output.type = GfxBindType::eStorageBuffer;
-      break;
-    default:
-      resources += format(fmt::format("layout(location={}) {} {};\n", outputIdx++, toGlsl(df.scalarSubType), name));
-      if (df.preEval)
-        params.emplace_back(format(std::string(name)));
-      output.type = GfxBindType::eTexture;
-      break;
-    }
-  }
+void SourceBuilderAdapter::packCommon(std::vector<std::string_view>& snapshots)
+{
+  if (!extensions.empty())
+    snapshots.emplace_back(extensions);
+  if (!optionHeader.empty())
+    snapshots.emplace_back(optionHeader);
+  if (!resources.empty())
+    snapshots.emplace_back(resources);
+  if (!includes.empty())
+    snapshots.emplace_back(resources);
+  if (!functions.empty())
+    snapshots.emplace_back(functions);
+}
 
-  void SourceBuilderAdapter::computeInput(std::string_view call)
+GfxProgram::handle SourceBuilderAdapter::makeGpuNode(std::vector<std::string_view>& code)
+{
+  auto& dev = get().getDevice();
+  if (!content.empty())
   {
-    content += format(fmt::format("input = {}(input);\n", call));
-  }
-
-  void SourceBuilderAdapter::append(std::string_view fn)
-  {
-    functions += fn;
-  }
-
-  void SourceBuilderAdapter::call(std::string_view node, bool acceptInput)
-  {
-    content += node;
-    if (acceptInput)
-      content += "(input";
-    else
-      content += '(';
-    bool first = !acceptInput;
-    for (auto& p : params)
-    {
-      if (!first)
-        content += ',';
-      content += p;
-      first = false;
-    }
-    content += ");\n";
-  }
-
-  void SourceBuilderAdapter::packCommon(std::vector<std::string_view> & snapshots)
-  {
-    if (!extensions.empty())
-      snapshots.emplace_back(extensions);
-    if (!options.empty())
-      snapshots.emplace_back(options);
-    if (!resources.empty())
-      snapshots.emplace_back(resources);
-    if (!ubo.empty())
-    {
-      ubo = fmt::format("layout(binding = 0) uniform Params\n{{\n{}\n}};\n", ubo);
-      snapshots.emplace_back(ubo);
-    }
-    if (!includes.empty())
-      snapshots.emplace_back(resources);
-    if (!functions.empty())
-      snapshots.emplace_back(functions);
-  }
-
-  GfxProgram::handle SourceBuilderAdapter::makeGpuNode(std::vector<std::string_view> & code)
-  {
-    auto& dev = get().getDevice();
-    if (!content.empty())
-    {
-      content = format(fmt::format(R"_(
+    content = fmt::format(R"_(
+layout(location = 0) in vec2 fs_UV;
 void main()
 {{
-  vec2 input = compute_input(gl_FragCoord.x, gl_FragCoord.y);
+  vec2 input = compute_input(fs_UV.x, fs_UV.y);
   {}
   {}
 }})_",
-                                   input, content));
-    }
-    code.emplace_back(content);
-    return dev.createFullscreenProgram(code);
+                          input, content);
   }
-  GfxProgram::handle SourceBuilderAdapter::makePostProcess(std::vector<std::string_view> & code)
+  code.emplace_back(content);
+  return dev.createFullscreenProgram(code);
+}
+GfxProgram::handle SourceBuilderAdapter::makePostProcess(std::vector<std::string_view>& code)
+{
+  auto& dev = get().getDevice();
+  code.emplace_back(content);
+  return dev.createFullscreenProgram(code);
+}
+
+GfxProgram::handle SourceBuilderAdapter::makeShaderProgram(std::vector<std::string_view>& code)
+{
+  auto& dev = get().getDevice();
+  code.emplace_back(content);
+  return dev.createProgram(code, GfxProgram::fVertex | GfxProgram::fFragment);
+}
+
+ShaderProgram SourceBuilderAdapter::finalize()
+{
+  ShaderProgram pret;
+
+  std::vector<std::string_view> snapshots;
+  packCommon(snapshots);
+  GfxProgram::handle program;
+  switch (type)
   {
-    auto& dev = get().getDevice();
-    code.emplace_back(content);
-    return dev.createFullscreenProgram(code);
+  case SourceType::eFullscreenGraphNode:
+    program = makeGpuNode(snapshots);
+    break;
+  case SourceType::ePostProcess:
+    program = makePostProcess(snapshots);
+    break;
+  case SourceType::eShaderProgram:
+    program = makeShaderProgram(snapshots);
+    break;
   }
 
-  GfxProgram::handle SourceBuilderAdapter::makeShaderProgram(std::vector<std::string_view> & code)
+  if (program)
   {
-    auto& dev = get().getDevice();
-    code.emplace_back(content);
-    return dev.createProgram(code, GfxProgram::fVertex | GfxProgram::fFragment);
+    auto& dev             = get().getDevice();
+    pret.material.program = program;
+    pret.material.layout  = dev.createLayout(entries);
+    pret.bindings         = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
+    for (uint32_t i = 0; i < pret.bindings.size(); ++i)
+      pret.bindings[i] = entries[i].type;
+    pret.frame = get().frameNumber();
   }
 
-  ShaderProgram SourceBuilderAdapter::finalize()
-  {
-    std::vector<std::string_view> snapshots;
-    packCommon(snapshots);
-    GfxProgram::handle program;
-    switch (type)
-    {
-    case SourceType::eFullscreenGraphNode:
-      program = makeGpuNode(snapshots);
-      break;
-    case SourceType::ePostProcess:
-      program = makePostProcess(snapshots);
-      break;
-    case SourceType::eShaderProgram:
-      program = makeShaderProgram(snapshots);
-      break;
-    }
+  return pret;
+}
 
-    if (program)
-    {
-      auto&         dev = get().getDevice();
-      ShaderProgram pret;
-      pret.material.program = program;
-      pret.material.layout  = dev.createLayout(entries, output);
-      pret.bindings         = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
-      for (uint32_t i = 0; i < pret.bindings.size(); ++i)
-        pret.bindings[i] = entries[i].type;
-      pret.outputCount = outputIdx;
-      pret.frame       = get().frameNumber();
-      return pret;
-    }
-    return {};
-  }
+// ====================== SourceBuilderBindless ====================
+void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df)
+{
+  std::string_view sampler = ParamDeclType::toString(df.declType);
+  resources += fmt::format("layout(location={}, bindless_sampler) uniform {} {};\n", location, sampler, name);
 
-  // ====================== SourceBuilderBindless ====================
-  void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df)
-  {
-    std::string_view sampler = ParamDeclType::toString(df.declType);
+  GfxParamLayout::Entry entry;
+  entry.type  = toBindType(df.declType);
+  entry.index = location++;
+  entries.push_back(entry);
+}
 
-    if (id)
-    {
-      ubo += format(fmt::format("  uint64_t u{}_{};\n", name, id));
-      options += fmt::format("#define {0}_{1} {2}(u{0}_{1})\n", name, id, sampler);
-    }
-    else
-    {
-      ubo += format(fmt::format("  uint64_t u{};\n", name));
-      options += fmt::format("#define {0} {1}(u{0})\n", name, sampler);
-    }
+void SourceBuilderBindless::sampleImage(std::string_view name, DataFormat df)
+{
+  std::string_view type = ParamDeclType::toString(df.declType);
+  resources += fmt::format("layout(location={}, bindless_image, {}) uniform {} {} {};\n", location,
+                           toGlsl(df.imageFormat), qualifier(df.declType), type, name);
 
-    GfxParamLayout::Entry entry;
-    entry.type = GfxBindType::eTexture;
-    entries.push_back(entry);
-  }
+  GfxParamLayout::Entry entry;
+  entry.type  = toBindType(df.declType);
+  entry.index = location++;
+  entries.push_back(entry);
+}
 
-  void SourceBuilderBindless::sampleImage(std::string_view name, DataFormat df)
-  {
-    ubo += format(fmt::format("  uint64_t u{}_{};\n", name, id));
-    options += fmt::format("#define {0}_{1} layout({2}) {3} image2D(bl_{0}_{1})\n", name, id, toGlsl(df.imageFormat),
-                           qualifier(df.declType));
+void SourceBuilderBindless::sampleTextureBuffer(std::string_view name, DataFormat df)
+{
+  resources += fmt::format("layout(location={}, bindless_sampler) uniform samplerBuffer {};\n", location, name);
 
-    GfxParamLayout::Entry entry;
-    entry.type = GfxBindType::eStorageImage;
-    entries.push_back(entry);
-  }
+  GfxParamLayout::Entry entry;
+  entry.type  = GfxBindType::eTextureBuffer;
+  entry.index = location++;
+  entries.push_back(entry);
+}
 
-  void SourceBuilderBindless::sampleTextureBuffer(std::string_view name, DataFormat df)
-  {
-    ubo += format(fmt::format("  uint64_t bl_{}_{};\n", name, id));
-    options += fmt::format("#define {0}_{1} samplerBuffer(bl_{0}_{1})\n", name, id, toGlsl(df.imageFormat));
+// ====================== SourceBuilderBindless ====================
+void SourceBuilderBindful::sampleTexture(std::string_view name, DataFormat df)
+{
+  std::string_view sampler = ParamDeclType::toString(df.declType);
+  resources += fmt::format("layout(binding={}) uniform {} {};\n", texBinding, sampler, name);
 
-    GfxParamLayout::Entry entry;
-    entry.type = GfxBindType::eTextureBuffer;
-    entries.push_back(entry);
-  }
+  GfxParamLayout::Entry entry;
+  entry.type  = toBindType(df.declType);
+  entry.index = texBinding++;
+  entries.push_back(entry);
+}
 
-  // ====================== SourceBuilderBindless ====================
-  void SourceBuilderBindful::sampleTexture(std::string_view name, DataFormat df)
-  {
-    resources += format(fmt::format("layout(binding={2}) {0}_{1};\n", name, id, texBinding));
-    GfxParamLayout::Entry entry;
-    entry.type  = GfxBindType::eTexture;
-    entry.index = texBinding++;
-    entries.push_back(entry);
-  }
+void SourceBuilderBindful::sampleImage(std::string_view name, DataFormat df)
+{
+  std::string_view type = ParamDeclType::toString(df.declType);
+  resources += fmt::format("layout(binding={}, {}) uniform {} {} {};\n", imageBinding, toGlsl(df.imageFormat),
+                           qualifier(df.declType), type, name);
 
-  void SourceBuilderBindful::sampleImage(std::string_view name, DataFormat df)
-  {
-    resources += format(fmt::format("layout(binding={3}, {2}) {4} {0}_{1};\n", name, id, toGlsl(df.imageFormat),
-                                    imageBinding, qualifier(df.declType)));
+  GfxParamLayout::Entry entry;
+  entry.type  = toBindType(df.declType);
+  entry.index = imageBinding++;
+  entries.push_back(entry);
+}
 
-    GfxParamLayout::Entry entry;
-    entry.type  = GfxBindType::eStorageImage;
-    entry.index = imageBinding++;
-    entries.push_back(entry);
-  }
+void SourceBuilderBindful::sampleTextureBuffer(std::string_view name, DataFormat df)
+{
+  std::string_view sampler = "samplerBuffer";
+  resources += fmt::format("layout(binding={}) uniform {} {};\n", texBinding, sampler, name);
 
-  void SourceBuilderBindful::sampleTextureBuffer(std::string_view name, DataFormat df)
-  {
-    resources += format(fmt::format("layout(binding={2}) {0}_{1};\n", name, id, texBinding));
+  GfxParamLayout::Entry entry;
+  entry.type  = GfxBindType::eTextureBuffer;
+  entry.index = texBinding++;
+  entries.push_back(entry);
+}
 
-    GfxParamLayout::Entry entry;
-    entry.type  = GfxBindType::eTextureBuffer;
-    entry.index = texBinding++;
-    entries.push_back(entry);
-  }
 } // namespace terra

@@ -12,15 +12,14 @@ struct ShaderProgram
   acl::dynamic_array<GfxBindType> bindings;
 
   GfxMaterial2 material;
-  uint32_t     outputCount = 0;
-  uint32_t     frame       = 0;
+  uint32_t     frame = 0;
 
   ShaderProgram()                              = default;
-  ShaderProgram(ShaderProgram const&) noexcept = default;
+  ShaderProgram(ShaderProgram const&) noexcept = delete;
   ShaderProgram(ShaderProgram&&) noexcept      = default;
   ~ShaderProgram();
 
-  ShaderProgram& operator=(ShaderProgram const&) noexcept;
+  ShaderProgram& operator=(ShaderProgram const&) noexcept = delete;
   ShaderProgram& operator=(ShaderProgram&&) noexcept;
 
   void touch();
@@ -43,7 +42,6 @@ struct ShaderMaterial
   inline void pushScalar(uint32_t index, vec3 value);
   inline void pushScalar(uint32_t index, vec4 value);
   inline void pushScalar(uint32_t index, mat4 value);
-  inline void pushOutput(uint32_t index, GfxImage::handle handle, bool clear = false, vec4 clearVal = vec4(0.f));
   inline void reset();
 
   ShaderProgram const& program;
@@ -67,30 +65,24 @@ enum class SourceType
 
 struct SourceBuilder
 {
-  virtual void          pushOptions(ShaderOptions option)                    = 0;
+  virtual void          options(ShaderOptions option)                        = 0;
   virtual void          pushExtension(std::string_view ext)                  = 0;
-  virtual void          sampleParam(std::string_view name, DataFormat df)    = 0;
-  virtual void          sampleScalar(std::string_view name, DataFormat df)   = 0;
-  virtual void          computeParam(std::string_view name, DataFormat df)   = 0;
-  virtual void          writeOutput(std::string_view name, DataFormat df)    = 0;
+  virtual void          param(std::string_view name, DataFormat df)          = 0;
+  virtual void          output(std::string_view name, DataFormat df)         = 0;
   virtual void          computeInput(std::string_view)                       = 0;
   virtual void          append(std::string_view)                             = 0;
-  virtual void          pushScope(std::string_view)                          = 0;
-  virtual void          popScope()                                           = 0;
   virtual void          call(std::string_view node, bool acceptInput = true) = 0;
   virtual ShaderProgram finalize()                                           = 0;
 };
 
 struct SourceBuilderAdapter : SourceBuilder
 {
-  SourceBuilderAdapter(SourceType itype) : type(itype) {}
+  SourceBuilderAdapter(SourceType itype);
 
-  void pushOptions(ShaderOptions option) final;
+  void options(ShaderOptions option) final;
   void pushExtension(std::string_view ext) final;
-  void sampleParam(std::string_view name, DataFormat df) final;
-  void sampleScalar(std::string_view name, DataFormat df) final;
-  void computeParam(std::string_view name, DataFormat df) final;
-  void writeOutput(std::string_view name, DataFormat df);
+  void param(std::string_view name, DataFormat df) final;
+  void output(std::string_view name, DataFormat df) final;
 
   void sampleSSBO(std::string_view name, DataFormat df);
   void computeInput(std::string_view) final;
@@ -99,42 +91,47 @@ struct SourceBuilderAdapter : SourceBuilder
 
   ShaderProgram finalize();
 
+  void               sampleScalar(std::string_view name, DataFormat df);
   void               packCommon(std::vector<std::string_view>&);
   GfxProgram::handle makeGpuNode(std::vector<std::string_view>&);
   GfxProgram::handle makePostProcess(std::vector<std::string_view>&);
   GfxProgram::handle makeShaderProgram(std::vector<std::string_view>&);
 
-  virtual void sampleTexture(std::string_view name, DataFormat df)       = 0;
-  virtual void sampleImage(std::string_view name, DataFormat df)         = 0;
-  virtual void sampleTextureBuffer(std::string_view name, DataFormat df) = 0;
+  virtual void       sampleTexture(std::string_view name, DataFormat df)       = 0;
+  virtual void       sampleImage(std::string_view name, DataFormat df)         = 0;
+  virtual void       sampleTextureBuffer(std::string_view name, DataFormat df) = 0;
+  inline std::string localName(std::string_view input)
+  {
+    return std::format("lp_{}", input);
+  }
 
-  std::string format(std::string_view data);
-  void        pushScope(std::string_view) final;
-  void        popScope() final;
-
-  std::vector<GfxParamLayout::Entry>  entries;
-  std::vector<GfxParamLayout::Output> output;
-  std::vector<std::string>            params;
-  std::vector<std::string>            scopes;
+  std::vector<GfxParamLayout::Entry> entries;
+  std::vector<std::string>           params;
 
   SourceType type        = SourceType::eFullscreenGraphNode;
   uint32_t   outputIdx   = 0;
   uint32_t   ssboBinding = 0;
-  uint32_t   id          = 0;
 
-  std::string options;
+  std::string regex;
+  std::string optionHeader;
   std::string extensions;
   std::string resources;
-  std::string ubo;
   std::string includes;
   std::string functions;
   std::string input;
   std::string content;
+
+  uint32_t location = 0;
 };
 
 struct SourceBuilderBindless : SourceBuilderAdapter
 {
-  SourceBuilderBindless(SourceType t) : SourceBuilderAdapter(t) {}
+  SourceBuilderBindless(SourceType t) : SourceBuilderAdapter(t)
+  {
+    pushExtension("#extension GL_ARB_gpu_shader_int64 : require");
+    pushExtension("#extension GL_ARB_bindless_texture : require");
+  }
+
   void sampleTexture(std::string_view name, DataFormat df) final;
   void sampleImage(std::string_view name, DataFormat df) final;
   void sampleTextureBuffer(std::string_view name, DataFormat df) final;
@@ -164,7 +161,8 @@ inline void ShaderMaterial::pushBuffer(uint32_t index, GfxBuffer::handle buff, u
 
 inline void ShaderMaterial::pushTexture(uint32_t index, GfxImage::handle handle, GfxSampler::handle sampler)
 {
-  assert(program.bindings[index] == SampledTexture::type);
+  assert(std::find(SampledTexture::type.begin(), SampledTexture::type.end(), program.bindings[index]) !=
+         SampledTexture::type.end());
   SampledTexture stex;
   stex.texture = handle;
   stex.sampler = sampler;
@@ -255,17 +253,6 @@ inline void ShaderMaterial::pushScalar(uint32_t index, mat4 value)
 {
   assert(program.bindings[index] == GfxBindType::eMat4);
   data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushOutput(uint32_t index, GfxImage::handle handle, bool clear, vec4 clearVal)
-{
-  assert(program.bindings.size() >= index && index < (program.bindings.size() + program.outputCount));
-  TextureOutput texture;
-  texture.image      = handle;
-  texture.clear      = clear;
-  texture.clearValue = clearVal;
-  data.push(texture);
   index++;
 }
 

@@ -25,8 +25,10 @@ inline gl::GLenum toGlFormat(ImageFormatEnum format)
     return gl::GLenum::GL_RG32F;
   case ImageFormatEnum::eRgba32f:
     return gl::GLenum::GL_RGBA32F;
-  case ImageFormatEnum::eDepth:
+  case ImageFormatEnum::eDepth24:
     return gl::GLenum::GL_DEPTH_COMPONENT24;
+  case ImageFormatEnum::eDepth32f:
+    return gl::GLenum::GL_DEPTH_COMPONENT32F;
   }
   return gl::GLenum::GL_NONE;
 }
@@ -45,8 +47,10 @@ inline gl::GLenum toGlDataFormat(ImageFormatEnum format)
     return gl::GLenum::GL_RGBA;
   case ImageFormatEnum::eRg32f:
     return gl::GLenum::GL_RG;
-  case ImageFormatEnum::eDepth:
-    return gl::GLenum::GL_DEPTH_COMPONENT;
+  case ImageFormatEnum::eDepth24:
+    return gl::GLenum::GL_DEPTH_COMPONENT24;
+  case ImageFormatEnum::eDepth32f:
+    return gl::GLenum::GL_DEPTH_COMPONENT32F;
   }
   return gl::GLenum::GL_NONE;
 }

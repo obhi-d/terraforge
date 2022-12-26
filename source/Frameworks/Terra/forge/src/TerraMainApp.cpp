@@ -75,7 +75,7 @@ void TerraMainApp::readLocalization()
 
 void TerraMainApp::initalize()
 {
-  if (SDL_Init(SDL_INIT_EVENTS))
+  if (SDL_Init(SDL_INIT_VIDEO))
   {
     throw std::runtime_error("SDL init failed.");
   }
@@ -132,7 +132,8 @@ void TerraMainApp::createContext()
   SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
+  SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
 
   SDL_Window* window = nullptr;
   if (!(window =
@@ -142,7 +143,11 @@ void TerraMainApp::createContext()
     throw std::runtime_error("createContext(): cannot create window");
   }
 
+#ifndef NDEBUG
   auto constexpr DebugActive = SDL_GL_CONTEXT_DEBUG_FLAG;
+#else
+  int32_t constexpr DebugActive = 0;
+#endif
 
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
   SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);

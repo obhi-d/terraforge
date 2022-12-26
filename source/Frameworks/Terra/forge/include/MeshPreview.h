@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Camera.h"
+#include "Canvas.h"
 #include "GlGfx.h"
 #include "Pipeline.h"
 #include "Setup.h"
@@ -77,6 +78,7 @@ private:
   GfxSampler::handle            heightSampler;
   GfxSampler::handle            layerSampler;
   GfxSampler::handle            shadowSampler;
+  GfxPass::handle               shadowGen;
   ShaderProgram                 materialProg;
   ShaderProgram                 shadowProg;
   std::optional<ShaderMaterial> terrainMat;
@@ -85,6 +87,7 @@ private:
   uvec2                         tileSize = {0, 0};
   GfxMesh::Draw                 drawCall;
   uint64_t                      setActorEventListener = 0;
+  Canvas                        canvas;
 
   bool texturesDirty     = true;
   bool shadowMapResDirty = true;

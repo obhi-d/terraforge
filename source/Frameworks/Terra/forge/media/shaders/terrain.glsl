@@ -23,13 +23,13 @@ layout(location = 2) out highp vec2 uv;
 
 void main()
 {
-  int x = gl_VertexID % width;
-  int y = gl_VertexID / width;
+  uint x = gl_VertexID % width;
+  uint y = gl_VertexID / width;
 
-  uv = vec2((float)x * rwidth, (float)y * rheight);
+  uv = vec2(float(x) * rwidth, float(y) * rheight);
 
-  float height = (texture(heights, uv).x * height_multiplier);
-  world_pos    = vec3(float(x), height, float(y));
+  float z   = (texture(heights, uv).x * height_multiplier);
+  world_pos = vec3(float(x) - float(width - 1) * 0.5, z, float(y) - float(height - 1) * 0.5);
 
   vec4 swpos  = shadow_view_projection * vec4(world_pos, 1.0);
   shadow_pos  = swpos.xyz / swpos.w;
@@ -41,8 +41,6 @@ void main()
 layout(location = 0) in highp vec3 world_pos;
 layout(location = 1) in highp vec3 shadow_pos;
 layout(location = 2) in highp vec2 uv;
-
-layout(location = 0) out highp vec4 color_buffer;
 
 #if defined(Enum_ShadowRes512)
 #define ShadowTextureDim 512
@@ -58,12 +56,10 @@ layout(location = 0) out highp vec4 color_buffer;
 #define ShadowBiasMin 0.0001
 
 void main()
-{
-  sampler2DShadow shadow = shadow_map;
-  sampler1DArray  colors = layer_colors;
-
-  shadow_pos           = shadow_pos * 0.5 + 0.5;
-  vec2  tex_size       = vec2(1.0f / (float)ShadowTextureDim);
+{  
+  
+  vec3 shadow_pos_s    = shadow_pos * 0.5 + 0.5;
+  vec2  tex_size       = vec2(1.0f / float(ShadowTextureDim));
   float shadow_contrib = 0.f;
   vec3  x              = dFdx(world_pos);
   vec3  y              = dFdy(world_pos);
@@ -72,32 +68,24 @@ void main()
 
   vec3 light_dir = -sun_data.xyz;
 
-  float bias = max(ShadowBiasMax * (1.0 - dot(normal, light_dir)), ShadowBias);
+  float bias = max(ShadowBiasMax * (1.0 - dot(normal, light_dir)), ShadowBiasMin);
   for (int x = -1; x <= 1; ++x)
-  {
     for (int y = -1; y <= 1; ++y)
-    {
-      shadow_contrib += texture(shadow, vec3(shadow_pos.xy + vec2(x, y) * tex_size, shadow_pos.z - bias));
-      if (shadow_pos.z - bias > depth)
-        shadow_contrib += (0.002 / 9.0);
-      else
-        shadow_contrib += (1.0 / 9.0);
-    }
-  }
+      shadow_contrib += texture(shadow_map, vec3(shadow_pos_s.xy + vec2(x, y) * tex_size, shadow_pos_s.z - bias));
 
   vec4 layer_contrib = texture(layers, uv);
   // layer_contrib.x : water
   // layer_contrib.y : grass/vegetation
   // layer_contrib.z : rocks
   // layer_contrib.w : default color
-  vec4 weights = layer_weight * layer_contrib;
+  vec4 weights = layer_weights;
   vec4 color = (texture(layer_colors, vec2(layer_contrib.x, 0.0))  * weights.x +
                texture(layer_colors, vec2(layer_contrib.y, 1.0)) * weights.y +
                texture(layer_colors, vec2(layer_contrib.z, 2.0))  * weights.z +
                texture(layer_colors, vec2(layer_contrib.w, 3.0))  * weights.w) / 
                (weights.x + weights.y + weights.z + weights.w);
 
-  color_buffer  = (1.0 - shadow_contrib) * max(dot(light_dir, normal), 0.01) * sun_data.w * color;
+  color_buffer  = shadow_contrib * max(dot(light_dir, normal), 0.01) * sun_data.w * color;
 }
 
 #endif

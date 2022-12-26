@@ -90,4 +90,10 @@ inline ImVec4 toImgui(Color v)
   return ImVec4(v.r(), v.g(), v.b(), v.a());
 }
 
+inline glm::mat4 reverseZRH_ZO(float fovY, float aspect, float zNear)
+{
+  float f = 1.0f / tan(fovY / 2.0f);
+  return glm::mat4(f / aspect, 0.0f, 0.0f, 0.0f, 0.0f, f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, zNear, 0.0f);
+}
+
 } // namespace terra

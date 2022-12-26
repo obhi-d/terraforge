@@ -58,7 +58,7 @@ private:
   std::vector<PinData> parameters;
   std::vector<PinData> outputs;
 
-  float headerMaxY = 0.0f;
+  float headerMaxX = 0.0f;
 
   HDataSource id;
   uint32_t    style = 0;
@@ -67,7 +67,7 @@ private:
 
   static inline float constexpr ThumbnailSize = 200.f;
   GfxImage::handle thumbnail;
-  uint32_t           thumbnailVersion = std::numeric_limits<uint32_t>::max();
+  uint32_t         thumbnailVersion = std::numeric_limits<uint32_t>::max();
 
   bool firstDraw = true;
 };

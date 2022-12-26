@@ -1,3 +1,4 @@
+
 constexpr std::string_view gs_curve430 = R"_(
 
 #if Has_{0}

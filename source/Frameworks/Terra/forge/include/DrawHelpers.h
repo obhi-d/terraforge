@@ -36,8 +36,7 @@ bool         drawProp(TerraMainApp&, Property<TextureFile>&);
 bool         drawProp(TerraMainApp& app, Property<bool>& prop);
 int          doTooltip(DisplayInfo const& info, ImGuiHoveredFlags flags = 0);
 bool         drawCurveEditor(TerraMainApp& app, CurveData& data);
-bool         drawNodeEditorCombo(std::u8string_view name, std::span<std::u8string_view const> items, int& result,
-                                 int& displayPopup);
+bool         drawNodeEditorCombo(std::u8string_view name, std::span<std::u8string_view const> items, int& result);
 bool         loadImage(const char* name, std::string& lastPath);
 WindowAction drawTitleMenu(MenuData&);
 void         setHeaderFont();

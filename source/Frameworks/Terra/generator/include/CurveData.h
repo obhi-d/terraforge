@@ -14,22 +14,19 @@ struct CurveData : public DataSource
 {
   struct Edit
   {
-    std::vector<float>        cx              = {0.0f, 0.5f, 1.0f};
-    std::vector<float>        cy              = {0.0f, 0.5f, 1.0f};
-    tk::spline<>::spline_type type            = tk::spline<>::spline_type::cspline_hermite;
-    tk::spline<>::bd_type     left            = tk::spline<>::second_deriv;
-    tk::spline<>::bd_type     right           = tk::spline<>::first_deriv;
-    float                     leftValue       = 0;
-    float                     rightValue      = 1.0f;
-    int                       dragged         = -1;
-    bool                      popupType       = false;
-    bool                      popupLeftBound  = false;
-    bool                      popupRightBound = false;
-    bool                      monotonic       = true;
-    bool                      edited          = false;
-    bool                      dirty           = false;
-    bool                      firstEdit       = true;
-    bool                      liveUpdate      = false;
+    std::vector<float>        cx         = {0.0f, 0.5f, 1.0f};
+    std::vector<float>        cy         = {0.0f, 0.5f, 1.0f};
+    tk::spline<>::spline_type type       = tk::spline<>::spline_type::cspline_hermite;
+    tk::spline<>::bd_type     left       = tk::spline<>::second_deriv;
+    tk::spline<>::bd_type     right      = tk::spline<>::first_deriv;
+    float                     leftValue  = 0;
+    float                     rightValue = 1.0f;
+    int                       dragged    = -1;
+    bool                      monotonic  = true;
+    bool                      edited     = false;
+    bool                      dirty      = false;
+    bool                      firstEdit  = true;
+    bool                      liveUpdate = false;
     tk::spline<>              spline;
   };
 

@@ -15,9 +15,15 @@ namespace terra
 {
 struct GfxDevice;
 struct ShaderBuilder;
+
 class Terra
 {
 public:
+  struct Settings
+  {
+    bool reverseZ = false;
+  };
+
   using Localization = std::function<std::u8string_view(std::string_view&)>;
   void init(Localization loc, std::shared_ptr<GfxDevice> iDev);
 
@@ -79,6 +85,13 @@ public:
   HDataSource createNode(NodeMeta const&);
   HDataSource getImage(std::filesystem::path path);
   HDataSource createCurve();
+  HDataSource createImage();
+
+  template <typename Meta>
+  void addMeta(Meta const& meta)
+  {
+    addMeta(meta.displayInfo.id, meta);
+  }
 
   template <typename Meta>
   void addMeta(std::string_view name, Meta const& meta)
@@ -157,11 +170,17 @@ public:
 
   void scanShader(std::filesystem::path path);
 
+  Settings const& getSettings() const
+  {
+    return settings;
+  }
+
 private:
   static Terra instance;
 
   using ImageCodecMap = std::unordered_map<std::string, std::shared_ptr<ImageCodec>>;
 
+  Settings                 settings;
   uint32_t                 frame = 0;
   std::vector<std::string> semantics;
 

@@ -34,20 +34,20 @@ bool ParameterMeta::canBeScalar() const
 ScalarValue ParameterMeta::getDefault() const
 {
   if (DataTypeEnum::eBool == format.type)
-    return ScalarValue((bool)(values[ValueType::eDefault].ival != 0));
+    return ScalarValue((bool)(ranges.defaultVal.ival != 0));
   else if (DataTypeEnum::eEnum == format.type)
-    return ScalarValue(values[ValueType::eDefault].ival, 0);
+    return ScalarValue(ranges.defaultVal.ival, 0);
   switch (format.scalarSubType)
   {
   case DataTypeEnum::eFloat:
-    return ScalarValue(values[ValueType::eDefault].fval);
+    return ScalarValue(ranges.defaultVal.fval);
   case DataTypeEnum::eFloat2:
-    return vec2{values[ValueType::eDefault].fval, values[ValueType::eDefault].fval};
+    return vec2{ranges.defaultVal.fval, ranges.defaultVal.fval};
   case DataTypeEnum::eBool:
   case DataTypeEnum::eInt:
-    return ScalarValue(values[ValueType::eDefault].ival);
+    return ScalarValue(ranges.defaultVal.ival);
   case DataTypeEnum::eInt2:
-    return ivec2{values[ValueType::eDefault].ival, values[ValueType::eDefault].ival};
+    return ivec2{ranges.defaultVal.ival, ranges.defaultVal.ival};
   default:
     return ScalarValue();
   }
@@ -68,7 +68,21 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
 {
   auto localSetter = [this, valType](auto value)
   {
-    values[valType] = DataValue(value);
+    switch (valType)
+    {
+    case ValueType::eDefault:
+      ranges.defaultVal = DataValue(value);
+      break;
+    case ValueType::eMax:
+      ranges.maxVal = DataValue(value);
+      break;
+    case ValueType::eMin:
+      ranges.minVal = DataValue(value);
+      break;
+    case ValueType::eStep:
+      ranges.stepVal = DataValue(value);
+      break;
+    }
   };
   int   ivalue = 0;
   float fvalue = 0;
@@ -105,16 +119,6 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
     localSetter(fvalue);
     break;
   }
-}
-
-NodeMeta::NodeMeta()
-{
-  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataTypeEnum::eInput>());
-}
-
-void NodeMeta::addDomain()
-{
-  parameterDef.emplace_back(MemberPtr<&Node::domain>(), "@domain", FmtVal<DataTypeEnum::eInput>());
 }
 
 void NodeMeta::prepare()

@@ -7,6 +7,7 @@
 #include <glbinding-aux/ContextInfo.h>
 #include <glbinding/gl43core/gl.h>
 #include <glbinding/gl43ext/gl.h>
+#include <glm/gtc/type_ptr.hpp>
 
 #ifdef _WIN32
 extern "C"
@@ -66,7 +67,10 @@ void GfxDevice43::init()
 
   extensions.emplace(gl::GLextension::GL_ARB_clip_control);
   if (glbinding::aux::ContextInfo::supported(extensions))
+  {
     features.ARB_clip_control = GlGfxSupport::eSupported;
+    gl43ext::glClipControl(gl43::GL_LOWER_LEFT, gl43ext::GL_ZERO_TO_ONE);
+  }
   extensions.clear();
 
   features.version = (int)version.majorVersion() * 100 + (int)version.minorVersion() * 10;
@@ -156,6 +160,11 @@ void GfxDevice43::setState(GfxState const& newState)
     }
     state.depthTest = newState.depthTest;
   }
+  if (newState.depthWrite != state.depthWrite || state.flush)
+  {
+    gl43::glDepthMask(newState.depthWrite ? gl43::GL_TRUE : gl43::GL_FALSE);
+    state.depthWrite = newState.depthWrite;
+  }
   if (newState.scissorsEnabled != state.scissorsEnabled || state.flush)
   {
     if (newState.scissorsEnabled)
@@ -228,6 +237,19 @@ void GfxDevice43::destroy(GfxBuffer::handle h)
     gl43::glDeleteTextures(1, &res.gltbo);
   resources.buffers.erase(h);
 }
+void GfxDevice43::setTextureParameters(gl::GLenum target, GfxImage::Swizzle swizzle)
+{
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_SWIZZLE_R, toGl(swizzle.r));
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_SWIZZLE_A, toGl(swizzle.a));
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_MAG_FILTER, gl43::GL_NEAREST);
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_MIN_FILTER, gl43::GL_NEAREST);
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_WRAP_S, gl43::GL_CLAMP_TO_EDGE);
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_WRAP_T, gl43::GL_CLAMP_TO_EDGE);
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_COMPARE_MODE, gl43::GL_NONE);
+  gl43::glTexParameteri(target, gl43::GL_TEXTURE_COMPARE_FUNC, gl43::GL_LEQUAL);
+}
 GfxImage::handle GfxDevice43::create2DImage(GfxStorageClass storage, uint32_t width, uint32_t height,
                                             ImageFormatEnum format, ubyte_t const* data, GfxImage::Swizzle swizzle,
                                             uint32 mipLevels)
@@ -243,11 +265,8 @@ GfxImage::handle GfxDevice43::create2DImage(GfxStorageClass storage, uint32_t wi
   gl43::glBindTexture(gl43::GL_TEXTURE_2D, res.glhandle);
   gl43::glTexStorage2D(gl43::GL_TEXTURE_2D, mipLevels, toGlFormat(format), width, height);
   gl43::glTexSubImage2D(gl43::GL_TEXTURE_2D, 0, 0, 0, width, height, toGlDataFormat(format), toGlType(format), data);
-  gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_R, toGl(swizzle.r));
-  gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
-  gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));
-  gl43::glTexParameteri(gl43::GL_TEXTURE_2D, gl43::GL_TEXTURE_SWIZZLE_A, toGl(swizzle.a));
-  if (mipLevels > 1)
+  setTextureParameters(gl43::GL_TEXTURE_2D, swizzle);
+  if (mipLevels > 1 && data)
   {
     gl43::glGenerateMipmap(gl43::GL_TEXTURE_2D);
   }
@@ -270,11 +289,8 @@ GfxImage::handle GfxDevice43::create1DImageArray(GfxStorageClass storage, uint32
   gl43::glTexStorage2D(gl43::GL_TEXTURE_1D_ARRAY, mipLevels, toGlFormat(format), width, layers);
   gl43::glTexSubImage2D(gl43::GL_TEXTURE_1D_ARRAY, 0, 0, 0, width, layers, toGlDataFormat(format), toGlType(format),
                         data);
-  gl43::glTexParameteri(gl43::GL_TEXTURE_1D_ARRAY, gl43::GL_TEXTURE_SWIZZLE_R, toGl(swizzle.r));
-  gl43::glTexParameteri(gl43::GL_TEXTURE_1D_ARRAY, gl43::GL_TEXTURE_SWIZZLE_G, toGl(swizzle.g));
-  gl43::glTexParameteri(gl43::GL_TEXTURE_1D_ARRAY, gl43::GL_TEXTURE_SWIZZLE_B, toGl(swizzle.b));
-  gl43::glTexParameteri(gl43::GL_TEXTURE_1D_ARRAY, gl43::GL_TEXTURE_SWIZZLE_A, toGl(swizzle.a));
-  if (mipLevels > 1)
+  setTextureParameters(gl43::GL_TEXTURE_1D_ARRAY, swizzle);
+  if (mipLevels > 1 && data)
   {
     gl43::glGenerateMipmap(gl43::GL_TEXTURE_1D_ARRAY);
   }
@@ -282,17 +298,21 @@ GfxImage::handle GfxDevice43::create1DImageArray(GfxStorageClass storage, uint32
 }
 void GfxDevice43::destroy(GfxImage::handle h)
 {
-  if (!h)
-    return;
   releaseTexture(h);
 }
 void GfxDevice43::releaseTexture(GfxImage::handle h)
 {
+  if (!h)
+    return;
   auto& res = resources.images.at(h);
   if ((res.ref--) == 0)
   {
     gl43::glDeleteTextures(1, &res.glhandle);
     resources.images.erase(h);
+    if (res.fbo)
+      gl43::glDeleteFramebuffers(1, &res.fbo);
+    res.fbo      = 0;
+    res.glhandle = 0;
   }
 }
 GfxSampler::handle GfxDevice43::createSampler(ImageSampling sampling)
@@ -374,7 +394,16 @@ gl43::GLuint GfxDevice43::createShader(ShaderType type, std::span<gl43::GLchar c
 {
   gl43::GLuint glhandle = gl43::glCreateShader(toGlType(type));
 
+#ifndef NDEBUG
+  std::string code;
+  for (size_t i = 0; i < sources.size(); ++i)
+    code += (const char*)sources[i];
+  gl43::GLchar const* codes = (gl43::GLchar const*)code.c_str();
+  gl43::GLint         size  = (gl43::GLint)code.length();
+  gl43::glShaderSource(glhandle, 1, &codes, &size);
+#else
   gl43::glShaderSource(glhandle, (gl43::GLsizei)sources.size(), sources.data(), lengths.data());
+#endif
   gl43::glCompileShader(glhandle);
   gl43::GLint status = {};
   gl43::glGetShaderiv(glhandle, gl43::GL_COMPILE_STATUS, &status);
@@ -385,6 +414,9 @@ gl43::GLuint GfxDevice43::createShader(ShaderType type, std::span<gl43::GLchar c
     gl43::GLsizei size = {};
     gl43::glGetShaderInfoLog(glhandle, (gl43::GLsizei)info.length(), &size, (gl43::GLchar*)info.data());
     logError("Shader failed to compile: {}", info);
+#ifndef NDEBUG
+    logError("Shader: \n{}", code);
+#endif
     gl43::glDeleteShader(glhandle);
     glhandle = 0;
   }
@@ -690,6 +722,8 @@ void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& mat, B
   gl43::glUseProgram(resources.programs[mat.program].glhandle);
   apply(mat.layout, data);
   draw(drawDesc);
+  gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
+  gl43::glDrawBuffer(gl::GL_BACK_LEFT);
 }
 
 void GfxDevice43::apply(GfxMaterial const& mat)
@@ -768,16 +802,12 @@ void GfxDevice43::bindResources(GfxDescriptorSet::handle descriptorSet)
 }
 void GfxDevice43::applyLayoutToProgram(GfxProgram::handle program, GfxDescriptorSetLayout::handle layout) {}
 
-GfxParamLayout::handle GfxDevice43::createLayout(std::span<GfxParamLayout::Entry const>  entries,
-                                                 std::span<GfxParamLayout::Output const> outputs)
+GfxParamLayout::handle GfxDevice43::createLayout(std::span<GfxParamLayout::Entry const> entries)
 {
   auto  h         = resources.bindlessLayout.emplace();
   auto& res       = resources.bindlessLayout.at(h);
   auto  nbEntries = (uint32_t)entries.size();
-  res.nbOutput    = (uint32_t)outputs.size();
   res.entries     = acl::dynamic_array<GfxBindlessLayoutGl::Entry>(nbEntries);
-  for (uint32_t i = 0; i < res.nbOutput; ++i)
-    res.outputs[i] = outputs[i];
   std::memcpy(res.entries.data(), entries.data(), entries.size_bytes());
   return h;
 }
@@ -873,9 +903,61 @@ void GfxDevice43::destroy(BindlessHandleGl::handle hdl)
   resources.bindlessHandles.erase(hdl);
 }
 
+void GfxDevice43::bindSampledTexture(gl::GLenum target, uint32_t index, SampledTexture const& tex)
+{
+  if (features.ARB_bindless_texture == GlGfxSupport::eSupported)
+  {
+    BindlessHandleGl::handle hdev;
+    auto&                    texture = resources.images[tex.texture];
+    auto                     s       = texture.hsamplerMap.find(tex.sampler);
+    if (s == texture.hsamplerMap.end())
+    {
+      auto& sampler                    = resources.samplers[tex.sampler];
+      hdev                             = makeBindless(texture, sampler);
+      texture.hsamplerMap[tex.sampler] = hdev;
+    }
+    else
+      hdev = s->second;
+
+    auto& bhdl = resources.bindlessHandles[hdev];
+    makeResident(hdev);
+    gl43ext::glUniformHandleui64ARB(index, resources.bindlessHandles[hdev].hdev);
+  }
+  else
+  {
+    auto& texture = resources.images[tex.texture];
+    auto& sampler = resources.samplers[tex.sampler];
+    gl43::glActiveTexture(gl::GL_TEXTURE0 + index);
+    gl43::glBindTexture(target, texture.glhandle);
+    gl43::glBindSampler(index, sampler.glhandle);
+  }
+}
+
+void GfxDevice43::bindTextureBuffer(uint32_t index, TextureBuffer const& buffer)
+{
+  auto& res = resources.buffers[buffer.buffer];
+  if (!res.gltbo)
+  {
+    gl43::glGenTextures(1, &res.gltbo);
+    gl43::glBindTexture(gl43::GL_TEXTURE_BUFFER, res.gltbo);
+    gl43::glTexBuffer(gl43::GL_TEXTURE_BUFFER, toGlFormat(buffer.format), res.glhandle);
+  }
+  if (features.ARB_bindless_texture == GlGfxSupport::eSupported)
+  {
+    if (!res.hdev)
+      res.hdev = makeBindless(res);
+    makeResident(res.hdev);
+    gl43ext::glUniformHandleui64ARB(index, resources.bindlessHandles[res.hdev].hdev);
+  }
+  else
+  {
+    gl43::glActiveTexture(gl::GL_TEXTURE0 + index);
+    gl43::glBindTexture(gl43::GL_TEXTURE_BUFFER, res.gltbo);
+  }
+}
+
 void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& data)
 {
-  resources.uboData.clear();
   auto  reader  = data.reader();
   auto& layout  = resources.bindlessLayout[descriptorLayout];
   auto& entries = layout.entries;
@@ -890,64 +972,21 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
                               ssbo.offset, ssbo.size);
       break;
     }
-    case GfxBindType::eTexture:
-    {
-      auto const& tex = reader.read<SampledTexture>();
-
-      if (features.ARB_bindless_texture == GlGfxSupport::eSupported)
-      {
-        BindlessHandleGl::handle hdev;
-        auto&                    texture = resources.images[tex.texture];
-        auto                     s       = texture.hsamplerMap.find(tex.sampler);
-        if (s == texture.hsamplerMap.end())
-        {
-          auto& sampler                    = resources.samplers[tex.sampler];
-          hdev                             = makeBindless(texture, sampler);
-          texture.hsamplerMap[tex.sampler] = hdev;
-        }
-        else
-          hdev = s->second;
-
-        auto& bhdl = resources.bindlessHandles[hdev];
-        makeResident(hdev);
-        resources.uboData.push(hdev);
-      }
-      else
-      {
-        auto& texture = resources.images[tex.texture];
-        auto& sampler = resources.samplers[tex.sampler];
-        gl43::glActiveTexture(gl::GL_TEXTURE0 + e.index);
-        gl43::glBindTexture(texture.target, texture.glhandle);
-        gl43::glBindSampler(e.index, sampler.glhandle);
-      }
+    case GfxBindType::eShadowTexture2D:
+    case GfxBindType::eTexture2D:
+      bindSampledTexture(gl::GL_TEXTURE_2D, e.index, reader.read<SampledTexture>());
       break;
-    }
+    case GfxBindType::eTexture1D:
+      bindSampledTexture(gl::GL_TEXTURE_1D, e.index, reader.read<SampledTexture>());
+      break;
+    case GfxBindType::eTexture1DArray:
+      bindSampledTexture(gl::GL_TEXTURE_1D_ARRAY, e.index, reader.read<SampledTexture>());
+      break;
+
     case GfxBindType::eTextureBuffer:
-    {
-      auto const& buffer = reader.read<TextureBuffer>();
-      auto&       res    = resources.buffers[buffer.buffer];
-      if (!res.gltbo)
-      {
-        gl43::glGenTextures(1, &res.gltbo);
-        gl43::glBindTexture(gl43::GL_TEXTURE_BUFFER, res.gltbo);
-        gl43::glTexBuffer(gl43::GL_TEXTURE_BUFFER, toGlFormat(buffer.format), res.glhandle);
-      }
-      if (features.ARB_bindless_texture == GlGfxSupport::eSupported)
-      {
-        if (!res.hdev)
-          res.hdev = makeBindless(res);
-        auto& bhdl = resources.bindlessHandles[res.hdev];
-        makeResident(res.hdev);
-        resources.uboData.push(bhdl.hdev);
-      }
-      else
-      {
-        gl43::glActiveTexture(gl::GL_TEXTURE0 + e.index);
-        gl43::glBindTexture(gl43::GL_TEXTURE_BUFFER, res.gltbo);
-      }
+      bindTextureBuffer(e.index, reader.read<TextureBuffer>());
       break;
-    }
-    case GfxBindType::eStorageImage:
+    case GfxBindType::eStorageImage2D:
     {
       auto const& image = reader.read<StorageImage>();
       auto&       res   = resources.images[image.texture];
@@ -957,9 +996,8 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
           res.himg = makeBindless(res, image);
         assert(image.layered == false); // TODO Should add support for multiple image handle per texture, or have a
                                         // image type which stores the data
-        auto& bhdl = resources.bindlessHandles[res.himg];
         makeResident(res.himg, image.access);
-        resources.uboData.push(bhdl.hdev);
+        gl43ext::glUniformHandleui64ARB(e.index, resources.bindlessHandles[res.himg].hdev);
       }
       else
       {
@@ -969,85 +1007,33 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
     }
     break;
     case GfxBindType::eInt:
-      resources.uboData.push(reader.read<int>());
+      gl43::glUniform1i(e.index, reader.read<int>());
       break;
     case GfxBindType::eUint:
-      resources.uboData.push(reader.read<uint32_t>());
+      gl43::glUniform1ui(e.index, reader.read<int>());
       break;
     case GfxBindType::eInt2:
-      resources.uboData.push(reader.read<ivec2>());
+      gl43::glUniform2iv(e.index, 1, glm::value_ptr(reader.read<ivec2>()));
       break;
     case GfxBindType::eUint2:
-      resources.uboData.push(reader.read<uvec2>());
+      gl43::glUniform2uiv(e.index, 1, glm::value_ptr(reader.read<uvec2>()));
       break;
     case GfxBindType::eFloat:
-      resources.uboData.push(reader.read<float>());
+      gl43::glUniform1f(e.index, reader.read<float>());
       break;
     case GfxBindType::eFloat2:
-      resources.uboData.push(reader.read<vec2>());
+      gl43::glUniform2fv(e.index, 1, glm::value_ptr(reader.read<vec2>()));
       break;
     case GfxBindType::eFloat3:
-      resources.uboData.push(reader.read<vec3>());
+      gl43::glUniform3fv(e.index, 1, glm::value_ptr(reader.read<vec3>()));
       break;
     case GfxBindType::eFloat4:
-      resources.uboData.push(reader.read<vec4>());
+      gl43::glUniform4fv(e.index, 1, glm::value_ptr(reader.read<vec4>()));
       break;
     case GfxBindType::eMat4:
-      resources.uboData.push(reader.read<mat4>());
+      gl43::glUniformMatrix4fv(e.index, 1, gl::GL_FALSE, glm::value_ptr(reader.read<mat4>()));
       break;
     }
-  }
-
-  uint32_t size = resources.uboData.size();
-
-  if (ubo.empty() || ubo.back().available < size)
-  {
-    UBO                newUBO;
-    constexpr uint32_t DefaultSize = 256 * 1024;
-    newUBO.capacity = newUBO.available = std::max(size, DefaultSize);
-    gl43::glGenBuffers(1, &newUBO.buffer);
-    gl43::glBindBuffer(gl43::GL_UNIFORM_BUFFER, newUBO.buffer);
-    gl43::glBufferData(gl43::GL_UNIFORM_BUFFER, newUBO.available, nullptr, gl43::GL_DYNAMIC_DRAW);
-    ubo.push_back(newUBO);
-  }
-  else
-    gl43::glBindBuffer(gl43::GL_UNIFORM_BUFFER, ubo.back().buffer);
-
-  auto& buff         = ubo.back();
-  auto  bufferOffset = buff.capacity - buff.available;
-  gl43::glBufferSubData(gl43::GL_UNIFORM_BUFFER, bufferOffset, size, resources.uboData.data());
-  gl43::glBindBufferRange(gl43::GL_UNIFORM_BUFFER, 0, buff.buffer, bufferOffset, size);
-
-  if (layout.nbOutput > 0)
-  {
-    auto const& tex = reader.read<TextureOutput>();
-    if (!resources.framebuffer.glhandle)
-      gl43::glGenFramebuffers(1, &resources.framebuffer.glhandle);
-    gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, resources.framebuffer.glhandle);
-    uint32_t nbColor = 0;
-    for (uint32_t i = 0; i < layout.nbOutput; ++i)
-    {
-      if (layout.outputs[i].type == GfxBindType::eDepthBuffer)
-        gl43::glFramebufferTexture2D(gl43::GL_FRAMEBUFFER, gl::GL_DEPTH_STENCIL_ATTACHMENT, gl::GL_TEXTURE_2D,
-                                     resources.images[tex.image].glhandle, 0);
-      else
-        gl43::glFramebufferTexture2D(gl43::GL_FRAMEBUFFER, gl::GL_COLOR_ATTACHMENT0 + (nbColor++), gl::GL_TEXTURE_2D,
-                                     resources.images[tex.image].glhandle, 0);
-
-      if (gl43::glCheckFramebufferStatus(gl43::GL_FRAMEBUFFER) != gl43::GL_FRAMEBUFFER_COMPLETE)
-      {
-        logError("Error in creating framebuffer.");
-        break;
-      }
-      if (tex.clear)
-      {
-        if (layout.outputs[i].type == GfxBindType::eDepthBuffer)
-          gl43::glClearBufferfv(gl::GL_DEPTH, 0, &tex.clearValue.x);
-        else
-          gl43::glClearBufferfv(gl::GL_COLOR, nbColor - 1, &tex.clearValue.x);
-      }
-    }
-    resources.framebuffer.activeAttachments = nbColor;
   }
 }
 
@@ -1056,15 +1042,14 @@ GfxProgram::handle GfxDevice43::createProgram(std::span<std::string_view> code, 
   GfxProgram::handle h   = resources.programs.emplace();
   auto&              res = resources.programs.at(h);
 
-  std::vector<gl43::GLchar const*> sourceFiles;
-  std::vector<gl43::GLint>         sourceLengths;
-
   constexpr std::string_view stages[GfxProgram::MaxStage] = {"#define VertexShader 1\n", "#define GeometryShader 1\n",
                                                              "#define FragmentShader 1\n", "#define ComputeShader 1\n"};
 
   std::string version = fmt::format("#version {}\n", this->features.version);
 
   res.glhandle = gl43::glCreateProgram();
+  std::vector<gl43::GLchar const*> sourceFiles;
+  std::vector<gl43::GLint>         sourceLengths;
   for (uint32_t i = 0; i < GfxProgram::MaxStage; ++i)
   {
     if (!(activeStages & (1 << i)))
@@ -1082,8 +1067,9 @@ GfxProgram::handle GfxDevice43::createProgram(std::span<std::string_view> code, 
     if (res.shaders[i])
     {
       gl43::glAttachShader(res.glhandle, res.shaders[i]);
-      gl43::glAttachShader(res.glhandle, res.shaders[i]);
     }
+    sourceFiles.clear();
+    sourceLengths.clear();
   }
   gl43::glLinkProgram(res.glhandle);
   gl43::GLint status = {};
@@ -1188,9 +1174,6 @@ void GfxDevice43::postProcessDraw(GfxProgram::handle program, GfxParamLayout::ha
   apply(descriptorLayout, data);
   gl43::glBindVertexArray(0);
   gl43::glDrawArrays(gl::GL_TRIANGLES, 0, 3);
-  gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
-  gl43::glDeleteFramebuffers(1, &resources.framebuffer.glhandle);
-  resources.framebuffer.glhandle = 0;
 }
 
 void GfxDevice43::beginFrame()
@@ -1217,5 +1200,142 @@ void GfxDevice43::endFrame()
                                                    return false;
                                                  }),
                                   resources.activeResidents.end());
+}
+
+GfxPass::handle GfxDevice43::createPass(std::span<GfxPass::Attachment> colors, GfxPass::Attachment depth)
+{
+  auto       h    = resources.passes.emplace();
+  GfxPassGl& pass = resources.passes.at(h);
+
+  gl43::glGenFramebuffers(1, &pass.glhandle);
+  gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, pass.glhandle);
+  pass.nbImages = (uint32_t)colors.size();
+  for (uint32_t i = 0; i < pass.nbImages; ++i)
+  {
+    auto& image              = resources.images[colors[i].image];
+    pass.images[i]           = colors[i].image;
+    pass.imageClearColors[i] = colors[i].colorVal;
+    pass.imageClears[i]      = colors[i].clear;
+    image.ref++;
+    gl43::glFramebufferTexture2D(gl43::GL_FRAMEBUFFER, gl::GL_COLOR_ATTACHMENT0 + i, gl::GL_TEXTURE_2D, image.glhandle,
+                                 0);
+    if (gl43::glCheckFramebufferStatus(gl43::GL_FRAMEBUFFER) != gl43::GL_FRAMEBUFFER_COMPLETE)
+    {
+      logError("Error in creating framebuffer.");
+      break;
+    }
+  }
+
+  if (pass.depth = depth.image)
+  {
+    auto& image          = resources.images[depth.image];
+    pass.depth           = depth.image;
+    pass.depthClearValue = depth.depthVal;
+    pass.depthClear      = depth.clear;
+    gl43::glFramebufferTexture2D(gl43::GL_FRAMEBUFFER, gl::GL_DEPTH_ATTACHMENT, gl::GL_TEXTURE_2D, image.glhandle, 0);
+    image.ref++;
+  }
+
+  if (gl43::glCheckFramebufferStatus(gl43::GL_FRAMEBUFFER) != gl43::GL_FRAMEBUFFER_COMPLETE)
+  {
+    logError("Error in creating framebuffer.");
+    gl43::glDeleteFramebuffers(1, &pass.glhandle);
+    pass.glhandle = 0;
+  }
+  return h;
+}
+
+void GfxDevice43::destroy(GfxPass::handle h)
+{
+  GfxPassGl& pass = resources.passes.at(h);
+  for (uint32_t i = 0; i < pass.nbImages; ++i)
+    releaseTexture(pass.images[i]);
+  releaseTexture(pass.depth);
+  if (pass.glhandle)
+    gl43::glDeleteFramebuffers(1, &pass.glhandle);
+  resources.passes.erase(h);
+}
+
+void GfxDevice43::blit(GfxImage::handle src, GfxImage::handle dst, Rect const& srcZone, Rect const& dstZone)
+{
+  auto& srcimg = resources.images[src];
+
+  if (!srcimg.fbo)
+  {
+    gl43::glGenFramebuffers(1, &srcimg.fbo);
+    gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, srcimg.fbo);
+    gl43::glFramebufferTexture2D(gl43::GL_FRAMEBUFFER, gl::GL_COLOR_ATTACHMENT0, gl::GL_TEXTURE_2D,
+                                 resources.images[src].glhandle, 0);
+    if (gl43::glCheckFramebufferStatus(gl43::GL_FRAMEBUFFER) != gl43::GL_FRAMEBUFFER_COMPLETE)
+    {
+      logError("Error in creating framebuffer.");
+      return;
+    }
+    gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
+  }
+
+  gl43::glBindFramebuffer(gl::GL_READ_FRAMEBUFFER, srcimg.fbo);
+
+  if (dst)
+  {
+    auto& dstimg = resources.images[dst];
+    if (!dstimg.fbo)
+    {
+      gl43::glGenFramebuffers(1, &dstimg.fbo);
+      gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, dstimg.fbo);
+      gl43::glFramebufferTexture2D(gl43::GL_FRAMEBUFFER, gl::GL_COLOR_ATTACHMENT0, gl::GL_TEXTURE_2D,
+                                   resources.images[dst].glhandle, 0);
+      gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
+      if (gl43::glCheckFramebufferStatus(gl43::GL_FRAMEBUFFER) != gl43::GL_FRAMEBUFFER_COMPLETE)
+      {
+        logError("Error in creating framebuffer.");
+        return;
+      }
+    }
+    gl43::glBindFramebuffer(gl::GL_DRAW_FRAMEBUFFER, dstimg.fbo);
+  }
+  else
+    gl43::glDrawBuffer(gl::GL_BACK_LEFT);
+  gl43::glBlitFramebuffer(srcZone.offset.x, srcZone.offset.y, srcZone.offset.x + (int)srcZone.size.x,
+                          srcZone.offset.y + (int)srcZone.size.y, dstZone.offset.x, dstZone.offset.y,
+                          dstZone.offset.x + (int)dstZone.size.x, dstZone.offset.y + (int)dstZone.size.y,
+                          gl::GL_COLOR_BUFFER_BIT, gl::GL_NEAREST);
+  gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
+  gl43::glDrawBuffer(gl::GL_BACK_LEFT);
+  gl43::glReadBuffer(gl::GL_BACK_LEFT);
+}
+
+void GfxDevice43::beginPass(GfxPass::handle h)
+{
+  if (!h)
+  {
+    gl43::glDrawBuffer(gl::GL_BACK_LEFT);
+    gl43::glReadBuffer(gl::GL_BACK_LEFT);
+  }
+  else
+  {
+    auto& pass = resources.passes[h];
+    gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, pass.glhandle);
+    flags |= HasFramebuffer;
+    gl43::GLenum buffers[8];
+    for (uint32_t i = 0; i < pass.nbImages; ++i)
+      buffers[i] = gl43::GL_COLOR_ATTACHMENT0 + i;
+    gl43::glDrawBuffers(pass.nbImages, buffers);
+    for (uint32_t i = 0; i < pass.nbImages; ++i)
+    {
+      if (pass.imageClears[i])
+        gl43::glClearBufferfv(gl::GL_COLOR, i, &pass.imageClearColors[i].x);
+    }
+    gl43::glClearBufferfv(gl::GL_DEPTH, 0, &pass.depthClearValue);
+  }
+}
+
+void GfxDevice43::endPass()
+{
+  if (flags & HasFramebuffer)
+  {
+    gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
+    flags &= ~HasFramebuffer;
+  }
 }
 } // namespace terra

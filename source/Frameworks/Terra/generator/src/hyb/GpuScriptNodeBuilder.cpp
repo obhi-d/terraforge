@@ -41,12 +41,6 @@ NodeCmdExecute(cache, builder, state, cmd)
   return neo::retcode::e_success;
 }
 
-NodeCmdExecute(inject, builder, state, cmd)
-{
-  builder.meta.isSourceModifier = terra::getIdxParam(cmd, 0) == "true";
-  return neo::retcode::e_success;
-}
-
 NodeCmdExecute(param, builder, state, cmd)
 {
   terra::ParameterMeta meta;
@@ -288,7 +282,6 @@ NodeRegistry(GpuScript)
   NodeCmd(icon);
   NodeCmd(style);
   NodeCmd(param);
-  NodeCmd(inject);
 
   NodeScopeDef(pass)
   {

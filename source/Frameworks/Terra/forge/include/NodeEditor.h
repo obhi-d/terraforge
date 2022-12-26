@@ -12,23 +12,23 @@ inline constexpr bool     isOutputPin(uint32_t id)
 {
   return id > MaxInputPin;
 }
-inline constexpr bool pinToIndex(uint32_t id)
+inline constexpr uint32_t pinToIndex(uint32_t id)
 {
   return id > MaxInputPin ? id - MaxInputPin : id;
 }
-inline constexpr bool inputToIndex(uint32_t id)
+inline constexpr uint32_t inputToIndex(uint32_t id)
 {
   return id;
 }
-inline constexpr bool outputToIndex(uint32_t id)
+inline constexpr uint32_t outputToIndex(uint32_t id)
 {
   return id - MaxInputPin;
 }
-inline constexpr bool indexToOutput(uint32_t id)
+inline constexpr uint32_t indexToOutput(uint32_t id)
 {
   return id + MaxInputPin;
 }
-inline constexpr bool indexToInput(uint32_t id)
+inline constexpr uint32_t indexToInput(uint32_t id)
 {
   return id;
 }

@@ -7,6 +7,7 @@
 #include "Logger.h"
 #include "ResourceUtils.h"
 #include <SDL.h>
+#include <glm/gtx/transform.hpp>
 
 namespace tmpl
 {
@@ -238,6 +239,9 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
       renderer->destroy(b);
     pendingDeletion.clear();
   }
+
+  state.depthTest         = DepthTestMode::eDisabled;
+  state.depthWrite        = false;
   state.cullMode          = CullMode::eCullNone;
   state.viewport.offset.x = 0;
   state.viewport.offset.y = 0;
@@ -253,9 +257,13 @@ void ImguiBackend::draw(glm::vec2 frameSize, ImDrawData* data)
   float    R                = data->DisplayPos.x + data->DisplaySize.x;
   float    T                = data->DisplayPos.y;
   float    B                = data->DisplayPos.y + data->DisplaySize.y;
-  paramData.projection      = glm::mat4({2.0f / (R - L), 0.0f, 0.0f, 0.0f}, {0.0f, 2.0f / (T - B), 0.0f, 0.0f},
-                                        {0.0f, 0.0f, -1.0f, 0.0f}, {(R + L) / (L - R), (T + B) / (B - T), 0.0f, 1.0f});
-  auto paramDataPtr         = renderer->mapBuffer(params, 0, sizeof(Params));
+  float    N                = -1;
+  float    F                = 1.f;
+
+  paramData.projection = renderer->getCaps().ARB_clip_control != GlGfxSupport::eUnsupported
+                           ? glm::orthoRH_ZO(L, R, B, T, F, N)
+                           : glm::orthoRH(L, R, B, T, N, F);
+  auto paramDataPtr    = renderer->mapBuffer(params, 0, sizeof(Params));
   std::memcpy(paramDataPtr, &paramData, sizeof(Params));
   renderer->unmapBuffer(params);
   int fbHeight = (int)(data->DisplaySize.y * data->FramebufferScale.y);

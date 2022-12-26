@@ -66,12 +66,13 @@ public:
 
   void prepare() override;
 
-  using GpuPipelineMap = std::unordered_map<ProgramKey, GpuPipelinePtr, ProgramKey::hasher>;
-  static std::unordered_map<uint32_t, GpuPipelineMap> shaderMaps;
+  static void registerKnownMeta();
+
+  using GpuPipelineMap = std::unordered_map<ProgramKey, GpuPipelineRef, ProgramKey::hasher>;
+  static GpuPipelineMap shaderMaps;
 
   std::vector<GpuPass> passes;
-  uint32_t             dictionaryIdx    = 0xffffffff;
-  bool                 isSourceModifier = false;
+  uint32_t             dictionaryIdx = 0xffffffff;
 };
 
 class GpuScriptNodeMeta : public GpuNodeMeta
