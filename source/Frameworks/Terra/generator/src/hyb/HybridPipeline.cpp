@@ -146,6 +146,7 @@ void HybridPipeline::tick()
     memoryUsed_    = 0;
     devMemoryUsed_ = 0;
     result_        = HybridNode::Result::eWaiting;
+    cversion_      = version_;
   }
   if (result_ == HybridNode::Result::eWaiting || result_ == HybridNode::Result::eContinue)
   {

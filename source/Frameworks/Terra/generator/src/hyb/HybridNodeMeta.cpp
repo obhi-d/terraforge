@@ -81,7 +81,7 @@ void GpuNodeMeta::registerKnownMeta()
     meta.as<GpuCurveNode>();
     meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::curve>(), "source", ValueRange(), DataType::eCurveData,
                                    DataType::eFloat, ImageFormat::eNone, ParamDeclType::eReadonlySSBO);
-    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
+    meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
                                    DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
     meta.outputs.emplace_back("output", DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
                                                    ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));

@@ -198,6 +198,8 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
 
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
 {
+  if (pipeline)
+    pipeline->tick();
 
   if (texturesDirty)
   {
