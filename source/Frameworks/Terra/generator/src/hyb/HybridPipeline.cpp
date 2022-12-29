@@ -1,15 +1,13 @@
 
 #include "hyb/HybridPipeline.h"
+#include "GpuMinMax.h"
 #include "Terra.h"
 #include "hyb/HybridNode.h"
 
 namespace terra
 {
 
-HybridPipeline::HybridPipeline()
-{
-  buffers_.emplace();
-}
+HybridPipeline::HybridPipeline() {}
 
 HybridBuffer::handle HybridPipeline::declareBuffer()
 {
@@ -79,6 +77,8 @@ GfxBuffer::handle HybridPipeline::writeBuffer(HybridBuffer::handle item, bool di
   if (!discard)
     ii.upload();
   recents_.emplace(item);
+  if (ii.owner() == actor())
+    ii.read(tick_);
   return ii.buffer();
 }
 
@@ -96,6 +96,8 @@ GfxImage::handle HybridPipeline::writeImage(HybridBuffer::handle item, bool disc
   if (!discard)
     ii.upload();
   recents_.emplace(item);
+  if (ii.owner() == actor())
+    ii.read(tick_);
   return ii.image();
 }
 
@@ -112,6 +114,8 @@ std::span<ubyte_t> HybridPipeline::writeBufferData(HybridBuffer::handle item, bo
     ii.offload();
   auto ret = ii.ensureHost();
   recents_.emplace(item);
+  if (ii.owner() == actor())
+    ii.read(tick_);
   return ret;
 }
 
@@ -126,36 +130,66 @@ void HybridPipeline::compute(uvec2 tile)
   version_++;
 }
 
-void HybridPipeline::tick()
+bool HybridPipeline::tick()
 {
+  bool actorOutdated = false;
+  if (actor_)
+  {
+    auto ver      = get().get<HybridNode>(actor_).getVersion();
+    actorOutdated = actorVersion_ != ver;
+    actorVersion_ = ver;
+    orderSet_.clear();
+  }
+
   if (version_ != cversion_)
   {
-    iteration_ = 0;
-    buffers_.clear();
-    ordered_.clear();
-    heights_      = declareBuffer();
-    layerContrib_ = declareBuffer();
+    heights_    = declareBuffer();
+    water_      = declareBuffer();
+    rocks_      = declareBuffer();
+    vegetation_ = declareBuffer();
     describeImage(heights_, {}, size().x, size().y, ImageFormatEnum::eFloat);
-    describeImage(layerContrib_, {}, size().x, size().y, ImageFormatEnum::eRgba32f);
+    describeImage(water_, {}, size().x, size().y, ImageFormatEnum::eFloat);
+    describeImage(rocks_, {}, size().x, size().y, ImageFormatEnum::eFloat);
+    describeImage(vegetation_, {}, size().x, size().y, ImageFormatEnum::eFloat);
 
-    if (actor_)
-    {
-      get().get<HybridNode>(actor_).prepare(*this);
-      orderSet_.clear();
-    }
     memoryUsed_    = 0;
     devMemoryUsed_ = 0;
     result_        = HybridNode::Result::eWaiting;
     cversion_      = version_;
+    actorOutdated  = true;
   }
+
+  if (actorOutdated)
+  {
+    buffers_.clear();
+    ordered_.clear();
+    iteration_ = 0;
+    get().get<HybridNode>(actor_).prepare(*this);
+    orderSet_.clear();
+  }
+
   if (result_ == HybridNode::Result::eWaiting || result_ == HybridNode::Result::eContinue)
   {
     execute();
+    if (heights_)
+    {
+      auto image = buffers_[heights_].image();
+      if (image)
+      {
+        minMax_ = GpuMinMax::execute(image, size());
+      }
+    }
+    return true;
   }
+  return false;
 }
 
 void HybridPipeline::execute()
 {
+  /// ============ Debug ============
+  constexpr bool Debug = false;
+  /// ===============================
+
   if (ordered_.empty())
   {
     result_ = HybridNode::Result::eWaiting;
@@ -163,6 +197,7 @@ void HybridPipeline::execute()
   }
   Node&       node = ordered_.back();
   HDataSource item = node.item;
+
   switch (get().get<HybridNode>(item).execute(*this))
   {
   case HybridNode::Result::eContinue:
@@ -170,8 +205,15 @@ void HybridPipeline::execute()
     result_ = HybridNode::Result::eContinue;
     break;
   case HybridNode::Result::eDone:
-    ordered_.pop_back();
-    result_ = (ordered_.empty()) ? HybridNode::Result::eDone : HybridNode::Result::eContinue;
+    if constexpr (Debug)
+    {
+      result_ = HybridNode::Result::eContinue;
+    }
+    else
+    {
+      ordered_.pop_back();
+      result_ = (ordered_.empty()) ? HybridNode::Result::eDone : HybridNode::Result::eContinue;
+    }
     break;
   case HybridNode::Result::eFailed:
     result_ = HybridNode::Result::eFailed;
@@ -181,7 +223,15 @@ void HybridPipeline::execute()
   auto it = recents_.begin();
   while (it != recents_.end())
   {
-    auto& ii = buffers_.at(*it);
+    auto h = *it;
+
+    if (h == heights_ || h == rocks_ || h == vegetation_ || h == water_)
+    {
+      ++it;
+      continue;
+    }
+
+    auto& ii = buffers_.at(h);
     if (ii.lastUsed() < tick_)
     {
       if (ii.offload())
@@ -199,10 +249,13 @@ void HybridPipeline::execute()
       if (ii.buffer())
         devMemoryUsed_ -= s;
       ii.clear();
+
+      it = recents_.erase(it);
     }
     else
       ++it;
   }
+  recents_.clear();
 }
 
 void HybridPipeline::push(HDataSource item)
@@ -215,10 +268,12 @@ void HybridPipeline::push(HDataSource item)
   }
 }
 
-void HybridPipeline::getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib)
+void HybridPipeline::getResults(GfxImage::handle& heights, Layers& layerContrib)
 {
-  heights      = heights_ ? readImage(heights_) : GfxImage::handle{};
-  layerContrib = layerContrib_ ? readImage(layerContrib_) : GfxImage::handle{};
+  heights                 = heights_ ? readImage(heights_) : GfxImage::handle{};
+  layerContrib.water      = water_ ? readImage(water_) : GfxImage::handle{};
+  layerContrib.rocks      = rocks_ ? readImage(rocks_) : GfxImage::handle{};
+  layerContrib.vegetation = vegetation_ ? readImage(vegetation_) : GfxImage::handle{};
 }
 
 GfxSampler::handle HybridPipeline::getSampler(SamplerParamEnum sampler)

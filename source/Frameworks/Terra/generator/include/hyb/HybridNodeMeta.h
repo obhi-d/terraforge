@@ -19,6 +19,7 @@ struct ProgramKey
   uint64_t      probeMask  = 0;
   uint32_t      probeCount = 0;
   uint32_t      active     = 0;
+  uint32_t      meta       = 0;
   ShaderOptions options;
 
   inline bool operator==(ProgramKey const&) const noexcept = default;
@@ -44,6 +45,7 @@ public:
     std::string           shaderContent;
     std::vector<uint32_t> parameters;
     std::vector<uint32_t> outputs;
+    GfxState              state;
   };
 
   GpuPipelinePtr findProgram(ProgramKey const& key) const;

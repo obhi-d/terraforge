@@ -11,9 +11,15 @@ namespace terra
 ShaderProgram::~ShaderProgram()
 {
   if (material.program)
+  {
     get().getDevice().destroy(material.program);
+    material.program = {};
+  }
   if (material.layout)
+  {
     get().getDevice().destroy(material.layout);
+    material.layout = {};
+  }
 }
 
 ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept
@@ -165,6 +171,11 @@ void SourceBuilderAdapter::options(ShaderOptions option)
   }
 }
 
+void SourceBuilderAdapter::option(std::string_view name)
+{
+  optionHeader += fmt::format("#define {}\n", name);
+}
+
 void SourceBuilderAdapter::pushExtension(std::string_view ext)
 {
   extensions += ext;
@@ -186,7 +197,7 @@ void SourceBuilderAdapter::param(std::string_view name, DataFormat df)
   if (df.preEval)
   {
     auto lname = localName(name);
-    content += fmt::format("{} {} = sample_{}(input);\n", toGlsl(df.scalarSubType), lname, name);
+    content += fmt::format("{} {} = sample_{}(uv);\n", toGlsl(df.scalarSubType), lname, name);
     params.emplace_back(std::move(lname));
   }
 
@@ -212,12 +223,12 @@ void SourceBuilderAdapter::param(std::string_view name, DataFormat df)
     sampleTextureBuffer(name, df);
     break;
   default:
-    sampleScalar(name, df);
+    scalar(name, df);
     break;
   }
 }
 
-void SourceBuilderAdapter::sampleScalar(std::string_view name, DataFormat df)
+void SourceBuilderAdapter::scalar(std::string_view name, DataFormat df)
 {
   auto type = toGlsl(df.scalarSubType);
   auto sv   = name;
@@ -280,7 +291,7 @@ void SourceBuilderAdapter::output(std::string_view name, DataFormat df)
 
 void SourceBuilderAdapter::computeInput(std::string_view call)
 {
-  content += fmt::format("input = {}(input);\n", call);
+  content += fmt::format("uv = {}(uv);\n", call);
 }
 
 void SourceBuilderAdapter::append(std::string_view fn)
@@ -292,7 +303,7 @@ void SourceBuilderAdapter::call(std::string_view node, bool acceptInput)
 {
   content += node;
   if (acceptInput)
-    content += "(input";
+    content += "(uv";
   else
     content += '(';
   bool first = !acceptInput;
@@ -329,7 +340,7 @@ GfxProgram::handle SourceBuilderAdapter::makeGpuNode(std::vector<std::string_vie
 layout(location = 0) in vec2 fs_UV;
 void main()
 {{
-  vec2 input = compute_input(fs_UV.x, fs_UV.y);
+  vec2 uv = compute_input(fs_UV.x, fs_UV.y);
   {}
   {}
 }})_",
@@ -352,9 +363,16 @@ GfxProgram::handle SourceBuilderAdapter::makeShaderProgram(std::vector<std::stri
   return dev.createProgram(code, GfxProgram::fVertex | GfxProgram::fFragment);
 }
 
-ShaderProgram SourceBuilderAdapter::finalize()
+GfxProgram::handle SourceBuilderAdapter::makeComputeProgram(std::vector<std::string_view>& code)
 {
-  ShaderProgram pret;
+  auto& dev = get().getDevice();
+  code.emplace_back(content);
+  return dev.createProgram(code, GfxProgram::fCompute);
+}
+
+ShaderProgramPtr SourceBuilderAdapter::finalize()
+{
+  ShaderProgramPtr pret = std::make_shared<ShaderProgram>();
 
   std::vector<std::string_view> snapshots;
   packCommon(snapshots);
@@ -370,17 +388,20 @@ ShaderProgram SourceBuilderAdapter::finalize()
   case SourceType::eShaderProgram:
     program = makeShaderProgram(snapshots);
     break;
+  case SourceType::eComputeProgram:
+    program = makeComputeProgram(snapshots);
+    break;
   }
 
   if (program)
   {
-    auto& dev             = get().getDevice();
-    pret.material.program = program;
-    pret.material.layout  = dev.createLayout(entries);
-    pret.bindings         = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
-    for (uint32_t i = 0; i < pret.bindings.size(); ++i)
-      pret.bindings[i] = entries[i].type;
-    pret.frame = get().frameNumber();
+    auto& dev              = get().getDevice();
+    pret->material.program = program;
+    pret->material.layout  = dev.createLayout(entries);
+    pret->bindings         = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
+    for (uint32_t i = 0; i < pret->bindings.size(); ++i)
+      pret->bindings[i] = entries[i].type;
+    pret->frame = get().frameNumber();
   }
 
   return pret;

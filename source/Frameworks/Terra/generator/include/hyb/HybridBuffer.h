@@ -87,6 +87,12 @@ public:
   }
 
   void clear();
+  void upload(std::span<ubyte_t const>);
+
+  HDataSource owner() const
+  {
+    return owner_;
+  }
 
 private:
   std::unique_ptr<ubyte_t[]> data_;

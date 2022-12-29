@@ -25,26 +25,21 @@ public:
   }
   void regenerate(TerraMainApp const&, HDataSource);
 
-  void update(glm::ivec2 viewportSize, MouseState& ms)
-  {
-    updateSunDir(viewportSize, ms);
-    camera.update(viewportSize, box, ms);
-  }
+  void update(glm::ivec2 viewportSize, MouseState& ms);
   void draw(Rect const& viewport, Rect const& scissor, TerraMainApp&);
 
   void createDeviceObjects(TerraMainApp const&, GfxDevice43&);
 
-  Property<Color> sunColor         = Property<Color>("@sunColor", (uint8_t)112, 82, 111, 255);
-  Property<float> sunIntensity     = Property<float>("@sunIntensity", 0.4f);
-  Property<Color> meshTint         = Property<Color>("@meshTint", (uint8_t)111, 111, 111, 255);
-  Property<float> heightMultiplier = Property<float>("@heightMultiplier", 20.0f);
+  Property<Color> sunColor     = Property<Color>("@sunColor", (uint8_t)112, 82, 111, 255);
+  Property<float> sunIntensity = Property<float>("@sunIntensity", 50.0f);
+  Property<Color> meshTint     = Property<Color>("@meshTint", (uint8_t)111, 111, 111, 255);
   // in this order: water,grass,rock,default
   Property<TextureFile> water               = Property<TextureFile>("@waterColor", "images/water_color.png");
   Property<TextureFile> vegetation          = Property<TextureFile>("@vegetationColor", "images/vegetation_color.png");
   Property<TextureFile> rocks               = Property<TextureFile>("@rockColor", "images/rocks_color.png");
   Property<TextureFile> terrain             = Property<TextureFile>("@rockColor", "images/terrain_color.png");
-  Property<float>       meshStyle           = Property<float>("@meshStyle", 5.6f);
-  Property<Rotation>    sunRotation         = Property<Rotation>("@sunRotation", 40.f);
+  Property<float>       planetScale         = Property<float>("@planetScale", 1.0f);
+  Property<Rotation>    sunRotation         = Property<Rotation>("@sunRotation", 60.f, 80.f);
   Property<uint32_t>    shadowMapResolution = Property<uint32_t>("@shadowMapResolution", 2);
   Property<vec4>        layerWeights        = Property<vec4>("@layerWeights", vec4(0.25f));
 
@@ -53,16 +48,21 @@ public:
     return camera;
   }
 
+  void tick();
+
 private:
   void updateShadowMap(TerraMainApp const&);
   void drawTerrain(TerraMainApp const&);
+  void drawAtmosphere(TerraMainApp const&);
   void buildShadowMapProgram();
   void buildTerrainDrawProgram();
+  void buildScatterProgram();
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);
   void reloadTexture(TerraMainApp const&);
 
   float                         max         = 1.0f;
   float                         min         = -1.0f;
+  float                         domeRadius  = 0.f;
   uint32_t                      vertexCount = 0;
   glm::vec3                     box;
   Camera                        camera;
@@ -73,18 +73,23 @@ private:
   GfxImage::handle              terrainColors;
   GfxImage::handle              shadowMapImage;
   GfxImage::handle              heights;
-  GfxImage::handle              layerContrib;
+  GfxImage::handle              waterContrib;
+  GfxImage::handle              vegetationContrib;
+  GfxImage::handle              rocksContrib;
   GfxMesh::handle               layout;
   GfxSampler::handle            heightSampler;
   GfxSampler::handle            layerSampler;
   GfxSampler::handle            shadowSampler;
   GfxPass::handle               shadowGen;
-  ShaderProgram                 materialProg;
-  ShaderProgram                 shadowProg;
+  ShaderProgramPtr              materialProg;
+  ShaderProgramPtr              shadowProg;
+  ShaderProgramPtr              atmosphereProg;
   std::optional<ShaderMaterial> terrainMat;
   std::optional<ShaderMaterial> shadowMat;
+  std::optional<ShaderMaterial> atmosphereMat;
   ShaderOptions                 shadowProgOptions;
-  uvec2                         tileSize = {0, 0};
+  uvec2                         tileSize     = {0, 0};
+  uvec2                         shadowMapRez = {512, 512};
   GfxMesh::Draw                 drawCall;
   uint64_t                      setActorEventListener = 0;
   Canvas                        canvas;

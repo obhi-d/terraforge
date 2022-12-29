@@ -58,7 +58,7 @@ private:
   std::vector<PinData> parameters;
   std::vector<PinData> outputs;
 
-  float headerMaxX = 0.0f;
+  float width = 0.0f;
 
   HDataSource id;
   uint32_t    style = 0;

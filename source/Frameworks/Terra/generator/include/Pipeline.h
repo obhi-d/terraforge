@@ -18,6 +18,13 @@ struct DispatchTask
 class Pipeline
 {
 public:
+  struct Layers
+  {
+    GfxImage::handle water;
+    GfxImage::handle rocks;
+    GfxImage::handle vegetation;
+  };
+
   ~Pipeline()
   {
     cleanup();
@@ -28,17 +35,16 @@ public:
   virtual void frequency(float freq);
   virtual void size(uvec2);
   virtual void offset(ivec2);
-
-  // Tick
-  virtual void tick() = 0;
+  // Tick, returns true if updated
+  virtual bool tick() = 0;
   // Compute
   virtual void compute(uvec2 tile)
   {
     tile_ = tile;
-  } 
+  }
   // wrap in Modifiers.toR16
   // this function is called once results are available
-  virtual void getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) = 0;
+  virtual void getResults(GfxImage::handle& heights, Layers& layerContrib) = 0;
   // Read for the given node
   virtual void cleanup();
 
@@ -79,8 +85,14 @@ public:
     return tile_;
   }
 
+  vec2 minMax() const
+  {
+    return minMax_;
+  }
+
 protected:
   // main actor
+  vec2        minMax_    = vec2(0.0f);
   ivec2       offset_    = ivec2(0);
   uvec2       size_      = ivec2(0);
   HDataSource actor_     = HDataSource();

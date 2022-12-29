@@ -37,6 +37,7 @@ void TerraMainApp::destroy()
 {
   viewer.deinit(*this);
   get().destroy();
+  device->destroy();
   device = nullptr;
   SDL_Quit();
 }
@@ -75,6 +76,37 @@ void TerraMainApp::readLocalization()
 
 void TerraMainApp::initalize()
 {
+  // const SDL_MessageBoxButtonData buttons[] = {
+  //   {/* .flags, .buttonid, .text */ 0, 0, "no"},
+  //   {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "ok"},
+  // };
+  // const SDL_MessageBoxColorScheme colorScheme = {{/* .colors (.r, .g, .b) */
+  //                                                 /* [SDL_MESSAGEBOX_COLOR_BACKGROUND] */
+  //                                                 {255, 0, 0},
+  //                                                 /* [SDL_MESSAGEBOX_COLOR_TEXT] */
+  //                                                 {0, 255, 0},
+  //                                                 /* [SDL_MESSAGEBOX_COLOR_BUTTON_BORDER] */
+  //                                                 {255, 255, 0},
+  //                                                 /* [SDL_MESSAGEBOX_COLOR_BUTTON_BACKGROUND] */
+  //                                                 {0, 0, 255},
+  //                                                 /* [SDL_MESSAGEBOX_COLOR_BUTTON_SELECTED] */
+  //                                                 {255, 0, 255}}};
+  //
+  // std::string msg = "Attach debugger";
+  //
+  // const SDL_MessageBoxData messageBoxData = {
+  //   SDL_MESSAGEBOX_INFORMATION, /* .flags */
+  //   NULL,                       /* .window */
+  //   "Error",                    /* .title */
+  //   msg.c_str(),                /* message */
+  //   SDL_arraysize(buttons),     /* .numbuttons */
+  //   buttons,                    /* .buttons */
+  //   &colorScheme                /* .colorScheme */
+  // };
+  //
+  // int buttonid;
+  // SDL_ShowMessageBox(&messageBoxData, &buttonid);
+
   if (SDL_Init(SDL_INIT_VIDEO))
   {
     throw std::runtime_error("SDL init failed.");
@@ -202,9 +234,16 @@ void TerraMainApp::run()
       return;
     if (!draw())
       return;
+    tick();
     events.dispatch(*this);
   }
   while (true);
+}
+
+void TerraMainApp::tick()
+{
+  viewer.tick();
+  frame++;
 }
 
 int TerraMainApp::Main(int argc, const char* argv[])
@@ -231,7 +270,6 @@ int TerraMainApp::Main(int argc, const char* argv[])
 bool TerraMainApp::draw()
 {
   bool r = viewer.draw(*this);
-  frame++;
   return r;
 }
 

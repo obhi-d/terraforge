@@ -34,14 +34,19 @@ struct ShaderProgramInstance
 
   void pushValue(ScalarValue value, DataTypeEnum type);
   void pushValue(HybridBuffer::handle, DataFormat);
+  void pushImage(GfxImage::handle, DataFormat);
+  void pushBuffer(GfxBuffer::handle, uint32_t size, DataFormat);
   void pushOutput(HybridBuffer::handle, DataFormat, bool clear, vec4 clearVal);
   void run();
 
-  ShaderProgramInstance(ShaderProgram const& iprogram, HybridPipeline& pipe) : pipeline(pipe), program(iprogram) {}
+  ShaderProgramInstance(GfxState const& gfxstate, ShaderProgram const& iprogram, HybridPipeline& pipe)
+      : pipeline(pipe), program(iprogram), state(gfxstate)
+  {}
 
   std::array<GfxPass::Attachment, 8> outputs;
   GfxPass::Attachment                depth;
 
+  GfxState const& state;
   HybridPipeline& pipeline;
   ShaderMaterial  program;
 

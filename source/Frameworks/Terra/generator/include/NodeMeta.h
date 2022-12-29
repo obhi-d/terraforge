@@ -228,8 +228,8 @@ struct ParameterMeta
   ParameterMeta(MembPtr, std::string_view iname, ValueRange values, DataTypeEnum type = DataTypeEnum::eBuffer,
                 DataTypeEnum subType = DataTypeEnum::eFloat, ImageFormatEnum imageFmt = ImageFormatEnum::eFloat,
                 ParamDeclTypeEnum declType = ParamDeclTypeEnum::eSampler2D, SemanticEnum semantic = SemanticEnum::eNone,
-                bool preEval = false)
-      : format(type, subType, imageFmt, declType, semantic, preEval), ranges(values), displayInfo(iname),
+                SamplerParamEnum sampler = SamplerParamEnum::eNone, bool preEval = false)
+      : format(type, subType, imageFmt, declType, semantic, sampler, preEval), ranges(values), displayInfo(iname),
         setter(
           [](Node& node, uint32_t, Parameter param)
           {

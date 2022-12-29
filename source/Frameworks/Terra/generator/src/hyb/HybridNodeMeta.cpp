@@ -56,21 +56,34 @@ void GpuNodeMeta::registerKnownMeta()
     meta.as<GpuImageNode>();
 
     meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::image>(), "source", ValueRange(), DataType::eImage,
-                                   DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D);
+                                   DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D,
+                                   SemanticEnum::eNone, SamplerParam::eLinearWrap);
+    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::sampleScale>(), "sample_scale",
+                                   ValueRange(0.0f, -inf, inf, 0.1f), DataType::eFloat2, DataType::eFloat2,
+                                   ImageFormat::eFloat, ParamDeclType::eScalar);
+    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::sampleOffset>(), "sample_offset",
+                                   ValueRange(0.0f, -inf, inf, 0.1f), DataType::eFloat2, DataType::eFloat2,
+                                   ImageFormat::eFloat, ParamDeclType::eScalar);
     meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
-                                   DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
-    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::offset>(), "offset", ValueRange(0.0f, -inf, inf, 0.1f),
-                                   DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
+                                   DataType::eFloat, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eScalar);
 
-    meta.outputs.emplace_back("output", DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
-                                                   ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+    meta.outputs.emplace_back("heights",
+                              DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
+                                         ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+    meta.outputs.back().clear = true;
     meta.passes.emplace_back();
     GpuPass& pass      = meta.passes.back();
     pass.function      = "node";
     pass.shaderContent = fileContentToString("shaders/image_node.glsl");
     pass.outputs.emplace_back(0);
-    pass.parameters = {0, 1, 2};
-
+    pass.parameters            = {0, 1, 2, 3};
+    pass.state.nbBlendModes    = 1;
+    pass.state.blend[0].mode   = BlendMode::eDisabled;
+    pass.state.cullMode        = CullMode::eCullBack;
+    pass.state.depthTest       = DepthTestMode::eDisabled;
+    pass.state.depthWrite      = false;
+    pass.state.flush           = false;
+    pass.state.scissorsEnabled = false;
     terra::get().addMeta(meta);
   }
 
@@ -83,15 +96,23 @@ void GpuNodeMeta::registerKnownMeta()
                                    DataType::eFloat, ImageFormat::eNone, ParamDeclType::eReadonlySSBO);
     meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
                                    DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
-    meta.outputs.emplace_back("output", DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
-                                                   ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+    meta.outputs.emplace_back("heights",
+                              DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
+                                         ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+    meta.outputs.back().clear = true;
     meta.passes.emplace_back();
     GpuPass& pass      = meta.passes.back();
     pass.function      = "node";
     pass.shaderContent = fileContentToString("shaders/curve_node.glsl");
     pass.outputs.emplace_back(0);
-    pass.parameters = {0, 1};
-
+    pass.parameters            = {0, 1};
+    pass.state.nbBlendModes    = 1;
+    pass.state.blend[0].mode   = BlendMode::eDisabled;
+    pass.state.cullMode        = CullMode::eCullBack;
+    pass.state.depthTest       = DepthTestMode::eDisabled;
+    pass.state.depthWrite      = false;
+    pass.state.flush           = false;
+    pass.state.scissorsEnabled = false;
     terra::get().addMeta(meta);
   }
 }

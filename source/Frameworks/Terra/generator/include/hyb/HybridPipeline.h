@@ -40,8 +40,8 @@ public:
   HybridBuffer::handle declareBuffer();
 
   void compute(uvec2 tile) final;
-  void tick() final;
-  void getResults(GfxImage::handle& heights, GfxImage::handle& layerContrib) final;
+  bool tick() final;
+  void getResults(GfxImage::handle& heights, Layers& layerContrib) final;
 
   void describeBuffer(HybridBuffer::handle, HDataSource owner, uint32_t size, ImageFormatEnum format);
   void describeImage(HybridBuffer::handle, HDataSource owner, uint32_t width, uint32_t height, ImageFormatEnum format);
@@ -60,14 +60,29 @@ public:
   void cleanup() final;
   void push(HDataSource);
 
-  HybridBuffer::handle heights()
+  HybridBuffer::handle heights() const
   {
     return heights_;
   }
 
-  HybridBuffer::handle layerContrib()
+  HybridBuffer::handle water() const
   {
-    return layerContrib_;
+    return water_;
+  }
+
+  HybridBuffer::handle rocks() const
+  {
+    return rocks_;
+  }
+
+  HybridBuffer::handle terrain() const
+  {
+    return rocks_;
+  }
+
+  HybridBuffer::handle vegetation() const
+  {
+    return vegetation_;
   }
 
 private:
@@ -78,14 +93,17 @@ private:
 
   std::array<GfxSampler::handle, SamplerParam::kCount> samplers;
 
-  HybridBuffer::handle            heights_;
-  HybridBuffer::handle            layerContrib_;
+  HybridBuffer::handle heights_;
+  HybridBuffer::handle water_;
+  HybridBuffer::handle rocks_;
+  HybridBuffer::handle vegetation_;
+
   size_t                          memoryUsed_    = 0;
   size_t                          devMemoryUsed_ = 0;
   HybridNode::Result              result_        = HybridNode::Result::eWaiting;
   uint32_t                        tick_          = 1;
+  uint32_t                        actorVersion_  = 0xffffffff;
   uvec2                           tileId_;
-  HDataSource                     actor_;
   HDataSource                     current_;
   UseSet                          recents_;
   OrderSet                        orderSet_;

@@ -25,6 +25,8 @@ struct ShaderProgram
   void touch();
 };
 
+using ShaderProgramPtr = std::shared_ptr<ShaderProgram>;
+
 struct ShaderMaterial
 {
   ShaderMaterial(ShaderProgram const& prog) : program(prog) {}
@@ -50,7 +52,7 @@ struct ShaderMaterial
 
 struct GpuPipeline
 {
-  std::vector<ShaderProgram> passes;
+  std::vector<ShaderProgramPtr> passes;
 };
 
 using GpuPipelinePtr = std::shared_ptr<GpuPipeline>;
@@ -60,19 +62,22 @@ enum class SourceType
 {
   eFullscreenGraphNode,
   eShaderProgram,
-  ePostProcess
+  ePostProcess,
+  eComputeProgram
 };
 
 struct SourceBuilder
 {
-  virtual void          options(ShaderOptions option)                        = 0;
-  virtual void          pushExtension(std::string_view ext)                  = 0;
-  virtual void          param(std::string_view name, DataFormat df)          = 0;
-  virtual void          output(std::string_view name, DataFormat df)         = 0;
-  virtual void          computeInput(std::string_view)                       = 0;
-  virtual void          append(std::string_view)                             = 0;
-  virtual void          call(std::string_view node, bool acceptInput = true) = 0;
-  virtual ShaderProgram finalize()                                           = 0;
+  virtual void             options(ShaderOptions option)                        = 0;
+  virtual void             option(std::string_view)                             = 0;
+  virtual void             pushExtension(std::string_view ext)                  = 0;
+  virtual void             param(std::string_view name, DataFormat df)          = 0;
+  virtual void             scalar(std::string_view name, DataFormat df)         = 0;
+  virtual void             output(std::string_view name, DataFormat df)         = 0;
+  virtual void             computeInput(std::string_view)                       = 0;
+  virtual void             append(std::string_view)                             = 0;
+  virtual void             call(std::string_view node, bool acceptInput = true) = 0;
+  virtual ShaderProgramPtr finalize()                                           = 0;
 };
 
 struct SourceBuilderAdapter : SourceBuilder
@@ -80,6 +85,7 @@ struct SourceBuilderAdapter : SourceBuilder
   SourceBuilderAdapter(SourceType itype);
 
   void options(ShaderOptions option) final;
+  void option(std::string_view name) final;
   void pushExtension(std::string_view ext) final;
   void param(std::string_view name, DataFormat df) final;
   void output(std::string_view name, DataFormat df) final;
@@ -89,13 +95,14 @@ struct SourceBuilderAdapter : SourceBuilder
   void append(std::string_view) final;
   void call(std::string_view node, bool acceptInput);
 
-  ShaderProgram finalize();
+  ShaderProgramPtr finalize();
 
-  void               sampleScalar(std::string_view name, DataFormat df);
+  void               scalar(std::string_view name, DataFormat df) final;
   void               packCommon(std::vector<std::string_view>&);
   GfxProgram::handle makeGpuNode(std::vector<std::string_view>&);
   GfxProgram::handle makePostProcess(std::vector<std::string_view>&);
   GfxProgram::handle makeShaderProgram(std::vector<std::string_view>&);
+  GfxProgram::handle makeComputeProgram(std::vector<std::string_view>&);
 
   virtual void       sampleTexture(std::string_view name, DataFormat df)       = 0;
   virtual void       sampleImage(std::string_view name, DataFormat df)         = 0;
@@ -128,7 +135,7 @@ struct SourceBuilderBindless : SourceBuilderAdapter
 {
   SourceBuilderBindless(SourceType t) : SourceBuilderAdapter(t)
   {
-    pushExtension("#extension GL_ARB_gpu_shader_int64 : require");
+    // pushExtension("#extension GL_ARB_gpu_shader_int64 : require");
     pushExtension("#extension GL_ARB_bindless_texture : require");
   }
 

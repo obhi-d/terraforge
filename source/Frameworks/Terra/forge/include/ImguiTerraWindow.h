@@ -26,8 +26,9 @@ public:
   void drawSettings(TerraMainApp&);
   bool pollEvents();
   bool draw(TerraMainApp&);
+  void tick();
   void setTheme(ImguiTheme const&);
-  
+
   inline MouseState const& getMouseState() const
   {
     return mouseState;
@@ -38,7 +39,7 @@ public:
     return mouseState;
   }
 
-  inline bool isPreviewOpen() const 
+  inline bool isPreviewOpen() const
   {
     return previewWindow.opened;
   }
@@ -48,12 +49,12 @@ public:
     return settingsWindow.opened;
   }
 
-  inline void openPreview() 
+  inline void openPreview()
   {
     previewWindow.opened = true;
   }
 
-  inline void openSettings() 
+  inline void openSettings()
   {
     settingsWindow.opened = true;
   }
@@ -87,7 +88,7 @@ private:
   DragData   dragData;
   MouseState mouseState;
 
-  MenuData   previewWindow;
-  MenuData   settingsWindow;
+  MenuData previewWindow;
+  MenuData settingsWindow;
 };
 } // namespace terra

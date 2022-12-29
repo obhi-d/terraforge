@@ -24,6 +24,16 @@ void ShaderProgramInstance::pushValue(ScalarValue value, DataTypeEnum type)
   }
 }
 
+void ShaderProgramInstance::pushImage(GfxImage::handle image, DataFormat df)
+{
+  program.pushTexture(index++, image, pipeline.getSampler(df.sampler));
+}
+
+void ShaderProgramInstance::pushBuffer(GfxBuffer::handle buffer, uint32_t size, DataFormat df)
+{
+  program.pushBuffer(index++, buffer, 0, size);
+}
+
 void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
 {
 
@@ -69,13 +79,13 @@ void ShaderProgramInstance::pushOutput(HybridBuffer::handle value, DataFormat fo
   {
     depth.clear    = clear;
     depth.depthVal = sett.reverseZ ? 1 - clearVal.x : clearVal.x;
-    depth.image    = pipeline.readImage(value);
+    depth.image    = pipeline.writeImage(value, clear);
   }
   else
   {
     outputs[outputIdx].clear    = clear;
     outputs[outputIdx].colorVal = clearVal;
-    outputs[outputIdx].image    = pipeline.readImage(value);
+    outputs[outputIdx].image    = pipeline.writeImage(value, clear);
 
     outputIdx++;
   }
@@ -85,6 +95,7 @@ void ShaderProgramInstance::run()
 {
   auto& dev  = get().getDevice();
   auto  pass = dev.createPass(std::span<GfxPass::Attachment>(outputs.data(), outputs.data() + outputIdx), depth);
+  dev.setState(state);
   dev.beginPass(pass);
   dev.postProcessDraw(program.program.material.program, program.program.material.layout, program.data);
   dev.endPass();

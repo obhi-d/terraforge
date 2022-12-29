@@ -29,6 +29,7 @@ public:
   void updateMonitorScaling();
   void run();
   bool draw();
+  void tick();
   void reloadTheme();
   void destroy();
 

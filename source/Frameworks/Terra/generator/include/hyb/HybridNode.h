@@ -110,20 +110,29 @@ struct GpuScriptNode : public GpuNode
 struct GpuImageNode : public GpuNode
 {
   HDataSource image;
-  glm::vec2   offset;
-  glm::vec2   scale;
+  glm::vec2   sampleOffset = vec2(0.f, 0.f);
+  glm::vec2   sampleScale  = vec2(1.f, 1.f);
+  float       scale        = 1.0f;
+  uint32_t    version      = 0xffffffff;
 
   GpuImageNode(NodeMeta const& m);
   ~GpuImageNode();
+
+  void selfUpdated() override;
+  void executeImpl(HybridPipeline&) override;
 };
 
 struct GpuCurveNode : public GpuNode
 {
   HDataSource curve;
   glm::vec2   scale;
+  uint32_t    version = 0xffffffff;
 
   GpuCurveNode(NodeMeta const& m);
   ~GpuCurveNode();
+
+  void selfUpdated() override;
+  void executeImpl(HybridPipeline&) override;
 };
 
 } // namespace terra

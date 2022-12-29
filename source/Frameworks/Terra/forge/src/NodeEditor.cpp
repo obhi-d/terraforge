@@ -814,4 +814,5 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imn
   }
 }
 
+void NodeEditor::tick() {}
 } // namespace terra

@@ -14,22 +14,6 @@ void Image::unload()
   updateVersion();
 }
 
-void Image::destroyHandle()
-{
-  terra::get().getDevice().destroy(handle);
-  handle = {};
-}
-
-void Image::upload()
-{
-  if (!handle && data)
-  {
-    handle =
-      terra::get().getDevice().create2DImage(GfxStorageClass::eStaticDeviceReadonly, width, height, format, data.get());
-    unload();
-  }
-}
-
 /*
 void Image::remove(HDataSource node)
 {

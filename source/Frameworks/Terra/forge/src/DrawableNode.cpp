@@ -98,8 +98,11 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
 
   if (output)
   {
-    ImGui::SetCursorPosX(std::max(
-      headerMaxX - ((style.pinSize * 1.1f) + ImGui::CalcTextSize(name).x + imne::GetStyle().NodePadding.y + 2), 0.f));
+    if (width > 0.f)
+      ImGui::SetCursorPosX(
+        ImGui::GetCursorPosX() +
+        std::max(width - ((style.pinSize * 1.1f) + ImGui::CalcTextSize(name).x + imne::GetStyle().NodePadding.y + 2),
+                 0.f));
     ImGui::Text(name);
     ImGui::SameLine();
   }
@@ -334,7 +337,6 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
 {
   ImGui::EndGroup();
   // auto min = ImGui::GetItemRectMin();
-  headerMaxX = ImGui::GetItemRectMax().x;
 
   auto const& style  = app.getTheme().getNodeStyle(selectedStyle ? selectedStyle - 1 : this->style);
   auto&       source = get().get<DataSource>(id);
@@ -373,6 +375,9 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
 
   imne::EndNode();
   imne::PopStyleColor();
+
+  if (width == 0.0f)
+    width = imne::GetLastNodeDrawMax().x - imne::GetLastNodeDrawMin().x;
 
   // auto padding = imne::GetStyle().NodePadding.y * 0.5f;
   // min          = imne::GetLastNodeDrawMin();

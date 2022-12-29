@@ -90,10 +90,44 @@ inline ImVec4 toImgui(Color v)
   return ImVec4(v.r(), v.g(), v.b(), v.a());
 }
 
-inline glm::mat4 reverseZRH_ZO(float fovY, float aspect, float zNear)
+inline glm::mat4 perspectiveRH_RZ(float fovY, float aspect, float zNear)
 {
   float f = 1.0f / tan(fovY / 2.0f);
   return glm::mat4(f / aspect, 0.0f, 0.0f, 0.0f, 0.0f, f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, zNear, 0.0f);
+}
+
+inline glm::mat4 orthoBiasRH(float left, float right, float bottom, float top, float zNear, float zFar)
+{
+  glm::mat4 result(1.f);
+  result[0][0] = 1.0f / (right - left);
+  result[1][1] = 1.0f / (top - bottom);
+  result[2][2] = -2.0f / (zFar - zNear);
+  result[3][0] = -(right + left) / (right - left);
+  result[3][1] = -(top + bottom) / (top - bottom);
+  result[3][2] = -zNear / (zFar - zNear);
+
+  return result;
+}
+
+inline glm::mat4 orthoBiasRH_RZ(float left, float right, float bottom, float top, float zNear, float zFar)
+{
+  // mat<4, 4, T, defaultp> Result(1);
+  // Result[0][0] = static_cast<T>(2) / (right - left);
+  // Result[1][1] = static_cast<T>(2) / (top - bottom);
+  // Result[2][2] = -static_cast<T>(1) / (zFar - zNear);
+  // Result[3][0] = -(right + left) / (right - left);
+  // Result[3][1] = -(top + bottom) / (top - bottom);
+  // Result[3][2] = -zNear / (zFar - zNear);
+
+  glm::mat4 result(1.f);
+  result[0][0] = 1.0f / (right - left);
+  result[1][1] = 1.0f / (top - bottom);
+  result[2][2] = -1.0f / (zNear - zFar);
+  result[3][0] = -(left) / (right - left);
+  result[3][1] = -(bottom) / (top - bottom);
+  result[3][2] = -zFar / (zNear - zFar);
+
+  return result;
 }
 
 } // namespace terra

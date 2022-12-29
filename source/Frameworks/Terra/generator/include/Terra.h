@@ -86,6 +86,7 @@ public:
   HDataSource getImage(std::filesystem::path path);
   HDataSource createCurve();
   HDataSource createImage();
+  HDataSource add(DataSourcePtr ds);
 
   template <typename Meta>
   void addMeta(Meta const& meta)

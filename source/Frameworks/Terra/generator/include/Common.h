@@ -347,8 +347,9 @@ struct DataFormat
   constexpr DataFormat(DataTypeEnum itype, DataTypeEnum iscalarSubType = DataTypeEnum::eFloat,
                        ImageFormatEnum   format = ImageFormatEnum::eNone,
                        ParamDeclTypeEnum iindex = ParamDeclTypeEnum::eNone, SemanticEnum isem = SemanticEnum::eNone,
-                       bool pre = false)
-      : type(itype), scalarSubType(iscalarSubType), imageFormat(format), declType(iindex), semantic(isem), preEval(pre)
+                       SamplerParamEnum isampler = SamplerParamEnum::eNone, bool pre = false)
+      : type(itype), scalarSubType(iscalarSubType), imageFormat(format), declType(iindex), semantic(isem),
+        sampler(isampler), preEval(pre)
   {}
 
   inline constexpr bool isCompatible(DataFormat const& to) const
@@ -659,6 +660,7 @@ struct Rotation
 
   Rotation() = default;
   Rotation(float the) : theta(the) {}
+  Rotation(float the, float p) : theta(the), phi(p) {}
 
   void thetaAdd(float dt)
   {

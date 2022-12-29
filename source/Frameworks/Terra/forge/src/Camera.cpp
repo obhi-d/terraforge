@@ -5,7 +5,7 @@
 namespace terra
 {
 
-void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState& ms)
+void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, Rotation& sun, MouseState& ms)
 {
   if (ms.locked != MouseLockedBy::eNone && ms.locked != MouseLockedBy::eCamera)
     return;
@@ -34,6 +34,8 @@ void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState& m
 
     cameraRotation.thetaAdd(170.f * y);
     cameraRotation.phiAdd(350.f * x);
+    sun.thetaAdd(170.f * y);
+    sun.phiAdd(170.f * y);
   }
 
   view               = glm::lookAt(cameraRotation.toDir() * radius, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
@@ -41,8 +43,6 @@ void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState& m
 
   // if (viewportSize != this->viewportSize)
   {
-    float n = 0.01f;
-    float f = 10000.f;
     if (ortho)
     {
 
@@ -54,46 +54,36 @@ void Camera::update(glm::ivec2 viewportSize, glm::vec3 const& box, MouseState& m
       maxCam             = maxCam / maxCam.w;
 
       float imageAspectRatio = (float)viewportSize.x / (float)viewportSize.y;
-      float maxx             = std::max(fabs(minCam.x), fabs(maxCam.x));
-      float maxy             = std::max(fabs(minCam.y), fabs(maxCam.y));
+      float max              = std::max(fabs(box.x), fabs(box.z)) * .5f;
 
-      float max = std::max(maxx, maxy);
       float r = max * imageAspectRatio, t = max;
       float l = -r, b = -t;
-      projection = reverseZ ? glm::orthoRH_ZO(l, r, b, t, f, n) : glm::orthoRH(l, r, b, t, n, f);
+      projection = reverseZ ? glm::orthoRH_ZO(l, r, b, t, 9000.f, 0.f) : glm::orthoRH(l, r, b, t, 0.f, 9000.f);
     }
     else
     {
+      float n = 0.01f;
+      float f = 10000.f;
       projection =
-        reverseZ ? reverseZRH_ZO(glm::radians(fov.get()), (float)viewportSize.x / (float)viewportSize.y, n)
+        reverseZ ? perspectiveRH_RZ(glm::radians(fov.get()), (float)viewportSize.x / (float)viewportSize.y, n)
                  : glm::perspectiveFovRH(glm::radians(fov.get()), (float)viewportSize.x, (float)viewportSize.y, n, f);
     }
   }
 }
 
-glm::mat4 Camera::getLightViewProj(glm::vec3 dir, glm::vec3 const& box)
+void Camera::updateSunMatrix(glm::vec3 dir, float domeRad)
 {
-  float n = 0.01f;
-  float f = 10000.f;
-  if (reverseZ)
-    std::swap(n, f);
-  glm::vec4 minWorld = glm::vec4(box * -0.5f, 1.f);
-  glm::vec4 maxWorld = glm::vec4(box * 0.5f, 1.f);
-  auto      minCam   = view * minWorld;
-  minCam             = minCam / minCam.w;
-  auto maxCam        = view * maxWorld;
-  maxCam             = maxCam / maxCam.w;
-
-  float imageAspectRatio = (float)viewportSize.x / (float)viewportSize.y;
-  float maxx             = std::max(fabs(minCam.x), fabs(maxCam.x));
-  float maxy             = std::max(fabs(minCam.y), fabs(maxCam.y));
-
-  float max = std::max(maxx, maxy);
-  float r = max * imageAspectRatio, t = max;
-  float l = -r, b = -t;
-  mat4  lightProj = reverseZ ? glm::orthoRH_ZO(l, r, b, t, n, f) : glm::orthoRH(l, r, b, t, n, f);
-  mat4  lightView = glm::lookAt(-dir, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-  return lightProj * lightView;
+  const glm::mat4 biasMatrix =
+    reverseZ ? glm::mat4(0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.5, 0.5, 1.0)
+             : glm::mat4(0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.5, 0.5, 1.0);
+  float halfD         = domeRad;
+  mat4  lightView     = glm::lookAt(dir * halfD, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+  mat4  lightProj     = reverseZ ? glm::orthoRH_ZO(-halfD, halfD, -halfD, halfD, 9000.f, 0.f)
+                                 : glm::orthoRH(-halfD, halfD, -halfD, halfD, 0.f, 9000.f);
+  mat4  biasLightProj = reverseZ ? orthoBiasRH_RZ(-halfD, halfD, -halfD, halfD, 0.f, 9000.f)
+                                 : orthoBiasRH(-halfD, halfD, -halfD, halfD, 0.f, 9000.f);
+  sunViewProj         = lightProj * lightView;
+  biasSunViewProj     = biasLightProj * lightView;
 }
 
 } // namespace terra

@@ -315,9 +315,12 @@ struct GfxState
   CullMode                     cullMode  = CullMode::eCullBack;
   DepthTestMode                depthTest = DepthTestMode::eDisabled;
   std::array<GfxBlendState, 8> blend;
+  float                        polyOffSlope = 1.1f;
+  float                        polyOffBias  = 0.0001f;
   Rect                         viewport;
   Rect                         scissor;
   uint16_t                     nbBlendModes    = 0;
+  bool                         polygonOffset   = false;
   bool                         scissorsEnabled = false;
   bool                         flush           = false;
   bool                         depthWrite      = true;

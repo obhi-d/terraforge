@@ -8,3 +8,59 @@ Alternatively plugin the MinMax Utility node""";
 @ToRGBABrief = """Convert height values to RGBA8""";
 @ToRGBAHelp = """Use this to visualize the values""";
 @ToRGBA = """RGBA""";
+
+Editor.TipLink = """Link this node to another""";
+Editor.TipCreateNode = """Create a new node""";
+Editor.Actions = """Actions""";
+
+preview.tip = """Preview item""";
+preview.help = """Opens the preview window""";
+settings.tip = """Current settings""";
+settings.help = """Specify seed, frequency, and other node settings""";
+Settings = """Settings""";
+Forge = """Forge""";
+lock.tip = """Lock this window""";
+lock.help = """Docking is disabled for locked window""";
+close.tip = """Close window""";
+close.help = """Closes the window, closing the editor window closes the application.""";
+maximize.tip = """Maximize window""";
+maximize.help = """Maximizes the window to full screen""";
+
+
+Editor.ImportNode           = """Import Node""";
+Editor.Name                 = """Node Editor""";
+Editor.PasteNode            = """Paste Node""";
+Editor.ToggleSelectedNode   = """Enable/Disable Preview""";
+Editor.TipIncompatFormat    = """Input/Output formats are incompatible""";
+Editor.TipIncompatType      = """Input/Output types are incompatible"""; 
+
+ImageMask            = """Image Mask Node""";
+ImageMask.help       = """Image mask node samples an image for height values, expected format are greyscale, floating point format, single channel PNG images.""";
+ImageMask.tip        = """Use an image to sample for height value""";
+ImageMask.category   = """Data Node""";
+CurveMask            = """Curve Node""";
+CurveMask.help       = """Create a curve deformation based on polynomials""";
+CurveMask.tip        = """Edit curve to sample height value""";
+CurveMask.category   = """Data Node""";
+
+
+source                  = """Source""";
+source.help             = """Accepts output data from other nodes""";
+source.tip              = """Accepts data source""";
+source.category         = """Source""";
+sample_scale            = """Sample Scale""";
+sample_scale.help       = """Scale the sampling frequency by some value""";
+sample_scale.tip        = """Scale applied to sampler input""";
+sample_scale.category   = """General""";
+scale                   = """Scale""";
+scale.help              = """Scale the output by some value""";
+scale.tip               = """Scale applied to output""";
+scale.category          = """General""";
+heights                 = """Heights""";
+heights.help            = """Output channeled to heights""";
+heights.tip             = """Height value""";
+heights.category        = """Output""";
+sample_offset           = """Sample Offset""";
+sample_offset.help      = """Offset the sampling frequency by some value""";
+sample_offset.tip       = """Offset applied to sampler input""";
+sample_offset.category  = """General""";

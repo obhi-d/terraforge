@@ -60,11 +60,13 @@ void MeshPreview::deinit(TerraMainApp& app)
 
   app.dispatcher().remove(setActorEventListener);
 
-  materialProg = {};
-  shadowProg   = {};
-  pipeline     = {};
+  materialProg   = {};
+  shadowProg     = {};
+  atmosphereProg = {};
+  pipeline       = {};
   terrainMat.reset();
   shadowMat.reset();
+  atmosphereMat.reset();
   canvas.clear();
 }
 
@@ -79,6 +81,8 @@ void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
     box.x       = (float)(tileSize.x) + 1.f;
     box.y       = max - min + 1.f;
     box.z       = (float)(tileSize.y) + 1.f;
+    domeRadius  = glm::length(box);
+
     if (index)
       app.getDevice()->destroy(index);
     auto     patchX    = (uint32_t)((tileSize.x) - 1);
@@ -141,10 +145,11 @@ void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
   layout                 = dev.createMeshLayout(mesh);
   drawCall.layout        = layout;
   buildShadowMapProgram();
+  buildScatterProgram();
   layerSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
   heightSampler = dev.createSampler(ImageSampling(SamplingType::eNearest, Tiling::eClampToEdge));
   shadowSampler = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
-                                                  camera.isReverseZ() ? SampleCompare::eGEq : SampleCompare::eLEq));
+                                                  camera.isReverseZ() ? SampleCompare::eGT : SampleCompare::eLT));
 }
 
 void MeshPreview::reloadTexture(TerraMainApp const& app)
@@ -198,9 +203,6 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
 
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
 {
-  if (pipeline)
-    pipeline->tick();
-
   if (texturesDirty)
   {
     reloadTexture(app);
@@ -215,25 +217,25 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
     return;
 
   auto&            dev = *app.getDevice();
-  GfxImage::handle lheight, llayer;
+  GfxImage::handle lheight;
+  Pipeline::Layers llayer;
   pipeline->getResults(lheight, llayer);
-  if (!lheight)
-    lheight = nullImage;
-  if (!llayer)
-    llayer = nullImage;
-
-  if (lheight != heights)
-    heights = lheight;
-
-  if (llayer != layerContrib)
-    layerContrib = llayer;
+  heights           = lheight ? lheight : nullImage;
+  waterContrib      = llayer.water ? llayer.water : nullImage;
+  rocksContrib      = llayer.rocks ? llayer.rocks : nullImage;
+  vegetationContrib = llayer.vegetation ? llayer.vegetation : nullImage;
 
   AppSettings const& settings = app.getSettings();
 
   updateShadowMap(app);
 
   canvas.resize(scissor.size);
+  canvas.begin(camera.isReverseZ());
+
+  drawAtmosphere(app);
   drawTerrain(app);
+
+  canvas.end();
 
   Rect src;
   src.size = canvas.getSize();
@@ -259,30 +261,29 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
 
 void MeshPreview::updateShadowMap(TerraMainApp const& app)
 {
-  if (!shadowMapDirty)
-    return;
-
-  uvec2 res  = uvec2{512, 512};
-  auto  save = shadowProgOptions;
+  // if (!shadowMapDirty)
+  //   return;
+  //
+  auto save = shadowProgOptions;
   shadowProgOptions.setOption(shadowMapResolution);
   if (save != shadowProgOptions || !shadowMapImage)
   {
     switch (shadowMapResolution.get())
     {
     case 1:
-      res = uvec2{1024, 1024};
+      shadowMapRez = uvec2{1024, 1024};
       break;
     case 2:
-      res = uvec2{2048, 2048};
+      shadowMapRez = uvec2{2048, 2048};
       break;
     case 3:
-      res = uvec2{4096, 4096};
+      shadowMapRez = uvec2{4096, 4096};
       break;
     }
     if (shadowMapImage)
       get().getDevice().destroy(shadowMapImage);
     shadowMapImage =
-      get().getDevice().create2DImage(GfxStorageClass::eStaticDeviceReadonly, res.x, res.y,
+      get().getDevice().create2DImage(GfxStorageClass::eStaticDeviceReadonly, shadowMapRez.x, shadowMapRez.y,
                                       camera.isReverseZ() ? ImageFormatEnum::eDepth32f : ImageFormatEnum::eDepth24);
     GfxPass::Attachment depth;
     depth.clear    = true;
@@ -292,24 +293,29 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
     buildTerrainDrawProgram();
   }
 
+  camera.updateSunMatrix(sunRotation.get().toDir(), domeRadius);
+
+  if (!shadowMat)
+    shadowMat.emplace(*shadowProg);
+
+  shadowMat->reset();
+  uint32_t index = 0;
+  shadowMat->pushScalar(index++, camera.getLightViewProj());
+  shadowMat->pushTexture(index++, heights, heightSampler);
+  shadowMat->pushScalar(index++, tileSize.x);
+  shadowMat->pushScalar(index++, tileSize.y);
+  shadowMat->pushScalar(index++, 1.f / (float)tileSize.x);
+  shadowMat->pushScalar(index++, 1.f / (float)tileSize.y);
+
   GfxState state;
   state.blend[0].mode   = BlendMode::eDisabled;
   state.depthTest       = camera.isReverseZ() ? DepthTestMode::eGreaterEq : DepthTestMode::eLessEq;
   state.scissorsEnabled = false;
-  state.viewport.size   = res;
+  state.viewport.size   = shadowMapRez;
+  state.polygonOffset   = true;
+  state.polyOffSlope    = camera.isReverseZ() ? -2.1f : 2.0f;
+  state.polyOffBias     = camera.isReverseZ() ? -0.1f : 0.1f;
   app.getDevice()->setState(state);
-
-  if (!shadowMat)
-    shadowMat.emplace(shadowProg);
-
-  shadowMat->reset();
-  shadowMat->pushScalar(0, camera.getLightViewProj(sunRotation.get().toDir(), box));
-  shadowMat->pushTexture(1, heights, heightSampler);
-  shadowMat->pushScalar(2, tileSize.x);
-  shadowMat->pushScalar(3, tileSize.y);
-  shadowMat->pushScalar(4, 1.f / (float)tileSize.x);
-  shadowMat->pushScalar(5, 1.f / (float)tileSize.y);
-  shadowMat->pushScalar(6, heightMultiplier.get());
 
   app.getDevice()->beginPass(shadowGen);
   app.getDevice()->draw(drawCall, shadowMat->program.material, shadowMat->data);
@@ -328,33 +334,39 @@ void MeshPreview::buildShadowMapProgram()
   builder->param("height", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
-  builder->param("height_multiplier", DataFormat(DataType::eFloat, DataType::eFloat));
 
   auto code = fileContentToString("shaders/shadow.glsl");
   builder->append(code);
   shadowProg = builder->finalize();
-  assert(shadowProg.material.program);
+  assert(shadowProg->material.program);
 }
 
 void MeshPreview::drawTerrain(TerraMainApp const& app)
 {
   if (!terrainMat)
-    terrainMat.emplace(materialProg);
+    terrainMat.emplace(*materialProg);
 
   terrainMat->reset();
-  terrainMat->pushScalar(0, camera.getLightViewProj(sunRotation.get().toDir(), box));
-  terrainMat->pushScalar(1, camera.getViewProj());
-  terrainMat->pushScalar(2, layerWeights.get());
-  terrainMat->pushScalar(3, vec4(sunRotation.get().toDir(), sunIntensity.get()));
-  terrainMat->pushTexture(4, heights, heightSampler);
-  terrainMat->pushTexture(5, terrainColors, layerSampler);
-  terrainMat->pushTexture(6, shadowMapImage, shadowSampler);
-  terrainMat->pushTexture(7, layerContrib, layerSampler);
-  terrainMat->pushScalar(8, tileSize.x);
-  terrainMat->pushScalar(9, tileSize.y);
-  terrainMat->pushScalar(10, 1.f / (float)tileSize.x);
-  terrainMat->pushScalar(11, 1.f / (float)tileSize.y);
-  terrainMat->pushScalar(12, heightMultiplier.get());
+  uint32_t index   = 0;
+  auto     sunDir  = sunRotation.get().toDir();
+  auto     hrange  = pipeline->minMax();
+  auto     hfactor = (hrange.y - hrange.x);
+  hfactor          = hfactor > 0.f ? 1.f / hfactor : 0.f;
+  terrainMat->pushScalar(index++, camera.getLightViewProjBias());
+  terrainMat->pushScalar(index++, camera.getViewProj());
+  terrainMat->pushScalar(index++, layerWeights.get());
+  terrainMat->pushScalar(index++, vec4(sunDir, sunIntensity.get()));
+  terrainMat->pushScalar(index++, vec2(hrange.x, hfactor));
+  terrainMat->pushTexture(index++, heights, heightSampler);
+  terrainMat->pushTexture(index++, terrainColors, layerSampler);
+  terrainMat->pushTexture(index++, shadowMapImage, shadowSampler);
+  terrainMat->pushTexture(index++, waterContrib, layerSampler);
+  terrainMat->pushTexture(index++, vegetationContrib, layerSampler);
+  terrainMat->pushTexture(index++, rocksContrib, layerSampler);
+  terrainMat->pushScalar(index++, tileSize.x);
+  terrainMat->pushScalar(index++, tileSize.y);
+  terrainMat->pushScalar(index++, 1.f / (float)tileSize.x);
+  terrainMat->pushScalar(index++, 1.f / (float)tileSize.y);
 
   GfxState state;
   state.blend[0].mode   = BlendMode::eDisabled;
@@ -363,9 +375,7 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   state.viewport.size   = canvas.getSize();
   state.cullMode        = CullMode::eCullNone;
   app.getDevice()->setState(state);
-  canvas.begin(camera.isReverseZ());
   app.getDevice()->draw(drawCall, terrainMat->program.material, terrainMat->data);
-  canvas.end();
 }
 
 void MeshPreview::buildTerrainDrawProgram()
@@ -378,26 +388,80 @@ void MeshPreview::buildTerrainDrawProgram()
   builder->param("view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
   builder->param("layer_weights", DataFormat(DataType::eFloat4, DataType::eFloat4));
   builder->param("sun_data", DataFormat(DataType::eFloat4, DataType::eFloat4));
+  builder->param("hrange", DataFormat(DataType::eFloat2, DataType::eFloat2));
   builder->param("heights",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
   builder->param("layer_colors",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eRgba32f, ParamDeclType::eSampler1DArray));
   builder->param("shadow_map",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2DShadow));
-  builder->param("layers",
-                 DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eRgba32f, ParamDeclType::eSampler2D));
+  builder->param("water",
+                 DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
+  builder->param("vegetation",
+                 DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
+  builder->param("rocks",
+                 DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
   builder->param("width", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("height", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
-  builder->param("height_multiplier", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->output("color_buffer",
                   DataFormat(DataType::eImage, DataType::eFloat4, ImageFormat::eRgba8, ParamDeclType::eSampler2D));
 
   auto code = fileContentToString("shaders/terrain.glsl");
   builder->append(code);
   materialProg = builder->finalize();
-  assert(materialProg.material.program);
+  assert(materialProg->material.program);
 }
 
+void MeshPreview::drawAtmosphere(TerraMainApp const& app)
+{
+  if (!atmosphereMat)
+    atmosphereMat.emplace(*atmosphereProg);
+
+  atmosphereMat->reset();
+  uint32_t index  = 0;
+  auto     sunDir = sunRotation.get().toDir();
+  atmosphereMat->pushScalar(index++, planetScale.get());
+  atmosphereMat->pushScalar(index++, vec4(sunDir * domeRadius * 10.f, sunIntensity.get()));
+
+  GfxState state;
+  state.blend[0].mode   = BlendMode::eDisabled;
+  state.depthTest       = DepthTestMode::eDisabled;
+  state.scissorsEnabled = false;
+  state.viewport.size   = canvas.getSize();
+  state.cullMode        = CullMode::eCullNone;
+  app.getDevice()->setState(state);
+  app.getDevice()->postProcessDraw(atmosphereMat->program.material.program, atmosphereMat->program.material.layout,
+                                   atmosphereMat->data);
+}
+
+void MeshPreview::buildScatterProgram()
+{
+  auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL, SourceType::ePostProcess);
+  shadowProgOptions.setOption((uint32_t)shadowMapResolution.get());
+
+  builder->options(shadowProgOptions);
+  builder->param("scale", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("sun_data", DataFormat(DataType::eFloat4, DataType::eFloat4));
+  builder->output("color_buffer",
+                  DataFormat(DataType::eImage, DataType::eFloat4, ImageFormat::eRgba8, ParamDeclType::eSampler2D));
+
+  auto code = fileContentToString("shaders/scatter.glsl");
+  builder->append(code);
+  atmosphereProg = builder->finalize();
+  assert(atmosphereProg->material.program);
+}
+
+void MeshPreview::tick()
+{
+  if (pipeline)
+    shadowMapDirty |= pipeline->tick();
+}
+
+void MeshPreview::update(glm::ivec2 viewportSize, MouseState& ms)
+{
+  updateSunDir(viewportSize, ms);
+  camera.update(viewportSize, box, sunRotation.get(), ms);
+}
 } // namespace terra

@@ -84,4 +84,10 @@ void DataSource::endIteration(HDataSource ds, Pipeline& pipe)
     p->endIteration(pipe);
 }
 
+bool DataSource::isPushable(HDataSource ds, uvec2 tile, uvec2 tileConstraintOffset, uvec2 tileConstraintSize)
+{
+  return DataSource::isValid(ds) && DataSource::isWithinTile(tile, tileConstraintOffset, tileConstraintSize) &&
+         get().get<DataSource>(ds).isPushable();
+}
+
 } // namespace terra

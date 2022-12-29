@@ -1,7 +1,9 @@
 
 #include "hyb/HybridNode.h"
+#include "GpuMinMax.h"
 #include "Logger.h"
 #include "Terra.h"
+#include "hyb/GpuDataSource.h"
 #include "hyb/HybridNodeMeta.h"
 #include "hyb/HybridPipeline.h"
 
@@ -82,6 +84,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    passCount = gpuMeta.getNumPasses();
   option.hash           = machine.value;
+  option.meta           = meta.id;
   auto program          = ndat.gpuPasses;
   if (!program || ndat.key != option)
     program = gpuMeta.findProgram(option);
@@ -101,8 +104,8 @@ bool GpuNode::prepare(HybridPipeline& pipe)
       auto builder = get().getDevice().createSourceBuilder(ShaderLang::eGLSL, SourceType::eFullscreenGraphNode);
       build(pipe, pass, *builder);
       // use GpuProgramBuilder to build a program
-      newProgram->passes[pass] = builder->finalize();
-      if (!newProgram->passes[pass].material.program)
+      newProgram->passes.emplace_back(std::move(builder->finalize()));
+      if (!newProgram->passes.back()->material.program)
       {
         logError("Failed to compile program: {}", gpuMeta.getCode(pass).function);
         return false;
@@ -138,11 +141,9 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     {
       auto source = std::get<Source>(p).source;
       auto outid  = std::get<Source>(p).secondary;
-      if (DataSource::isValid(source) &&
-          DataSource::isWithinTile(pipe.tile(), constraintTileStart, constraintTileCount))
+      if (DataSource::isPushable(source, pipe.tile(), constraintTileStart, constraintTileCount))
       {
         //
-        auto& node = get().get<GpuNode>(source);
         shoption.setOption(optionIdx);
       }
       else
@@ -162,7 +163,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
         builder.param(def.name(), def.format);
         break;
       case Action::ePushConstant:
-        builder.param(def.name(), def.format);
+        builder.scalar(def.name(), def.format);
         break;
       }
       optionIdx++;
@@ -187,6 +188,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
   for (auto o : code.outputs)
     builder.output(meta.outputs[o].name(), meta.outputs[o].format);
 
+  builder.options(shoption);
   builder.pushExtension(code.extensions);
   builder.append(code.shaderContent);
   builder.call(code.function);
@@ -209,13 +211,14 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
     if (std::holds_alternative<Source>(p))
     {
       auto source = std::get<Source>(p).source;
-      if (DataSource::isValid(source) &&
-          DataSource::isWithinTile(pipe.tile(), constraintTileStart, constraintTileCount))
+      if (DataSource::isPushable(source, pipe.tile(), constraintTileStart, constraintTileCount))
       {
         //
-
-        auto& node = get().get<GpuNode>(source);
-        node.prepare(pipe);
+        if (DataSource::isNode(source))
+        {
+          auto& node = get().get<GpuNode>(source);
+          node.prepare(pipe);
+        }
         option.active++;
         shoption.setOption(optionIdx);
         optionIdx++;
@@ -260,9 +263,11 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
   {
     auto const& code = gpuMeta.getCode(pass);
 
-    gpuPipe->passes[pass].touch();
-    auto     program   = ShaderProgramInstance(gpuPipe->passes[pass], pipe);
-    uint32_t optionIdx = 0;
+    gpuPipe->passes[pass]->touch();
+    auto state          = code.state;
+    state.viewport.size = pipe.size();
+    auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[pass], pipe);
+    uint32_t optionIdx  = 0;
     // check if any conditions have changed
     for (auto i : code.parameters)
     {
@@ -349,8 +354,17 @@ void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInst
       case SemanticEnum::eHeights:
         ndat.outputs[i] = pipe.heights();
         break;
-      case SemanticEnum::eLayerContrib:
-        ndat.outputs[i] = pipe.layerContrib();
+      case SemanticEnum::eWater:
+        ndat.outputs[i] = pipe.water();
+        break;
+      case SemanticEnum::eRocks:
+        ndat.outputs[i] = pipe.rocks();
+        break;
+      case SemanticEnum::eVegetation:
+        ndat.outputs[i] = pipe.vegetation();
+        break;
+      case SemanticEnum::eTerrain:
+        ndat.outputs[i] = pipe.vegetation();
         break;
       default:
         if (!ndat.outputs[i])
@@ -382,9 +396,7 @@ GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
 //============== GpuImageNode ==================
 GpuImageNode::GpuImageNode(NodeMeta const& m) : GpuNode(m)
 {
-  image  = get().createImage();
-  scale  = vec2(1.f, 1.f);
-  offset = vec2(0.f, 0.f);
+  image = get().add(std::make_shared<GpuImage>());
 }
 
 GpuImageNode::~GpuImageNode()
@@ -392,16 +404,84 @@ GpuImageNode::~GpuImageNode()
   get().destroy(image);
 }
 
+void GpuImageNode::executeImpl(HybridPipeline& pipe)
+{
+  auto&       ndat      = nodeData[pipe.id()];
+  auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
+  uint32_t    passCount = gpuMeta.getNumPasses();
+  auto&       gpuPipe   = ndat.gpuPasses;
+
+  auto const& code = gpuMeta.getCode(0);
+
+  gpuPipe->passes[0]->touch();
+  auto state          = code.state;
+  state.viewport.size = pipe.size();
+  auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[0], pipe);
+  uint32_t optionIdx  = 0;
+  auto&    imageObj   = get().get<GpuImage>(image);
+  if (imageObj.isPushable())
+  {
+    imageObj.upload();
+    auto fmt        = meta.parameterDef[0].format;
+    fmt.imageFormat = imageObj.format;
+    program.pushImage(imageObj.getHandle(version), fmt);
+  }
+  else
+  {
+    program.pushValue(float(1.0f));
+  }
+  program.pushValue(sampleScale);
+  program.pushValue(sampleOffset);
+  program.pushValue(scale);
+  pushOutputs(pipe, 0, program);
+  program.run();
+  // if (imageObj.isPushable())
+  //   imageObj.destroyHandle();
+}
+
+void GpuImageNode::selfUpdated()
+{
+  auto& node = get().get<GpuImage>(image);
+  node.add(getSelf());
+}
+
 //============== GpuCurveNode ==================
 GpuCurveNode::GpuCurveNode(NodeMeta const& m) : GpuNode(m)
 {
-  curve = get().createCurve();
+  curve = get().add(std::make_shared<GpuCurveData>());
   scale = vec2(1.f, 1.f);
 }
 
 GpuCurveNode::~GpuCurveNode()
 {
   get().destroy(curve);
+}
+
+void GpuCurveNode::executeImpl(HybridPipeline& pipe)
+{
+  auto&       ndat      = nodeData[pipe.id()];
+  auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
+  uint32_t    passCount = gpuMeta.getNumPasses();
+  auto&       gpuPipe   = ndat.gpuPasses;
+
+  auto const& code = gpuMeta.getCode(0);
+
+  gpuPipe->passes[0]->touch();
+  auto state          = code.state;
+  state.viewport.size = pipe.size();
+  auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[0], pipe);
+  uint32_t optionIdx  = 0;
+  auto&    curveObj   = get().get<GpuCurveData>(curve);
+  program.pushBuffer(curveObj.getHandle(version), curveObj.size(), meta.parameterDef[0].format);
+  program.pushValue(scale);
+  pushOutputs(pipe, 0, program);
+  program.run();
+}
+
+void GpuCurveNode::selfUpdated()
+{
+  auto& node = get().get<DataSource>(curve);
+  node.add(getSelf());
 }
 
 } // namespace terra

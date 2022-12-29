@@ -79,41 +79,6 @@ void CurveData::toDataStreamImpl(std::vector<uint8_t>& dataStream) const
   addToDataStream(dataStream, type);
 }
 
-bool CurveData::getBuffer(GfxDevice& dev, uint32& bufferVer, GfxBuffer::handle& handle)
-{
-  if (!handle || version != bufferVer)
-  {
-    dev.destroy(handle);
-    auto size = (1 + 1 + 5 * (uint32_t)spline.get_x().size()) * 4;
-    handle    = dev.createBuffer(GfxStorageClass::eStaticDeviceReadonly, GfxBuffer::Usage::fStorage, size);
-    if (!handle)
-      return false;
-    ubyte_t* data = dev.mapBuffer(handle, 0, size);
-    if (!data)
-      return false;
-    auto     nbpts  = (uint32_t)spline.get_x().size();
-    uint32_t offset = 0;
-    float    c0     = spline.get_c0();
-    std::memcpy(data + offset, &nbpts, 4);
-    offset += 4;
-    std::memcpy(data + offset, &c0, 4);
-    offset += 4;
-    std::memcpy(data + offset, spline.get_x().data(), nbpts * 4);
-    offset += nbpts * 4;
-    std::memcpy(data + offset, spline.get_y().data(), nbpts * 4);
-    offset += nbpts * 4;
-    std::memcpy(data + offset, spline.get_b().data(), nbpts * 4);
-    offset += nbpts * 4;
-    std::memcpy(data + offset, spline.get_c().data(), nbpts * 4);
-    offset += nbpts * 4;
-    std::memcpy(data + offset, spline.get_d().data(), nbpts * 4);
-    dev.unmapBuffer(handle);
-    bufferVer = version;
-    return true;
-  }
-  return false;
-}
-
 HelpInfo CurveData::getHelpInfo(HelpType type, int param) const
 {
   static HelpInfo output("@curveOut.help"_ls, "@curveOut.tip"_ls);

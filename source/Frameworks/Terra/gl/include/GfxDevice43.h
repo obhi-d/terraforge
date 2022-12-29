@@ -14,6 +14,8 @@ public:
     init();
   }
 
+  void destroy() override;
+
   void beginFrame() override;
   void endFrame() override;
 
@@ -48,6 +50,7 @@ public:
   void readImage(GfxImage::handle image, std::span<ubyte_t> out) override;
   void dispatchCompute(GfxProgram::handle shader, GfxDescriptorSet::handle descriptorSet, uint32_t numGroupX,
                        uint32_t numGroupY) override;
+  void dispatchCompute(GfxMaterial2 const& material, Blob const& data, uint32_t numGroupX, uint32_t numGroupY) override;
   void barrier(GfxBarrierFlags flags) override;
   std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) override;
   std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang, SourceType) override;
@@ -87,6 +90,7 @@ protected:
   void                     makeResident(BindlessHandleGl::handle, GfxAccess access);
   void                     makeResident(BindlessHandleGl::handle);
   void                     destroy(BindlessHandleGl::handle);
+  BindlessHandleGl::handle makeBindless(GfxImageGl const&);
   BindlessHandleGl::handle makeBindless(GfxImageGl const&, GfxSamplerGl const&);
   BindlessHandleGl::handle makeBindless(GfxBufferGl const&);
   BindlessHandleGl::handle makeBindless(GfxImageGl const&, StorageImage const&);
@@ -108,7 +112,8 @@ protected:
   };
 
   std::vector<UBO> ubo;
-  gl::GLuint       fullscreenVS = 0;
+  gl::GLuint       fullscreenVS  = 0;
+  gl::GLuint       fullscreenVAO = 0;
   GlGfxState       state;
   GfxFeature       features;
   GfxResources     resources;

@@ -60,7 +60,10 @@
       "Source",
       "Iteration",
       "Heights",
-      "LayerContrib"
+      "Water",
+      "Rocks",
+      "Terrain",
+      "Vegetation"
     ]
   },
   {

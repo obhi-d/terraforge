@@ -88,6 +88,8 @@ public:
     return previewNodeStyle;
   }
 
+  void tick();
+
 private:
   void drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const&, Node&, uint32_t param);
   void drawParameter(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const&, Node&, uint32_t param);

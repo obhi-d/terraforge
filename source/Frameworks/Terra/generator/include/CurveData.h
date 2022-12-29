@@ -33,7 +33,6 @@ struct CurveData : public DataSource
   std::u8string name = u8"CurveData";
   tk::spline<>  spline;
   Edit          edits;
-  uint32        version = 0;
 
   CurveData()
   {
@@ -78,8 +77,8 @@ struct CurveData : public DataSource
     }
     if ((edits.liveUpdate || apply) && edits.edited && edits.dirty)
     {
-      spline  = edits.spline;
-      version = (self.index() << 16) | version++;
+      spline = edits.spline;
+      updateVersion();
       if (apply)
       {
         edits.edited  = false;
@@ -95,8 +94,6 @@ struct CurveData : public DataSource
   {
     return spline == other.spline;
   }
-
-  bool getBuffer(GfxDevice&, uint32& version, GfxBuffer::handle& ioBuffer);
 
   inline Type getType() const final
   {

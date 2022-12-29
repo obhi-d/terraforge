@@ -68,6 +68,7 @@ public:
   auto setSelf(handle h)
   {
     std::swap(self.reserved, h.reserved);
+    selfUpdated();
     return h;
   }
 
@@ -89,6 +90,11 @@ public:
     getSourcesImpl(set);
   }
 
+  virtual bool isPushable() const
+  {
+    return true;
+  }
+
   virtual HelpInfo getHelpInfo(HelpType, int param = -1) const = 0;
 
   virtual void prepareGeneration(Pipeline&) {}
@@ -98,6 +104,8 @@ public:
   static void prepareGeneration(HDataSource, Pipeline&);
   static void beginIteration(HDataSource, Pipeline&);
   static void endIteration(HDataSource, Pipeline&);
+
+  virtual void selfUpdated() {}
 
   void propagate(Event);
   void onParamChange(uint32_t i, Source oldValue, Source newValue);
@@ -114,6 +122,9 @@ public:
            ((tileConstraintSize[1] == 0) ||
             (tileConstraintOffset[1] >= tile[1] && tile[1] < (tileConstraintOffset[1] + tileConstraintSize[1])));
   }
+
+  // Checks isValid, isWithinTile and isAvailable
+  static bool isPushable(HDataSource ds, uvec2 tile, uvec2 tileConstraintOffset, uvec2 tileConstraintSize);
 
   inline void updateVersion()
   {

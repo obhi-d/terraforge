@@ -1,6 +1,7 @@
 
 #include "Terra.h"
 #include "CurveData.h"
+#include "GpuMinMax.h"
 #include "Logger.h"
 #include "ResourceUtils.h"
 
@@ -31,6 +32,7 @@ void Terra::init(Localization l, std::shared_ptr<GfxDevice> iDev)
   // setup default stuff, and then read settings
   settings.reverseZ = device->getCaps().ARB_clip_control != GlGfxSupport::eUnsupported;
   GpuNodeMeta::registerKnownMeta();
+  GpuMinMax::buildProgram();
 }
 
 void Terra::destroy()
@@ -38,6 +40,7 @@ void Terra::destroy()
   dataSources.clear();
   nodeMetaTable.clear();
   threadPool.shutdown();
+  GpuMinMax::destroy();
   // computeThread.shutdown();
 }
 
@@ -107,6 +110,12 @@ HDataSource Terra::createCurve()
 HDataSource Terra::createImage()
 {
   auto ptr = std::make_shared<Image>();
+  ptr->setSelf(dataSources.emplace(ptr));
+  return ptr->getSelf();
+}
+
+HDataSource Terra::add(DataSourcePtr ptr)
+{
   ptr->setSelf(dataSources.emplace(ptr));
   return ptr->getSelf();
 }

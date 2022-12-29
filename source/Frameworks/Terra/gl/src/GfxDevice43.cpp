@@ -72,6 +72,7 @@ void GfxDevice43::init()
     gl43ext::glClipControl(gl43::GL_LOWER_LEFT, gl43ext::GL_ZERO_TO_ONE);
   }
   extensions.clear();
+  // features.ARB_clip_control = GlGfxSupport::eUnsupported;
 
   features.version = (int)version.majorVersion() * 100 + (int)version.minorVersion() * 10;
 #ifndef NDEBUG
@@ -79,6 +80,14 @@ void GfxDevice43::init()
   gl43::glDebugMessageCallback(MessageCallback, nullptr);
 #endif
   logInfo("OpenGL {}.{} - {}", version.majorVersion(), version.minorVersion(), glbinding::aux::ContextInfo::vendor());
+}
+
+void GfxDevice43::destroy()
+{
+  if (fullscreenVS)
+    gl43::glDeleteShader(fullscreenVS);
+  if (fullscreenVAO)
+    gl43::glDeleteVertexArrays(1, &fullscreenVAO);
 }
 
 void GfxDevice43::clearBackbuffer(glm::vec4 color, DepthClear depth)
@@ -185,6 +194,20 @@ void GfxDevice43::setState(GfxState const& newState)
                     newState.scissor.size.y);
     state.scissor = newState.scissor;
   }
+  if (state.polygonOffset != newState.polygonOffset || state.flush)
+  {
+    if (newState.polygonOffset)
+      gl43::glEnable(gl::GL_POLYGON_OFFSET_FILL);
+    else
+      gl43::glDisable(gl::GL_POLYGON_OFFSET_FILL);
+    state.polygonOffset = newState.polygonOffset;
+  }
+  if (state.polygonOffset && (state.polyOffSlope != newState.polyOffSlope || state.polyOffBias != newState.polyOffBias))
+  {
+    gl43::glPolygonOffset(newState.polyOffSlope, newState.polyOffBias);
+    state.polyOffSlope = newState.polyOffSlope;
+    state.polyOffBias  = newState.polyOffBias;
+  }
   state.flush = false;
 }
 
@@ -225,6 +248,7 @@ GfxBuffer::handle GfxDevice43::createBuffer(GfxStorageClass storage, GfxBuffer::
   res.target = target;
   gl43::glBindBuffer(target, res.glhandle);
   gl43::glBufferData(target, size, nullptr, storageClass);
+  gl43::glBindBuffer(target, 0);
   return h;
 }
 void GfxDevice43::destroy(GfxBuffer::handle h)
@@ -307,12 +331,25 @@ void GfxDevice43::releaseTexture(GfxImage::handle h)
   auto& res = resources.images.at(h);
   if ((res.ref--) == 0)
   {
-    gl43::glDeleteTextures(1, &res.glhandle);
-    resources.images.erase(h);
     if (res.fbo)
       gl43::glDeleteFramebuffers(1, &res.fbo);
+
+    if (res.hdev)
+      destroy(res.hdev);
+
+    for (auto& s : res.hsamplerMap)
+    {
+      destroy(s.second);
+    }
+
+    gl43::glDeleteTextures(1, &res.glhandle);
+
+    res.hsamplerMap.clear();
+    res.hdev     = {};
     res.fbo      = 0;
     res.glhandle = 0;
+
+    resources.images.erase(h);
   }
 }
 GfxSampler::handle GfxDevice43::createSampler(ImageSampling sampling)
@@ -682,6 +719,14 @@ void GfxDevice43::dispatchCompute(GfxProgram::handle shader, GfxDescriptorSet::h
   bindResources(descriptorSet);
   gl43::glDispatchCompute(numGroupX, numGroupY, 1);
 }
+
+void GfxDevice43::dispatchCompute(GfxMaterial2 const& material, Blob const& data, uint32_t numGroupX,
+                                  uint32_t numGroupY)
+{
+  gl43::glUseProgram(resources.programs[material.program].glhandle);
+  apply(material.layout, data);
+  gl43::glDispatchCompute(numGroupX, numGroupY, 1);
+}
 void GfxDevice43::barrier(GfxBarrierFlags flags)
 {
   gl43::MemoryBarrierMask mask = gl43::MemoryBarrierMask::GL_NONE_BIT;
@@ -827,6 +872,14 @@ BindlessHandleGl::handle GfxDevice43::makeBindless(GfxImageGl const& texture, Gf
   return resources.bindlessHandles.emplace(bhdl);
 }
 
+BindlessHandleGl::handle GfxDevice43::makeBindless(GfxImageGl const& texture)
+{
+  BindlessHandleGl bhdl;
+  bhdl.hdev = gl43ext::glGetTextureHandleARB(texture.glhandle);
+  bhdl.type = BindlessHandleType::eTexture;
+  return resources.bindlessHandles.emplace(bhdl);
+}
+
 BindlessHandleGl::handle GfxDevice43::makeBindless(GfxBufferGl const& texture)
 {
   BindlessHandleGl bhdl;
@@ -909,15 +962,24 @@ void GfxDevice43::bindSampledTexture(gl::GLenum target, uint32_t index, SampledT
   {
     BindlessHandleGl::handle hdev;
     auto&                    texture = resources.images[tex.texture];
-    auto                     s       = texture.hsamplerMap.find(tex.sampler);
-    if (s == texture.hsamplerMap.end())
+    if (tex.sampler)
     {
-      auto& sampler                    = resources.samplers[tex.sampler];
-      hdev                             = makeBindless(texture, sampler);
-      texture.hsamplerMap[tex.sampler] = hdev;
+      auto s = texture.hsamplerMap.find(tex.sampler);
+      if (s == texture.hsamplerMap.end())
+      {
+        auto& sampler                    = resources.samplers[tex.sampler];
+        hdev                             = makeBindless(texture, sampler);
+        texture.hsamplerMap[tex.sampler] = hdev;
+      }
+      else
+        hdev = s->second;
     }
     else
-      hdev = s->second;
+    {
+      hdev = texture.hdev;
+      if (!hdev)
+        hdev = texture.hdev = makeBindless(texture);
+    }
 
     auto& bhdl = resources.bindlessHandles[hdev];
     makeResident(hdev);
@@ -926,10 +988,14 @@ void GfxDevice43::bindSampledTexture(gl::GLenum target, uint32_t index, SampledT
   else
   {
     auto& texture = resources.images[tex.texture];
-    auto& sampler = resources.samplers[tex.sampler];
+
     gl43::glActiveTexture(gl::GL_TEXTURE0 + index);
     gl43::glBindTexture(target, texture.glhandle);
-    gl43::glBindSampler(index, sampler.glhandle);
+    if (tex.sampler)
+    {
+      auto& sampler = resources.samplers[tex.sampler];
+      gl43::glBindSampler(index, sampler.glhandle);
+    }
   }
 }
 
@@ -1109,7 +1175,8 @@ GfxProgram::handle GfxDevice43::createFullscreenProgram(std::span<std::string_vi
   std::vector<gl43::GLchar const*> sourceFiles;
   std::vector<gl43::GLint>         sourceLengths;
 
-  std::string version = fmt::format("#version {}\n", this->features.version);
+  std::string                version  = fmt::format("#version {}\n", this->features.version);
+  constexpr std::string_view fragment = "#define FragmentShader\n";
 
   if (!fullscreenVS)
   {
@@ -1124,6 +1191,8 @@ GfxProgram::handle GfxDevice43::createFullscreenProgram(std::span<std::string_vi
 
   sourceFiles.emplace_back((gl43::GLchar const*)version.c_str());
   sourceLengths.emplace_back((gl43::GLint)version.size());
+  sourceFiles.emplace_back((gl43::GLchar const*)fragment.data());
+  sourceLengths.emplace_back((gl43::GLint)fragment.size());
   for (auto c : code)
   {
     sourceFiles.emplace_back((gl43::GLchar const*)c.data());
@@ -1172,7 +1241,9 @@ void GfxDevice43::postProcessDraw(GfxProgram::handle program, GfxParamLayout::ha
 {
   gl43::glUseProgram(resources.programs[program].glhandle);
   apply(descriptorLayout, data);
-  gl43::glBindVertexArray(0);
+  if (!fullscreenVAO)
+    gl43::glGenVertexArrays(1, &fullscreenVAO);
+  gl43::glBindVertexArray(fullscreenVAO);
   gl43::glDrawArrays(gl::GL_TRIANGLES, 0, 3);
 }
 

@@ -14,6 +14,8 @@ struct GfxDevice
 {
   using Caps = GfxFeature;
 
+  virtual void destroy() = 0;
+
   virtual void beginFrame() = 0;
   virtual void endFrame()   = 0;
 
@@ -103,6 +105,8 @@ struct GfxDevice
   virtual void destroy(GfxMesh::handle)                                                                   = 0;
   virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material)                           = 0;
   virtual void draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data)        = 0;
+  virtual void dispatchCompute(GfxMaterial2 const& material, Blob const& data, uint32_t numGroupX,
+                               uint32_t numGroupY)                                                        = 0;
   virtual void flushStates()                                                                              = 0;
   virtual void clearBackbuffer(glm::vec4 color, DepthClear depth = DepthClear::eNone)                     = 0;
   virtual void setState(GfxState const&)                                                                  = 0;

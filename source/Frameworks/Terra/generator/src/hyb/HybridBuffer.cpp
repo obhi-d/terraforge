@@ -123,12 +123,23 @@ void HybridBuffer::clear()
   if (flags_ & fImage)
   {
     dev.destroy(image_);
+    image_ = {};
   }
   else
   {
     dev.destroy(buffer_);
+    buffer_ = {};
   }
   data_ = {};
+}
+
+void HybridBuffer::upload(std::span<ubyte_t const> data)
+{
+  if (!(flags_ & fImage))
+    return;
+  ensureDev();
+  auto& dev = get().getDevice();
+  dev.updateImage(image_, data);
 }
 
 } // namespace terra

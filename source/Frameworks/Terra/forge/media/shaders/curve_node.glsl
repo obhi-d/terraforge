@@ -1,5 +1,5 @@
 
-layout(std430, location = source_b) readonly restrict buffer source
+layout(std430, binding = source_b) readonly restrict buffer source
 {
   uint  points;
   float c0;
@@ -21,7 +21,7 @@ uint closest_x(float x)
   return u_curve.points-1;
 }
 
-float sample_x(float x)
+float sample_point(float x)
 {
   uint n   = u_curve.points;
   uint idx = closest_x( x );
@@ -51,8 +51,8 @@ float sample_x(float x)
   return interpol;
 }
 
-void node(in vec2 input, out float output)
+void node(in vec2 uv)
 {
-  output = sample_x(input.x) * scale.x + sample_y(input.y) * scale.y;
+  heights = sample_point(uv.x) * scale.x + sample_point(uv.y) * scale.y;
 }
 
