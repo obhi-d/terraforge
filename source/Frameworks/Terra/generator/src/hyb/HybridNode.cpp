@@ -172,6 +172,11 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     case DataTypeEnum::eFloat2:
     case DataTypeEnum::eInt:
     case DataTypeEnum::eInt2:
+    case DataTypeEnum::eUint:
+    case DataTypeEnum::eUint2:
+    case DataTypeEnum::eFloat3:
+    case DataTypeEnum::eFloat4:
+    case DataTypeEnum::eMat4:
       builder.param(def.name(), def.format);
       break;
     case DataTypeEnum::eBool:
@@ -315,6 +320,11 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
         case DataTypeEnum::eFloat2:
         case DataTypeEnum::eInt:
         case DataTypeEnum::eInt2:
+        case DataTypeEnum::eUint:
+        case DataTypeEnum::eUint2:
+        case DataTypeEnum::eFloat3:
+        case DataTypeEnum::eFloat4:
+        case DataTypeEnum::eMat4:
           program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
           break;
         case DataTypeEnum::eBool:

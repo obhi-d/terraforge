@@ -11,16 +11,31 @@ void ShaderProgramInstance::pushValue(ScalarValue value, DataTypeEnum type)
   {
   case DataTypeEnum::eInt:
     program.pushScalar(index++, value.ivalue);
+    break;
   case DataTypeEnum::eInt2:
     program.pushScalar(index++, value.ivalue2);
+    break;
   case DataTypeEnum::eUint:
     program.pushScalar(index++, value.uvalue);
+    break;
   case DataTypeEnum::eUint2:
     program.pushScalar(index++, value.uvalue2);
+    break;
   case DataTypeEnum::eFloat:
     program.pushScalar(index++, value.value);
+    break;
   case DataTypeEnum::eFloat2:
     program.pushScalar(index++, value.value2);
+    break;
+  case DataTypeEnum::eFloat3:
+    program.pushScalar(index++, value.value3);
+    break;
+  case DataTypeEnum::eFloat4:
+    program.pushScalar(index++, value.value4);
+    break;
+  case DataTypeEnum::eMat4:
+    program.pushScalar(index++, value.value4x4);
+    break;
   }
 }
 

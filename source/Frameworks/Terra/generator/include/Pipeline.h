@@ -90,6 +90,11 @@ public:
     return minMax_;
   }
 
+  float frequency() const
+  {
+    return frequency_;
+  }
+
 protected:
   // main actor
   vec2        minMax_    = vec2(0.0f);

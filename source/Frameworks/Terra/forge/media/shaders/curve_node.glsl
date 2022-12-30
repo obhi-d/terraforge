@@ -53,6 +53,6 @@ float sample_point(float x)
 
 void node(in vec2 uv)
 {
-  heights = sample_point(uv.x) * scale.x + sample_point(uv.y) * scale.y;
+  heights = sample_point(uv.x) * amplitude.x + sample_point(uv.y) * amplitude.y;
 }
 

@@ -102,7 +102,10 @@ struct GpuNode : public ClassicHybridNode
 
 struct GpuScriptNode : public GpuNode
 {
-  std::vector<Parameter> parameters;
+  Blob parameters;
+  std::vector<uint32_t> offsets;
+
+  void set()
 
   GpuScriptNode(NodeMeta const& m);
 };

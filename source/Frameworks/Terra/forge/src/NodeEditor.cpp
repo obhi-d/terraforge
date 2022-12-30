@@ -178,6 +178,7 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   bool        set   = false;
   switch (def.format.scalarSubType)
   {
+  case DataTypeEnum::eUint2:
   case DataTypeEnum::eInt2:
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
@@ -185,6 +186,7 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
       set = true;
   }
   break;
+  case DataTypeEnum::eUint:
   case DataTypeEnum::eInt:
   {
     ImGui::SetNextItemWidth(style.fixedWidth);
@@ -196,6 +198,39 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
     if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+      set = true;
+  }
+  break;
+  case DataTypeEnum::eFloat3:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat3(def.displayInfo.getName(), &v.value3.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+      set = true;
+  }
+  break;
+  case DataTypeEnum::eFloat4:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+      set = true;
+  }
+  break;
+  case DataTypeEnum::eMat4:
+  {
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[0].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+      set = true;
+    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[1].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+      set = true;
+    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[2].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+      set = true;
+    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[3].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
                           def.ranges.maxVal.fval))
       set = true;
   }
@@ -228,8 +263,13 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
   {
   case DataTypeEnum::eFloat:
   case DataTypeEnum::eFloat2:
+  case DataTypeEnum::eFloat3:
+  case DataTypeEnum::eFloat4:
+  case DataTypeEnum::eMat4:
   case DataTypeEnum::eInt:
   case DataTypeEnum::eInt2:
+  case DataTypeEnum::eUint:
+  case DataTypeEnum::eUint2:
   case DataTypeEnum::eBool:
   {
     drawScalar(app, backend, def, node, i);
@@ -312,15 +352,18 @@ void NodeEditor::drawNodeSettings(TerraMainApp& app, ImguiBackend& backend)
     {
       auto  param = node.meta.categorySorted[i];
       auto& def   = node.meta.parameterDef[param];
-      if (def.displayInfo.category != category)
+      if (!def.format.hidden)
       {
-        if (!category.empty() && process)
-          ImGui::TreePop();
-        category = def.displayInfo.category;
-        process  = ImGui::TreeNode((const char*)category.data());
+        if (def.displayInfo.category != category)
+        {
+          if (!category.empty() && process)
+            ImGui::TreePop();
+          category = def.displayInfo.category;
+          process  = ImGui::TreeNode((const char*)category.data());
+        }
+        if (process)
+          drawParameter(app, backend, def, node, param);
       }
-      if (process)
-        drawParameter(app, backend, def, node, param);
     }
     if (!category.empty() && process)
       ImGui::TreePop();

@@ -113,7 +113,6 @@ void TerraMainApp::initalize()
   }
   ThemeRegister(ThemeBuilder, themeReader);
   readLocalization();
-  scanScripts();
 }
 
 void TerraMainApp::scanScripts()
@@ -125,7 +124,7 @@ void TerraMainApp::scanScripts()
     for (auto const& dir_entry : std::filesystem::directory_iterator{effects})
     {
       auto filepath = dir_entry.path();
-      if (dir_entry.is_regular_file() && filepath.extension() == "gfx")
+      if (dir_entry.is_regular_file() && filepath.extension() == ".gfx")
         get().scanShader(filepath);
     }
   }
@@ -224,7 +223,7 @@ void TerraMainApp::run()
       return localizeNamed(name);
     },
     device);
-
+  scanScripts();
   viewer.init(*this);
   reloadTheme();
 

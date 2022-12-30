@@ -63,7 +63,12 @@
       "Water",
       "Rocks",
       "Terrain",
-      "Vegetation"
+      "Vegetation",
+      "FSeed",
+      "Seed",
+      "Start",
+      "Size",
+      "Frequency"
     ]
   },
   {

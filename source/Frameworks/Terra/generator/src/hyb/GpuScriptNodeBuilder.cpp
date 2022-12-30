@@ -88,6 +88,10 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         meta.setValueFromString(terra::ParameterMeta::ValueType::eStep, entry.value());
       }
+      else if (entry.name() == "hidden")
+      {
+        meta.format.hidden = true;
+      }
     }
     else if (std::holds_alternative<neo::list>(p))
     {
@@ -237,22 +241,22 @@ NodeCmdExecute(extensions, builder, state, cmd)
 NodeCmdExecute(in, builder, state, cmd)
 {
   auto names = terra::getFirstList(cmd);
+  uint32_t s     = 0;
   for (auto& e : names)
   {
     [&]()
     {
       for (uint32_t i = 0, end = (uint32_t)builder.meta.parameterDef.size(); i != end; ++i)
-        if (builder.meta.parameterDef[i].name() == e)
+      {
+        uint32_t d = s + i;
+        uint32_t v = d % end;
+        if (builder.meta.parameterDef[v].name() == e)
         {
-          builder.meta.passes.back().parameters.emplace_back(i);
+          builder.meta.passes.back().parameters.emplace_back(v);
+          s = v;
           return;
         }
-      for (uint32_t i = 0, end = (uint32_t)builder.meta.outputs.size(); i != end; ++i)
-        if (builder.meta.outputs[i].name() == e)
-        {
-          builder.meta.passes.back().parameters.emplace_back(i | GpuNodeMeta::kOutputMask);
-          return;
-        }
+      }
     }();
   }
   return neo::retcode::e_success;

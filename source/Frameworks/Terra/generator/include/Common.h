@@ -340,6 +340,7 @@ struct DataFormat
   SemanticEnum      semantic      = SemanticEnum::eNone;
   SamplerParamEnum  sampler       = SamplerParamEnum::eNone;
   bool              preEval       = false;
+  bool              hidden        = false;
 
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
@@ -626,6 +627,9 @@ union ScalarValue
   uvec2    uvalue2 = {0, 0};
   ivec2    ivalue2;
   vec2     value2;
+  vec3     value3;
+  vec4     value4;
+  mat4     value4x4;
   float    value;
   int      ivalue;
   uint32_t uvalue;
@@ -636,6 +640,9 @@ union ScalarValue
   inline ScalarValue(Snorm val) : value(val) {}
   inline ScalarValue(int a, int b) : ivalue2{a, b} {}
   inline ScalarValue(ivec2 v) : ivalue2(v) {}
+  inline ScalarValue(vec3 v) : value3(v) {}
+  inline ScalarValue(vec4 v) : value4(v) {}
+  inline ScalarValue(mat4 v) : value4x4(v) {}
   inline ScalarValue() {}
   inline ScalarValue(vec2 v) : value2(v) {}
   inline ScalarValue(float v) : value(v) {}

@@ -64,7 +64,7 @@ void GpuNodeMeta::registerKnownMeta()
     meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::sampleOffset>(), "sample_offset",
                                    ValueRange(0.0f, -inf, inf, 0.1f), DataType::eFloat2, DataType::eFloat2,
                                    ImageFormat::eFloat, ParamDeclType::eScalar);
-    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
+    meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::scale>(), "amplitude", ValueRange(0.0f, -inf, inf, 0.1f),
                                    DataType::eFloat, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eScalar);
 
     meta.outputs.emplace_back("heights",
@@ -94,7 +94,7 @@ void GpuNodeMeta::registerKnownMeta()
     meta.as<GpuCurveNode>();
     meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::curve>(), "source", ValueRange(), DataType::eCurveData,
                                    DataType::eFloat, ImageFormat::eNone, ParamDeclType::eReadonlySSBO);
-    meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::scale>(), "scale", ValueRange(0.0f, -inf, inf, 0.1f),
+    meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::scale>(), "amplitude", ValueRange(0.0f, -inf, inf, 0.1f),
                                    DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
     meta.outputs.emplace_back("heights",
                               DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,

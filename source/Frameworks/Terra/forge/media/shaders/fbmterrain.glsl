@@ -50,7 +50,7 @@ vec3 grad(float hash)
 }
 
 // BCC lattice split up into 2 cube lattices
-vec4 openSimplex2Base(vec3 X) {
+float openSimplex2(vec3 X) {
     
     // First half-lattice, closest edge
     vec3 v1 = round(X);
@@ -82,32 +82,9 @@ vec4 openSimplex2Base(vec3 X) {
     vec4 extrapolations = vec4(dot(d1, g1), dot(d2, g2), dot(d3, g3), dot(d4, g4));
     
     // Derivatives of the noise
-    vec3 derivative = -8.0 * mat4x3(d1, d2, d3, d4) * (aa * a * extrapolations)
-        + mat4x3(g1, g2, g3, g4) * aaaa;
     
     // Return it all as a vec4
-    return vec4(derivative, dot(aaaa, extrapolations));
-}
-
-// Use this if you don't want Z to look different from X and Y
-vec4 openSimplex2_Conventional(vec3 X) {
-    
-    // Rotate around the main diagonal. Not a skew transform.
-    vec4 result = openSimplex2Base(dot(X, vec3(2.0/3.0)) - X);
-    return vec4(dot(result.xyz, vec3(2.0/3.0)) - result.xyz, result.w);
-}
-
-// Use this if you want to show X and Y in a plane, then use Z for time, vertical, etc.
-vec4 openSimplex2_ImproveXY(vec3 X) {
-    
-    // Rotate so Z points down the main diagonal. Not a skew transform.
-    mat3 orthonormalMap = mat3(
-        0.788675134594813, -0.211324865405187, -0.577350269189626,
-        -0.211324865405187, 0.788675134594813, -0.577350269189626,
-        0.577350269189626, 0.577350269189626, 0.577350269189626);
-    
-    vec4 result = openSimplex2Base(orthonormalMap * X);
-    return vec4(result.xyz * orthonormalMap, result.w);
+    return dot(aaaa, extrapolations);
 }
 
 vec2 compute_input(float x, float y)
@@ -115,14 +92,14 @@ vec2 compute_input(float x, float y)
   return vec2((x * size.x) + start.x, (y + size.y) + start.y);
 }
 
-float noise(in vec2 input)
+void noise(in vec2 p)
 {
   float amp = amplitude;
   float freq = frequency;
   float y = 0;
   for(uint i = 0; i < octaves; ++i)
   {
-    y += amp * openSimplex2_ImproveXY(vec3(input * freq, fseed));
+    y += amp * openSimplex2(vec3(p * freq, fseed)).x;
     freq *= lacunarity;
     amp *= gain;
   }
