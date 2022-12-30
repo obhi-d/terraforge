@@ -42,6 +42,10 @@ CurveMask            = """Curve Node""";
 CurveMask.help       = """Create a curve deformation based on polynomials""";
 CurveMask.tip        = """Edit curve to sample height value""";
 CurveMask.category   = """Data Node""";
+FbmTerrain           = """Fbm Terrain""";
+FbmTerrain.help      = """Terrain using fractal brownian motion and opensimplex noise.""";
+FbmTerrain.tip       = """OpenSimplex/fbm based terrain.""";
+FbmTerrain.category  = """Basics""";
 
 
 source                  = """Source""";
@@ -64,3 +68,5 @@ sample_offset           = """Sample Offset""";
 sample_offset.help      = """Offset the sampling frequency by some value""";
 sample_offset.tip       = """Offset applied to sampler input""";
 sample_offset.category  = """General""";
+octaves                 = """Octaves""";
+

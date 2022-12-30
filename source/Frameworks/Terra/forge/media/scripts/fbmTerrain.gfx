@@ -1,0 +1,22 @@
+
+name   : FbmTerrain;
+style  : noise;
+
+output : heights (type = [float, float], semantic = heights, decltype = sampler2D);
+param  : fseed (type = [float, float], semantic = fseed, decltype = scalar);
+param  : frequency (type = float, semantic = frequency, decltype = scalar);
+param  : octaves (type = uint, decltype = scalar, min = 1, max = 10000, default = 8, step = 1);
+param  : lacunarity (type = float, decltype = scalar, min = 0.0, max = 10000.0, default = 2.4, step = 0.1);
+param  : amplitude (type = float, decltype = scalar, min = -inf, max = inf, default = 10.0, step = 0.1);
+param  : gain (type = float, decltype = scalar, min = -inf, max = inf, default = 1.2, step = 0.1);
+param  : start (type = vec2, semantic = start, decltype = scalar);
+param  : size (type = vec2, semantic = size, decltype = scalar);
+
+pass
+{
+  function : noise;
+  shaders  : fbmterrain.glsl;
+  in       : [fseed, frequency, octaves, lacunarity, amplitude, gain, start, size];
+  out      : heights;
+}
+

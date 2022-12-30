@@ -54,7 +54,7 @@ NodeCmdExecute(param, builder, state, cmd)
       auto const& entry = std::get<neo::single>(p);
       if (entry.name() == "type")
       {
-        meta.setTypeFromString(entry.value(), "float");
+        meta.setTypeFromString(entry.value(), entry.value());
       }
       else if (entry.name() == "decltype")
       {
@@ -144,7 +144,7 @@ NodeCmdExecute(output, builder, state, cmd)
       auto const& entry = std::get<neo::single>(p);
       if (entry.name() == "type")
       {
-        output.format.type = DataType::fromString(entry.value());
+        output.format.scalarSubType = output.format.type = DataType::fromString(entry.value());
       }
       else if (entry.name() == "decltype")
       {
