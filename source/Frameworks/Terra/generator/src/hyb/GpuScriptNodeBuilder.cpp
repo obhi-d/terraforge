@@ -119,13 +119,13 @@ NodeCmdExecute(param, builder, state, cmd)
   {
     meta.setter = [](terra::Node& node, uint32_t i, terra::Parameter param)
     {
-      auto& gpuNode         = static_cast<GpuScriptNode&>(node);
-      gpuNode.parameters[i] = param;
+      auto& gpuNode = static_cast<GpuScriptNode&>(node);
+      gpuNode.set(i, param);
     };
     meta.getter = [](terra::Node const& node, uint32_t i) -> Parameter
     {
       auto& gpuNode = static_cast<GpuScriptNode const&>(node);
-      return gpuNode.parameters[i];
+      return gpuNode.get(i);
     };
     builder.meta.parameterDef.emplace_back(std::move(meta));
     return neo::retcode::e_success;
@@ -240,7 +240,7 @@ NodeCmdExecute(extensions, builder, state, cmd)
 
 NodeCmdExecute(in, builder, state, cmd)
 {
-  auto names = terra::getFirstList(cmd);
+  auto     names = terra::getFirstList(cmd);
   uint32_t s     = 0;
   for (auto& e : names)
   {

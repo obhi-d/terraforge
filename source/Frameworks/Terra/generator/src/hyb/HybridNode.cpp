@@ -398,11 +398,157 @@ HybridNode::Result GpuNode::postExecute(HybridPipeline& pipe)
 //============== GpuScriptNode ==================
 GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
 {
-  parameters.reserve(m.parameterDef.size());
+  entries.resize(m.parameterDef.size());
   for (size_t i = 0; i < m.parameterDef.size(); ++i)
-    parameters.emplace_back(m.parameterDef[i].getDefault());
+  {
+    auto format     = m.parameterDef[i].format;
+    auto def        = m.parameterDef[i].getDefault();
+    entries[i].type = format.scalarSubType;
+    if (isSourceType(format.type))
+    {
+      entries[i].offset = parameters.push(def.value4);
+    }
+    else
+    {
+      switch (format.type)
+      {
+      case DataTypeEnum::eEnum:
+        entries[i].offset = parameters.push(def.ivalue);
+        break;
+      case DataTypeEnum::eFloat:
+        entries[i].offset = parameters.push(def.value);
+        break;
+      case DataTypeEnum::eFloat2:
+        entries[i].offset = parameters.push(def.value2);
+        break;
+      case DataTypeEnum::eFloat3:
+        entries[i].offset = parameters.push(def.value3);
+        break;
+      case DataTypeEnum::eFloat4:
+        entries[i].offset = parameters.push(def.value4);
+        break;
+      case DataTypeEnum::eMat4:
+        entries[i].offset = parameters.push(def.value4x4);
+        break;
+      case DataTypeEnum::eBool:
+      case DataTypeEnum::eInt:
+        entries[i].offset = parameters.push(def.ivalue);
+        break;
+      case DataTypeEnum::eInt2:
+        entries[i].offset = parameters.push(def.ivalue2);
+        break;
+      case DataTypeEnum::eUint:
+        entries[i].offset = parameters.push(def.uvalue);
+        break;
+      case DataTypeEnum::eUint2:
+        entries[i].offset = parameters.push(def.uvalue2);
+        break;
+      default:
+        entries[i].offset = parameters.push(def.value);
+        break;
+      }
+    }
+  }
 }
 
+void GpuScriptNode::set(uint32_t i, Parameter const& param)
+{
+  if (std::holds_alternative<ScalarValue>(param))
+  {
+    auto format = meta.parameterDef[i].format;
+    auto def    = std::get<ScalarValue>(param);
+    if (isSourceType(format.type))
+    {
+      entries[i].type = DataTypeEnum::eFloat2;
+      parameters.replace(entries[i].offset, sizeof(Source), def.value2);
+    }
+    else
+    {
+      switch (format.type)
+      {
+      case DataTypeEnum::eEnum:
+        parameters.replace(entries[i].offset, sizeof(def.ivalue), def.ivalue);
+        break;
+      case DataTypeEnum::eFloat:
+        parameters.replace(entries[i].offset, sizeof(def.value), def.value);
+        break;
+      case DataTypeEnum::eFloat2:
+        parameters.replace(entries[i].offset, sizeof(def.value2), def.value2);
+        break;
+      case DataTypeEnum::eFloat3:
+        parameters.replace(entries[i].offset, sizeof(def.value3), def.value3);
+        break;
+      case DataTypeEnum::eFloat4:
+        parameters.replace(entries[i].offset, sizeof(def.value4), def.value4);
+        break;
+      case DataTypeEnum::eMat4:
+        parameters.replace(entries[i].offset, sizeof(def.value4x4), def.value4x4);
+        break;
+      case DataTypeEnum::eBool:
+      case DataTypeEnum::eInt:
+        parameters.replace(entries[i].offset, sizeof(def.ivalue), def.ivalue);
+        break;
+      case DataTypeEnum::eInt2:
+        parameters.replace(entries[i].offset, sizeof(def.ivalue2), def.ivalue2);
+        break;
+      case DataTypeEnum::eUint:
+        parameters.replace(entries[i].offset, sizeof(def.uvalue), def.uvalue);
+        break;
+      case DataTypeEnum::eUint2:
+        parameters.replace(entries[i].offset, sizeof(def.uvalue2), def.uvalue2);
+        break;
+      default:
+        parameters.replace(entries[i].offset, sizeof(def.value), def.value);
+        break;
+      }
+    }
+  }
+  else
+  {
+    auto format     = meta.parameterDef[i].format;
+    auto def        = std::get<Source>(param);
+    entries[i].type = format.type;
+    parameters.replace(entries[i].offset, sizeof(Source), def);
+  }
+}
+
+Parameter GpuScriptNode::get(uint32_t i) const
+{
+  if (isSourceType(entries[i].type))
+  {
+
+    return parameters.at<Source>(entries[i].offset);
+  }
+  else
+  {
+    switch (entries[i].type)
+    {
+    case DataTypeEnum::eEnum:
+      return ScalarValue(parameters.at<int>(entries[i].offset));
+    case DataTypeEnum::eFloat:
+      return ScalarValue(parameters.at<float>(entries[i].offset));
+    case DataTypeEnum::eFloat2:
+      return ScalarValue(parameters.at<vec2>(entries[i].offset));
+    case DataTypeEnum::eFloat3:
+      return ScalarValue(parameters.at<vec3>(entries[i].offset));
+    case DataTypeEnum::eFloat4:
+      return ScalarValue(parameters.at<vec4>(entries[i].offset));
+    case DataTypeEnum::eMat4:
+      return ScalarValue(parameters.at<mat4>(entries[i].offset));
+    case DataTypeEnum::eBool:
+    case DataTypeEnum::eInt:
+      return ScalarValue(parameters.at<int>(entries[i].offset));
+    case DataTypeEnum::eInt2:
+      return ScalarValue(parameters.at<ivec2>(entries[i].offset));
+    case DataTypeEnum::eUint:
+      return ScalarValue(parameters.at<uint32_t>(entries[i].offset));
+    case DataTypeEnum::eUint2:
+      return ScalarValue(parameters.at<uvec2>(entries[i].offset));
+    default:
+      return ScalarValue(parameters.at<float>(entries[i].offset));
+    }
+  }
+}
 //============== GpuImageNode ==================
 GpuImageNode::GpuImageNode(NodeMeta const& m) : GpuNode(m)
 {

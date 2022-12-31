@@ -42,12 +42,22 @@ ScalarValue ParameterMeta::getDefault() const
   case DataTypeEnum::eFloat:
     return ScalarValue(ranges.defaultVal.fval);
   case DataTypeEnum::eFloat2:
-    return vec2{ranges.defaultVal.fval, ranges.defaultVal.fval};
+    return vec2{ranges.defaultVal.fval};
+  case DataTypeEnum::eFloat3:
+    return vec3{ranges.defaultVal.fval};
+  case DataTypeEnum::eFloat4:
+    return vec4{ranges.defaultVal.fval};
+  case DataTypeEnum::eMat4:
+    return mat4{ranges.defaultVal.fval};
   case DataTypeEnum::eBool:
   case DataTypeEnum::eInt:
     return ScalarValue(ranges.defaultVal.ival);
   case DataTypeEnum::eInt2:
     return ivec2{ranges.defaultVal.ival, ranges.defaultVal.ival};
+  case DataTypeEnum::eUint:
+    return (uint32_t)ranges.defaultVal.ival;
+  case DataTypeEnum::eUint2:
+    return uvec2((uint32_t)ranges.defaultVal.ival);
   default:
     return ScalarValue();
   }

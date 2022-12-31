@@ -1,5 +1,6 @@
 #pragma once
 #include "generatorEnums.hpp"
+#include <acl/dynamic_array.hpp>
 #include <acl/linear_arena_allocator.hpp>
 #include <acl/link.hpp>
 #include <array>
@@ -166,11 +167,38 @@ struct Blob
   }
 
   template <typename T>
-  void push(T const& data)
+  auto push(T const& data)
   {
-    auto s = content.size();
+    uint32_t s = (uint32_t)content.size();
     content.resize(s + sizeof(T));
     *(T*)(content.data() + s) = data;
+    return s;
+  }
+
+  template <typename T>
+  void replace(uint32_t offset, uint32_t size, T const& data)
+  {
+    if (size == sizeof(T))
+    {
+      at<T>(offset) = data;
+    }
+    else
+    {
+      content.erase(content.begin() + offset, content.begin() + offset + size);
+      content.insert(content.begin() + offset, (ubyte_t const*)&data, ((ubyte_t const*)&data) + sizeof(T));
+    }
+  }
+
+  template <typename T>
+  T& at(uint32_t offset)
+  {
+    return reinterpret_cast<T&>(*(content.data() + offset));
+  }
+
+  template <typename T>
+  T const& at(uint32_t offset) const
+  {
+    return reinterpret_cast<T const&>(*(content.data() + offset));
   }
 
   struct Reader
@@ -640,6 +668,7 @@ union ScalarValue
   inline ScalarValue(Snorm val) : value(val) {}
   inline ScalarValue(int a, int b) : ivalue2{a, b} {}
   inline ScalarValue(ivec2 v) : ivalue2(v) {}
+  inline ScalarValue(uvec2 v) : uvalue2(v) {}
   inline ScalarValue(vec3 v) : value3(v) {}
   inline ScalarValue(vec4 v) : value4(v) {}
   inline ScalarValue(mat4 v) : value4x4(v) {}
@@ -647,6 +676,7 @@ union ScalarValue
   inline ScalarValue(vec2 v) : value2(v) {}
   inline ScalarValue(float v) : value(v) {}
   inline ScalarValue(int v) : ivalue(v) {}
+  inline ScalarValue(uint32_t v) : ivalue(v) {}
   inline ScalarValue(bool v) : bvalue(v) {}
 };
 
