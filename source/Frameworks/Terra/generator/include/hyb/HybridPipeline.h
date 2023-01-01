@@ -103,7 +103,6 @@ private:
   HybridNode::Result              result_        = HybridNode::Result::eWaiting;
   uint32_t                        tick_          = 1;
   uint32_t                        actorVersion_  = 0xffffffff;
-  uvec2                           tileId_;
   HDataSource                     current_;
   UseSet                          recents_;
   OrderSet                        orderSet_;

@@ -309,11 +309,12 @@ struct AutoParam
     eOk,
     eReportFailure
   };
-  using Callback = Result (*)(Pipeline&, Node&, uint32_t);
-  Callback pre   = nullptr;
-  Callback post  = nullptr;
-  AutoParam()    = default;
-  AutoParam(Callback ipre, Callback ipost) : pre(ipre), post(ipost) {}
+  using CallbackPre  = bool (*)(Pipeline&, Node&, uint32_t, Parameter&);
+  using CallbackPost = Result (*)(Pipeline&, Node&, uint32_t);
+  CallbackPre  pre   = nullptr;
+  CallbackPost post  = nullptr;
+  AutoParam()        = default;
+  AutoParam(CallbackPre ipre, CallbackPost ipost) : pre(ipre), post(ipost) {}
 };
 
 struct OutputMeta
@@ -391,7 +392,7 @@ public:
     autoRegistry[(uint32_t)e] = param;
   }
 
-  static void registerAuto(SemanticEnum e, AutoParam::Callback pre, AutoParam::Callback post)
+  static void registerAuto(SemanticEnum e, AutoParam::CallbackPre pre, AutoParam::CallbackPost post)
   {
     registerAuto(e, AutoParam(pre, post));
   }

@@ -11,24 +11,17 @@ namespace terra
 {
 //============== ClassicHybridNode ==================
 
-bool ClassicHybridNode::preExecute(HybridPipeline& pipe)
+bool ClassicHybridNode::preExecute(HybridPipeline& pipe, std::vector<Parameter>& parameters)
 {
+  parameters.clear();
   auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
   for (auto i : gpuMeta.autoParams)
   {
     uint32_t idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
     if (gpuMeta.autoRegistry[idx].pre)
     {
-      if (gpuMeta.autoRegistry[idx].pre(pipe, *this, i) == AutoParam::eReportFailure)
-        return false;
-    }
-  }
-  for (auto i : gpuMeta.autoOutputs)
-  {
-    uint32_t idx = (uint32_t)gpuMeta.outputs[i].format.semantic;
-    if (gpuMeta.autoRegistry[idx].pre)
-    {
-      if (gpuMeta.autoRegistry[idx].pre(pipe, *this, i) == AutoParam::eReportFailure)
+      parameters.emplace_back();
+      if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, parameters.back()))
         return false;
     }
   }
@@ -258,12 +251,27 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
   ndat.activeOptions = shoption;
 }
 
-void GpuNode::executeImpl(HybridPipeline& pipe)
+void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoParam)
 {
-  auto&       ndat      = nodeData[pipe.id()];
-  auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
-  uint32_t    passCount = gpuMeta.getNumPasses();
-  auto&       gpuPipe   = ndat.gpuPasses;
+  auto&       ndat     = nodeData[pipe.id()];
+  auto const& gpuMeta  = static_cast<GpuNodeMeta const&>(meta);
+  auto        autop    = gpuMeta.autoParams.begin();
+  auto        autopEnd = gpuMeta.autoParams.end();
+  auto        autopVal = autoParam.begin();
+
+  auto paramAccess = [&](uint32_t i) -> Parameter
+  {
+    if (autop != autopEnd && *autop == i)
+    {
+      autop++;
+      Parameter p = (*autopVal++);
+      return p;
+    }
+    return param(i);
+  };
+
+  uint32_t passCount = gpuMeta.getNumPasses();
+  auto&    gpuPipe   = ndat.gpuPasses;
   for (uint32_t pass = 0; pass < passCount; ++pass)
   {
     auto const& code = gpuMeta.getCode(pass);
@@ -276,64 +284,45 @@ void GpuNode::executeImpl(HybridPipeline& pipe)
     // check if any conditions have changed
     for (auto i : code.parameters)
     {
-      if (GpuNodeMeta::kOutputMask & i)
-      {
-        i               = i & ~GpuNodeMeta::kOutputMask;
-        auto const& def = meta.outputs[i];
-        switch (def.format.type)
-        {
-        case DataTypeEnum::eCurveData:
-        case DataTypeEnum::eImage:
-        case DataTypeEnum::eInput:
-        case DataTypeEnum::ePostProcess:
-        case DataTypeEnum::eBuffer:
-          program.pushValue(ndat.outputs[i], def.format);
-          optionIdx++;
-          break;
-        }
-      }
-      else
-      {
-        auto const& def = meta.parameterDef[i];
-        auto        p   = param(i);
+      auto const& def = meta.parameterDef[i];
+      auto        p   = paramAccess(i);
 
-        switch (def.format.type)
+      switch (def.format.type)
+      {
+      case DataTypeEnum::eCurveData:
+      case DataTypeEnum::eImage:
+      case DataTypeEnum::eInput:
+      case DataTypeEnum::ePostProcess:
+      case DataTypeEnum::eBuffer:
+        if (ndat.activeOptions.isSet(optionIdx))
         {
-        case DataTypeEnum::eCurveData:
-        case DataTypeEnum::eImage:
-        case DataTypeEnum::eInput:
-        case DataTypeEnum::ePostProcess:
-        case DataTypeEnum::eBuffer:
-          if (ndat.activeOptions.isSet(optionIdx))
-          {
-            auto  source = std::get<Source>(p);
-            auto& node   = get().get<HybridNode>(source.source);
-            node.push(pipe, program, i, source.secondary);
-          }
-          else
-          {
-            program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
-          }
-          optionIdx++;
-          break;
-        case DataTypeEnum::eFloat:
-        case DataTypeEnum::eFloat2:
-        case DataTypeEnum::eInt:
-        case DataTypeEnum::eInt2:
-        case DataTypeEnum::eUint:
-        case DataTypeEnum::eUint2:
-        case DataTypeEnum::eFloat3:
-        case DataTypeEnum::eFloat4:
-        case DataTypeEnum::eMat4:
-          program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
-          break;
-        case DataTypeEnum::eBool:
-          optionIdx++;
-          break;
-        case DataTypeEnum::eEnum:
-          optionIdx += def.maxEnum;
-          break;
+          auto  source = std::get<Source>(p);
+          auto& node   = get().get<HybridNode>(source.source);
+          node.push(pipe, program, i, source.secondary);
         }
+        else
+        {
+          program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
+        }
+        optionIdx++;
+        break;
+      case DataTypeEnum::eFloat:
+      case DataTypeEnum::eFloat2:
+      case DataTypeEnum::eInt:
+      case DataTypeEnum::eInt2:
+      case DataTypeEnum::eUint:
+      case DataTypeEnum::eUint2:
+      case DataTypeEnum::eFloat3:
+      case DataTypeEnum::eFloat4:
+      case DataTypeEnum::eMat4:
+        program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
+        break;
+      case DataTypeEnum::eBool:
+        optionIdx++;
+        break;
+      case DataTypeEnum::eEnum:
+        optionIdx += def.maxEnum;
+        break;
       }
     }
     pushOutputs(pipe, pass, program);
@@ -560,7 +549,7 @@ GpuImageNode::~GpuImageNode()
   get().destroy(image);
 }
 
-void GpuImageNode::executeImpl(HybridPipeline& pipe)
+void GpuImageNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>&)
 {
   auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
@@ -613,7 +602,7 @@ GpuCurveNode::~GpuCurveNode()
   get().destroy(curve);
 }
 
-void GpuCurveNode::executeImpl(HybridPipeline& pipe)
+void GpuCurveNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>&)
 {
   auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);

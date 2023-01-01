@@ -41,8 +41,8 @@ struct HybridNode : public Node
 
   virtual Queue  getQueue() const                                                                  = 0;
   virtual Result execute(HybridPipeline&)                                                          = 0;
-  virtual bool   preExecute(HybridPipeline&)                                                       = 0;
-  virtual void   executeImpl(HybridPipeline&)                                                      = 0;
+  virtual bool   preExecute(HybridPipeline&, std::vector<Parameter>&)                              = 0;
+  virtual void   executeImpl(HybridPipeline&, std::vector<Parameter>&)                             = 0;
   virtual Result postExecute(HybridPipeline&)                                                      = 0;
   virtual bool   prepare(HybridPipeline&)                                                          = 0;
   virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&)                                 = 0;
@@ -57,18 +57,20 @@ struct ClassicHybridNode : public HybridNode
   {
     return Queue::eGraphics;
   }
+
   Result execute(HybridPipeline& pipe) override
   {
-    if (preExecute(pipe))
+    std::vector<Parameter> autoParams;
+    if (preExecute(pipe, autoParams))
     {
-      executeImpl(pipe);
+      executeImpl(pipe, autoParams);
       return postExecute(pipe);
     }
     return Result::eFailed;
   }
   void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override {}
-  bool   preExecute(HybridPipeline&) override;
-  void   executeImpl(HybridPipeline&) override {}
+  bool   preExecute(HybridPipeline&, std::vector<Parameter>&) override;
+  void   executeImpl(HybridPipeline&, std::vector<Parameter>&) override {}
   Result postExecute(HybridPipeline&) override;
 
   uvec2 constraintTileStart = uvec2(0, 0);
@@ -91,7 +93,7 @@ struct GpuNode : public ClassicHybridNode
   bool   prepare(HybridPipeline&) override;
   void   probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
   void   build(HybridPipeline&, uint32_t pass, SourceBuilder&);
-  void   executeImpl(HybridPipeline&) override;
+  void   executeImpl(HybridPipeline&, std::vector<Parameter>&) override;
   void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override;
   Result postExecute(HybridPipeline&) override;
 
@@ -135,7 +137,7 @@ struct GpuImageNode : public GpuNode
   ~GpuImageNode();
 
   void selfUpdated() override;
-  void executeImpl(HybridPipeline&) override;
+  void executeImpl(HybridPipeline&, std::vector<Parameter>&) override;
 };
 
 struct GpuCurveNode : public GpuNode
@@ -148,7 +150,7 @@ struct GpuCurveNode : public GpuNode
   ~GpuCurveNode();
 
   void selfUpdated() override;
-  void executeImpl(HybridPipeline&) override;
+  void executeImpl(HybridPipeline&, std::vector<Parameter>&) override;
 };
 
 } // namespace terra

@@ -102,6 +102,8 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
   case DataTypeEnum::eBool:
   case DataTypeEnum::eInt2:
   case DataTypeEnum::eInt:
+  case DataTypeEnum::eUint:
+  case DataTypeEnum::eUint2:
     if (value == "inf")
       ivalue = std::numeric_limits<int>::max();
     else if (value == "-inf")
@@ -120,6 +122,9 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
   case DataTypeEnum::eBuffer:
   case DataTypeEnum::eFloat:
   case DataTypeEnum::eFloat2:
+  case DataTypeEnum::eFloat3:
+  case DataTypeEnum::eFloat4:
+  case DataTypeEnum::eMat4:
     if (value == "inf")
       fvalue = std::numeric_limits<float>::infinity();
     else if (value == "-inf")

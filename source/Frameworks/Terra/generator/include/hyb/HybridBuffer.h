@@ -19,6 +19,7 @@ public:
   HybridBuffer() = default;
   HybridBuffer(Source owner_, uint32_t width_, uint32_t height_, ImageFormatEnum type = ImageFormatEnum::eFloat,
                bool isImage = true);
+  ~HybridBuffer();
 
   HybridBuffer& operator=(HybridBuffer const&) = delete;
   HybridBuffer& operator=(HybridBuffer&&) noexcept;

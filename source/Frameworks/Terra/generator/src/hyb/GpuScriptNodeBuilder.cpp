@@ -88,7 +88,7 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         meta.setValueFromString(terra::ParameterMeta::ValueType::eStep, entry.value());
       }
-      else if (entry.name() == "hidden")
+      else if (entry.value() == "hidden")
       {
         meta.format.hidden = true;
       }

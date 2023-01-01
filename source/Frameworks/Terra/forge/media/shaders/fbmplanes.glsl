@@ -89,7 +89,7 @@ float openSimplex2(vec3 X) {
 
 vec2 compute_input(float x, float y)
 {
-  return vec2((x * size.x) + start.x, (y + size.y) + start.y);
+  return vec2((x * size.x) + start.x, (y * size.y) + start.y);
 }
 
 void noise(in vec2 p)
@@ -99,8 +99,8 @@ void noise(in vec2 p)
   float y = 0;
   for(uint i = 0; i < octaves; ++i)
   {
-    y += amp * openSimplex2(vec3(p * freq, fseed)).x;
-    freq *= lacunarity;
+    y += amp * openSimplex2(vec3(p * freq, fseed));
+    freq *= pow(lacunarity, exponent);
     amp *= gain;
   }
 

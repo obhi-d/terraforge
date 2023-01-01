@@ -174,7 +174,7 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         static std::u8string_view header = app.localize("genParams");
         ImGui::Text("%s", (const char*)header.data());
         ImGui::Separator();
-        regenerate |= drawProp(app, settings.frequency, 0, std::numeric_limits<float>::max(), 0.01f);
+        regenerate |= drawProp(app, settings.frequency, 0, std::numeric_limits<float>::max(), 0.001f);
         regenerate |= drawProp(app, settings.seed, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
       }
       {
@@ -183,8 +183,7 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         ImGui::Separator();
         regenerate |= drawProp(app, settings.tileSize, 4, 8129);
         regenerate |= drawProp(app, settings.tileOffset, 1, std::numeric_limits<int>::max());
-        regenerate |=
-          drawProp(app, settings.previewTile, std::numeric_limits<int>::min(), std::numeric_limits<int>::max());
+        regenerate |= drawProp(app, settings.previewTile, 0, std::numeric_limits<int>::max());
       }
       {
         static std::u8string_view header = app.localize("previewParams");

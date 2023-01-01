@@ -1,0 +1,23 @@
+
+name   : FbmPlanes;
+style  : noise;
+
+output : heights (type = [buffer, float], semantic = heights, decltype = sampler2D);
+param  : octaves (type = uint, decltype = scalar, min = 1, max = 32, default = 8, step = 1);
+param  : fseed (type = [float, float], semantic = fseed, decltype = scalar) hidden;
+param  : frequency (type = float, semantic = frequency, decltype = scalar, min = -inf, max = inf, default = 0.46, step = 0.001);
+param  : amplitude (type = float, decltype = scalar, min = -inf, max = inf, default = 10.5, step = 0.01);
+param  : exponent (type = float, decltype = scalar, min = 0.0, max = 10000.0, default = 0.6, step = 0.01);
+param  : lacunarity (type = float, decltype = scalar, min = 0.0, max = 10000.0, default = 5.39, step = 0.01);
+param  : gain (type = float, decltype = scalar, min = -inf, max = inf, default = 0.31, step = 0.01);
+param  : start (type = float2, semantic = start, decltype = scalar) hidden;
+param  : size (type = float2, semantic = size, decltype = scalar) hidden;
+
+pass
+{
+  function : noise;
+  shaders  : fbmterrain.glsl;
+  in       : [fseed, frequency, octaves, lacunarity, amplitude, exponent, gain, start, size];
+  out      : heights;
+}
+

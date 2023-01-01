@@ -77,7 +77,6 @@ private:
   GfxImage::handle              vegetationContrib;
   GfxImage::handle              rocksContrib;
   GfxMesh::handle               layout;
-  GfxSampler::handle            heightSampler;
   GfxSampler::handle            layerSampler;
   GfxSampler::handle            shadowSampler;
   GfxPass::handle               shadowGen;

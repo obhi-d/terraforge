@@ -51,7 +51,6 @@ void MeshPreview::deinit(TerraMainApp& app)
   app.getDevice()->destroy(terrainColors);
   app.getDevice()->destroy(shadowMapImage);
   app.getDevice()->destroy(layout);
-  app.getDevice()->destroy(heightSampler);
   app.getDevice()->destroy(layerSampler);
   app.getDevice()->destroy(shadowSampler);
   app.getDevice()->destroy(shadowGen);
@@ -117,8 +116,6 @@ void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
     drawCall.indexBuffer.handle = index;
     drawCall.indexBufferStride  = smallIdx;
     drawCall.indexCount         = nbPatches;
-    drawCall.layout             = {};
-    drawCall.type               = GfxMesh::eTriangles;
   }
 
   actor = iactor;
@@ -147,7 +144,6 @@ void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
   buildShadowMapProgram();
   buildScatterProgram();
   layerSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
-  heightSampler = dev.createSampler(ImageSampling(SamplingType::eNearest, Tiling::eClampToEdge));
   shadowSampler = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
                                                   camera.isReverseZ() ? SampleCompare::eGT : SampleCompare::eLT));
 }
@@ -301,7 +297,7 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
   shadowMat->reset();
   uint32_t index = 0;
   shadowMat->pushScalar(index++, camera.getLightViewProj());
-  shadowMat->pushTexture(index++, heights, heightSampler);
+  shadowMat->pushTexture(index++, heights, {});
   shadowMat->pushScalar(index++, tileSize.x);
   shadowMat->pushScalar(index++, tileSize.y);
   shadowMat->pushScalar(index++, 1.f / (float)tileSize.x);
@@ -357,7 +353,7 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   terrainMat->pushScalar(index++, layerWeights.get());
   terrainMat->pushScalar(index++, vec4(sunDir, sunIntensity.get()));
   terrainMat->pushScalar(index++, vec2(hrange.x, hfactor));
-  terrainMat->pushTexture(index++, heights, heightSampler);
+  terrainMat->pushTexture(index++, heights, {});
   terrainMat->pushTexture(index++, terrainColors, layerSampler);
   terrainMat->pushTexture(index++, shadowMapImage, shadowSampler);
   terrainMat->pushTexture(index++, waterContrib, layerSampler);

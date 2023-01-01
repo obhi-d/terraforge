@@ -231,6 +231,7 @@ void TerraMainApp::run()
   {
     if (!viewer.pollEvents())
       return;
+
     if (!draw())
       return;
     tick();
@@ -268,7 +269,9 @@ int TerraMainApp::Main(int argc, const char* argv[])
 
 bool TerraMainApp::draw()
 {
+  device->beginFrame();
   bool r = viewer.draw(*this);
+  device->endFrame();
   return r;
 }
 

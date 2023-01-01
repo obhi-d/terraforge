@@ -28,7 +28,7 @@ void main()
 
   uv = vec2(float(x) * rwidth, float(y) * rheight);
 
-  float z   = texture(heights, uv).x;
+  float z   = texelFetch(heights, ivec2(x, y), 0).x;
   world_pos = vec3(float(x) - float(width - 1) * 0.5, z, float(y) - float(height - 1) * 0.5);
 
   vec4 s = shadow_view_projection * vec4(world_pos, 1.0);

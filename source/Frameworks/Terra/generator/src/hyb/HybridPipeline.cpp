@@ -126,13 +126,16 @@ std::span<ubyte_t> HybridPipeline::writeImageData(HybridBuffer::handle item, boo
 
 void HybridPipeline::compute(uvec2 tile)
 {
-  tileId_ = tile;
+  tile_ = tile;
   version_++;
 }
 
 bool HybridPipeline::tick()
 {
   bool actorOutdated = false;
+  if (!DataSource::isValid(actor_))
+    actor_ = {};
+
   if (actor_)
   {
     auto ver      = get().get<HybridNode>(actor_).getVersion();
@@ -141,8 +144,12 @@ bool HybridPipeline::tick()
     orderSet_.clear();
   }
 
-  if (version_ != cversion_)
+  if (version_ != cversion_ || actorOutdated)
   {
+    buffers_.clear();
+    ordered_.clear();
+    iteration_ = 0;
+
     heights_    = declareBuffer();
     water_      = declareBuffer();
     rocks_      = declareBuffer();
@@ -156,14 +163,10 @@ bool HybridPipeline::tick()
     devMemoryUsed_ = 0;
     result_        = HybridNode::Result::eWaiting;
     cversion_      = version_;
-    actorOutdated  = true;
   }
 
-  if (actorOutdated)
+  if (iteration_ == 0 && actor_)
   {
-    buffers_.clear();
-    ordered_.clear();
-    iteration_ = 0;
     get().get<HybridNode>(actor_).prepare(*this);
     orderSet_.clear();
   }
@@ -187,7 +190,7 @@ bool HybridPipeline::tick()
 void HybridPipeline::execute()
 {
   /// ============ Debug ============
-  constexpr bool Debug = false;
+  constexpr bool Debug = true;
   /// ===============================
 
   if (ordered_.empty())

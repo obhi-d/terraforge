@@ -17,34 +17,35 @@ AutoParam::Result postIteration(Pipeline& pipe, Node& node, uint32_t i)
   return AutoParam::eOk;
 }
 
-AutoParam::Result preFSeed(Pipeline& pipe, Node& node, uint32_t i)
+bool preFSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  node.param(i, ScalarValue(pipe.seed() / 10000.f));
-  return AutoParam::eOk;
+  pout = ScalarValue(pipe.seed() / 10000.f);
+  return true;
 }
 
-AutoParam::Result preSeed(Pipeline& pipe, Node& node, uint32_t i)
+bool preSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  node.param(i, ScalarValue((int)pipe.seed()));
-  return AutoParam::eOk;
+  pout = ScalarValue((int)pipe.seed());
+  return true;
 }
 
-AutoParam::Result preFrequency(Pipeline& pipe, Node& node, uint32_t i)
+bool preFrequency(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  node.param(i, ScalarValue(pipe.frequency()));
-  return AutoParam::eOk;
+  pout = ScalarValue(pipe.frequency() * std::get<ScalarValue>(node.param(i)).value);
+  return true;
 }
 
-AutoParam::Result preStart(Pipeline& pipe, Node& node, uint32_t i)
+bool preStart(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  node.param(i, ScalarValue(vec2((float)pipe.offset().x, (float)pipe.offset().y)));
-  return AutoParam::eOk;
+  pout = ScalarValue(vec2((float)pipe.offset().x + (pipe.size().x * pipe.tile().x),
+                          (float)pipe.offset().y + (pipe.size().y * pipe.tile().y)));
+  return true;
 }
 
-AutoParam::Result preSize(Pipeline& pipe, Node& node, uint32_t i)
+bool preSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  node.param(i, ScalarValue(vec2((float)pipe.size().x, (float)pipe.size().y)));
-  return AutoParam::eOk;
+  pout = ScalarValue(vec2((float)pipe.size().x, (float)pipe.size().y));
+  return true;
 }
 
 void registerAutos()

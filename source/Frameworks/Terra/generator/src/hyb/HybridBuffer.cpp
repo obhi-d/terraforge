@@ -17,6 +17,17 @@ HybridBuffer::HybridBuffer(Source iowner, uint32_t iwidth, uint32_t iheight, Ima
     readers_ = get().get<DataSource>(iowner.source).countDependents(iowner.secondary);
 }
 
+HybridBuffer::~HybridBuffer()
+{
+  if (buffer_)
+  {
+    if (flags_ & fImage)
+      get().getDevice().destroy(image_);
+    else
+      get().getDevice().destroy(buffer_);
+  }
+}
+
 HybridBuffer& HybridBuffer::operator=(HybridBuffer&& other) noexcept
 {
   if (buffer_)

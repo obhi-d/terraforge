@@ -23,12 +23,13 @@ namespace terra
 // void PostProcess_hwy();
 
 Terra Terra::instance;
-
-void Terra::init(Localization l, std::shared_ptr<GfxDevice> iDev)
+void  registerAutos();
+void  Terra::init(Localization l, std::shared_ptr<GfxDevice> iDev)
 {
   localizationProvider = l;
   device               = iDev;
   NodeRegister(GpuScript, registry);
+  registerAutos();
   // setup default stuff, and then read settings
   settings.reverseZ = device->getCaps().ARB_clip_control != GlGfxSupport::eUnsupported;
   GpuNodeMeta::registerKnownMeta();
