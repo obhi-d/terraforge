@@ -16,7 +16,7 @@ param  : size (type = float2, semantic = size, decltype = scalar) hidden;
 pass
 {
   function : noise;
-  shaders  : fbmterrain.glsl;
+  shaders  : fbmplanes.glsl;
   in       : [fseed, frequency, octaves, lacunarity, amplitude, exponent, gain, start, size];
   out      : heights;
 }
