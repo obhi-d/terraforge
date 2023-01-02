@@ -86,23 +86,3 @@ float openSimplex2(vec3 X) {
     // Return it all as a vec4
     return dot(aaaa, extrapolations);
 }
-
-vec2 compute_input(float x, float y)
-{
-  return vec2((x * size.x) + start.x, (y * size.y) + start.y);
-}
-
-void noise(in vec2 p)
-{
-  float amp = amplitude;
-  float freq = frequency;
-  float y = 0;
-  for(uint i = 0; i < octaves; ++i)
-  {
-    y += pow(amp, exponent) * openSimplex2(vec3(p * freq, fseed));
-    freq *= lacunarity;
-    amp *= gain;
-  }
-
-  heights = y;
-}

@@ -1,5 +1,5 @@
 
-name   : FbmPlanes;
+name   : FbmTerrain;
 style  : noise;
 
 output : heights (type = [buffer, float], semantic = heights, decltype = sampler2D);
@@ -16,7 +16,7 @@ param  : size (type = float2, semantic = size, decltype = scalar) hidden;
 pass
 {
   function : noise;
-  shaders  : fbmplanes.glsl;
+  shaders  : [opensimplex.glsl, fbm_terrain.glsl];
   in       : [fseed, frequency, octaves, lacunarity, amplitude, exponent, gain, start, size];
   out      : heights;
 }
