@@ -99,8 +99,8 @@ void noise(in vec2 p)
   float y = 0;
   for(uint i = 0; i < octaves; ++i)
   {
-    y += amp * openSimplex2(vec3(p * freq, fseed));
-    freq *= pow(lacunarity, exponent);
+    y += pow(amp, exponent) * openSimplex2(vec3(p * freq, fseed));
+    freq *= lacunarity;
     amp *= gain;
   }
 
