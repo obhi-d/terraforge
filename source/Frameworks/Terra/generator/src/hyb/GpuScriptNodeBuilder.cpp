@@ -96,6 +96,7 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         meta.format.hidden = true;
       }
+    
     }
     else if (std::holds_alternative<neo::list>(p))
     {
@@ -111,11 +112,12 @@ NodeCmdExecute(param, builder, state, cmd)
         auto  maxEnum = values.size();
         meta.maxEnum  = (uint32_t)maxEnum;
         meta.enumDisplayInfo.reset(new terra::DisplayInfo[maxEnum]);
-        for (int i = 0; i < maxEnum; ++i)
+        for (size_t i = 0; i < maxEnum; ++i)
         {
           meta.enumDisplayInfo[i].from(std::get<neo::single>(values[i]).value());
         }
       }
+      
     }
   }
 

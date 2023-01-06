@@ -298,6 +298,7 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
   uint32_t index = 0;
   shadowMat->pushScalar(index++, camera.getLightViewProj());
   shadowMat->pushTexture(index++, heights, {});
+  shadowMat->pushScalar(index++, heightScale.get());
   shadowMat->pushScalar(index++, tileSize.x);
   shadowMat->pushScalar(index++, tileSize.y);
   shadowMat->pushScalar(index++, 1.f / (float)tileSize.x);
@@ -326,6 +327,7 @@ void MeshPreview::buildShadowMapProgram()
   builder->param("shadow_view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
   builder->param("heights",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
+  builder->param("hscale", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("width", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("height", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
@@ -359,6 +361,7 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   terrainMat->pushTexture(index++, waterContrib, layerSampler);
   terrainMat->pushTexture(index++, vegetationContrib, layerSampler);
   terrainMat->pushTexture(index++, rocksContrib, layerSampler);
+  terrainMat->pushScalar(index++, heightScale.get());
   terrainMat->pushScalar(index++, tileSize.x);
   terrainMat->pushScalar(index++, tileSize.y);
   terrainMat->pushScalar(index++, 1.f / (float)tileSize.x);
@@ -397,6 +400,7 @@ void MeshPreview::buildTerrainDrawProgram()
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
   builder->param("rocks",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
+  builder->param("hscale", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("width", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("height", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));

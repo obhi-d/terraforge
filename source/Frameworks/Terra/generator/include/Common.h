@@ -20,6 +20,7 @@
 #include <span>
 #include <stdexcept>
 #include <vector>
+#include <bit>
 
 #define ENUM_FLAGS(Enum)                                                                                               \
   inline Enum operator|(Enum a, Enum b)                                                                                \
@@ -402,7 +403,7 @@ struct DataFormat
   SamplerParamEnum  sampler       = SamplerParamEnum::eNone;
   bool              preEval       = false;
   bool              hidden        = false;
-
+  
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
   constexpr DataFormat() = default;
@@ -874,4 +875,20 @@ inline vec2 sub(vec2 a, vec2 b)
   return a - b;
 }
 
+
+template <typename L>
+bool forEachBit(L&& l, uint64_t params)
+{
+  int it = 0;
+  while (params)
+  {
+    int s = std::countr_zero(params);
+    it += (uint32_t)s;
+    if(!l(it))
+      return false;
+    params >>= ((uint32_t)s + 1);
+    it++;
+  }
+  return true;
+}
 } // namespace terra

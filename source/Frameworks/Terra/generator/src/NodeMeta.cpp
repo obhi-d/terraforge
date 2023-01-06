@@ -145,8 +145,20 @@ void NodeMeta::prepare()
     {
       if (autoIdx.id < autoRegistry.size())
       {
-        if (autoRegistry[autoIdx.id].pre || autoRegistry[autoIdx.id].post)
-          autoParams.emplace_back(i);
+        if (autoRegistry[autoIdx.id].pre)
+          preParams |= 1ull << i;
+        if(autoRegistry[autoIdx.id].post)
+          postParams |= 1ull << i;
+        if(autoRegistry[autoIdx.id].change)
+        {
+          depParams |= 1ull << i;
+          for (auto d : autoRegistry[autoIdx.id].naturalDeps)
+          {
+            uint32_t i = paramIdx(d);
+            if (i != 0xffffffff)
+              parameterDef[i].dependencies |= 1ull << i;
+          }          
+        }
       }
     }
   }
@@ -158,8 +170,8 @@ void NodeMeta::prepare()
     {
       if (autoIdx.id < autoRegistry.size())
       {
-        if (autoRegistry[autoIdx.id].pre || autoRegistry[autoIdx.id].post)
-          autoOutputs.emplace_back(i);
+        if (autoRegistry[autoIdx.id].post)
+          autoOutputs |= 1ull << i;
       }
     }
   }

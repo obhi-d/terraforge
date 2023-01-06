@@ -39,6 +39,7 @@ public:
   Property<TextureFile> rocks               = Property<TextureFile>("@rockColor", "images/rocks_color.png");
   Property<TextureFile> terrain             = Property<TextureFile>("@rockColor", "images/terrain_color.png");
   Property<float>       planetScale         = Property<float>("@planetScale", 1.0f);
+  Property<float>       heightScale         = Property<float>("@heightScale", 1.0f);
   Property<Rotation>    sunRotation         = Property<Rotation>("@sunRotation", 60.f, 80.f);
   Property<uint32_t>    shadowMapResolution = Property<uint32_t>("@shadowMapResolution", 2);
   Property<vec4>        layerWeights        = Property<vec4>("@layerWeights", vec4(0.25f));

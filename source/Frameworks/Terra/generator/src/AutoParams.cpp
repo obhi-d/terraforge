@@ -59,35 +59,42 @@ bool preRecipSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
   return true;
 }
 
-bool preExpOctave(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+bool preMinMax(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  auto        exponentVal = std::get<ScalarValue>(node.param("exponent")).value;
-  auto        octaves     = std::get<ScalarValue>(node.param("octaves")).uvalue;
-  auto        lacunarity  = std::get<ScalarValue>(node.param("lacunarity")).value;
-  ScalarValue sv;
-  for (uint32_t i = 0, e = std::min<uint32_t>(octaves, 16); i < e; ++i)
-    sv.value16[i] = std::pow(lacunarity, -float(i) * exponentVal);
-  pout = sv;
+  auto val = pipe.minMax();
+  pout = ScalarValue(vec2(val.x, 1.0f / (val.y - val.x)));
   return true;
 }
 
-bool preBlurFactor(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+void changeExpOctave(Node& node, uint32_t i)
 {
-  auto blurWindow = std::get<ScalarValue>(node.param("blur_window")).uvalue;
-  pout            = ScalarValue(1.0f / ((float(blurWindow) * 2.0f + 1.0f) * (float(blurWindow) * 2.0f + 1.0f)));
-  return true;
+  auto        exponentVal = std::get<ScalarValue>(node.param(Semantic("exponent"))).value;
+  auto        octaves     = std::get<ScalarValue>(node.param(Semantic("octaves"))).uvalue;
+  auto        lacunarity  = std::get<ScalarValue>(node.param(Semantic("lacunarity"))).value;
+  ScalarValue sv;
+  for (uint32_t i = 0, e = std::min<uint32_t>(octaves, 16); i < e; ++i)
+    sv.value16[i] = std::pow(lacunarity, -float(i) * exponentVal);
+  node.state(i, sv);
+}
+
+void changeBlurFactor(Node& node, uint32_t i)
+{
+  auto blurWindow = std::get<ScalarValue>(node.param(Semantic("blur_window"))).uvalue;
+  node.state(i, ScalarValue(1.0f / ((float(blurWindow) * 2.0f + 1.0f) * (float(blurWindow) * 2.0f + 1.0f))));
 }
 
 void registerAutos()
 {
   NodeMeta::registerAuto(Semantic("iteration"), nullptr, postIteration);
+  NodeMeta::registerAuto(Semantic("minmax"), preMinMax, nullptr);
   NodeMeta::registerAuto(Semantic("fseed"), preFSeed, nullptr);
   NodeMeta::registerAuto(Semantic("seed"), preSeed, nullptr);
   NodeMeta::registerAuto(Semantic("frequency"), preFrequency, nullptr);
   NodeMeta::registerAuto(Semantic("start"), preStart, nullptr);
   NodeMeta::registerAuto(Semantic("size"), preSize, nullptr);
   NodeMeta::registerAuto(Semantic("rsize"), preRecipSize, nullptr);
-  NodeMeta::registerAuto(Semantic("expoctave"), preExpOctave, nullptr);
-  NodeMeta::registerAuto(Semantic("blur_factor"), preBlurFactor, nullptr);
+  NodeMeta::registerAuto(Semantic("expoctave"), changeExpOctave,
+                         {Semantic("exponent"), Semantic("octaves"), Semantic("lacunarity")});
+  NodeMeta::registerAuto(Semantic("blur_factor"), changeBlurFactor, {Semantic("blur_window")});
 }
 } // namespace terra

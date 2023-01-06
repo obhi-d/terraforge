@@ -188,15 +188,18 @@ struct ParameterMeta
 
   DisplayInfo displayInfo;
 
-  DataFormat                     format;
+  DataFormat format;
+
   std::unique_ptr<DisplayInfo[]> enumDisplayInfo = {};
   ValueRange                     ranges;
+  uint64_t                       dependencies = 0;
 
   union
   {
     uint32_t maxEnum = 1;
     uint32_t maxOption;
   };
+
   ParamSetter setter = nullptr;
   ParamGetter getter = nullptr;
 
@@ -309,12 +312,21 @@ struct AutoParam
     eOk,
     eReportFailure
   };
-  using CallbackPre  = bool (*)(Pipeline&, Node&, uint32_t, Parameter&);
-  using CallbackPost = Result (*)(Pipeline&, Node&, uint32_t);
-  CallbackPre  pre   = nullptr;
-  CallbackPost post  = nullptr;
-  AutoParam()        = default;
+
+  using CallbackPre    = bool (*)(Pipeline&, Node&, uint32_t, Parameter&);
+  using CallbackPost   = Result (*)(Pipeline&, Node&, uint32_t);
+  using CallbackChange = void (*)(Node&, uint32_t);
+
+  CallbackPre           pre    = nullptr;
+  CallbackPost          post   = nullptr;
+  CallbackChange        change = nullptr;
+  std::vector<Semantic> naturalDeps;
+
+  AutoParam() = default;
   AutoParam(CallbackPre ipre, CallbackPost ipost) : pre(ipre), post(ipost) {}
+  AutoParam(CallbackChange ichange, std::initializer_list<Semantic> deps)
+      : change(ichange), naturalDeps(std::move(deps))
+  {}
 };
 
 struct OutputMeta
@@ -353,8 +365,10 @@ public:
   std::vector<ParameterMeta> parameterDef;
 
   std::vector<uint32_t> categorySorted;
-  std::vector<uint32_t> autoParams;
-  std::vector<uint32_t> autoOutputs;
+  uint64_t              preParams   = 0;
+  uint64_t              depParams   = 0;
+  uint64_t              postParams  = 0;
+  uint64_t              autoOutputs = 0;
 
   std::vector<OutputMeta> outputs;
   CreateNode              createNode = nullptr;
@@ -362,6 +376,18 @@ public:
   // derived
   uint32_t id;
   bool     cacheResults = false;
+
+  uint32_t paramIdx(Semantic sem)
+  {
+    auto it = std::find_if(parameterDef.begin(), parameterDef.end(),
+                           [sem](auto& def)
+                           {
+                             return (def.format.semantic == sem);
+                           });
+    if (it != parameterDef.end())
+      return static_cast<uint32_t>(std::distance(parameterDef.begin(), it));
+    return 0xffffffff;
+  }
 
   template <typename N>
   void as()
@@ -395,6 +421,11 @@ public:
   static void registerAuto(Semantic e, AutoParam::CallbackPre pre, AutoParam::CallbackPost post)
   {
     registerAuto(e, AutoParam(pre, post));
+  }
+
+  static void registerAuto(Semantic e, AutoParam::CallbackChange c, std::initializer_list<Semantic> deps)
+  {
+    registerAuto(e, AutoParam(c, std::move(deps)));
   }
 
   using AutoParamRegistry = std::vector<AutoParam>;

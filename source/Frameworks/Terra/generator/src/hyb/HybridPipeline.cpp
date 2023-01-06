@@ -185,7 +185,7 @@ bool HybridPipeline::tick()
 void HybridPipeline::execute()
 {
   /// ============ Debug ============
-  constexpr bool Debug = true;
+  constexpr bool Debug = false;
   /// ===============================
 
   if (ordered_.empty())

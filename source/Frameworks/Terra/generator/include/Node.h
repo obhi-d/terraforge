@@ -22,9 +22,8 @@ public:
     return meta.parameterDef[i].getter(*this, i);
   }
 
-  Parameter param(std::string name) const
+  Parameter param(Semantic sem) const
   {
-    Semantic sem{name};
     for (uint32_t i = 0, e = (uint32_t)meta.parameterDef.size(); i < e; ++i)
     {
       auto& p = meta.parameterDef[i];
@@ -49,6 +48,7 @@ public:
     if (std::holds_alternative<Source>(sv))
       newSrc = std::get<Source>(sv).source;
     onParamChange(i, oldSrc, newSrc);
+    updateAutos(i);
     return old;
   }
 
@@ -67,6 +67,7 @@ public:
     return meta.outputs[i].format;
   }
 
+  void updateAutos(uint32_t i);
   void getSourcesImpl(SourceSet&) const final;
   void prepareGeneration(Pipeline&) final;
   void beginIteration(Pipeline&) final;

@@ -13,55 +13,61 @@ namespace terra
 
 bool ClassicHybridNode::preExecute(HybridPipeline& pipe, std::vector<Parameter>& parameters)
 {
-  parameters.clear();
   auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
-  for (auto i : gpuMeta.autoParams)
-  {
-    auto idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
-    if (idx < gpuMeta.autoRegistry.size() && gpuMeta.autoRegistry[idx].pre)
+  parameters.clear();
+  parameters.resize((size_t)std::popcount(gpuMeta.preParams), ScalarValue());
+  auto begin = parameters.begin();
+  return forEachBit(
+    [&](auto i)
     {
-      parameters.emplace_back();
-      if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, parameters.back()))
-        return false;
-    }
-  }
-  return true;
+      auto idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
+      if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, (*begin++)))
+          return false;
+      
+      return true;
+    },
+    gpuMeta.preParams);
 }
 
 HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe)
 {
   auto const&        gpuMeta = static_cast<GpuNodeMeta const&>(meta);
   HybridNode::Result result  = HybridNode::Result::eDone;
-  for (auto i : gpuMeta.autoParams)
-  {
-    auto idx = gpuMeta.parameterDef[i].format.semantic;
-    if (idx.id < gpuMeta.autoRegistry.size() && gpuMeta.autoRegistry[idx.id].post)
+  if (!forEachBit(
+        [&](auto i)
+        {
+          auto idx = gpuMeta.parameterDef[i].format.semantic;
+          switch (gpuMeta.autoRegistry[idx.id].post(pipe, *this, i))
+          {
+          case AutoParam::eReportFailure:
+            result = HybridNode::Result::eFailed;
+            return false;
+          case AutoParam::eContinueIteration:
+            result = HybridNode::Result::eContinue;
+            break;
+          }
+          return true;
+        },
+        gpuMeta.postParams))
+    return result;
+
+  forEachBit(
+    [&](auto i)
     {
-      switch (gpuMeta.autoRegistry[idx.id].post(pipe, *this, i))
-      {
-      case AutoParam::eReportFailure:
-        return HybridNode::Result::eFailed;
-      case AutoParam::eContinueIteration:
-        result = HybridNode::Result::eContinue;
-        break;
-      }
-    }
-  }
-  for (auto i : gpuMeta.autoOutputs)
-  {
-    uint32_t idx = (uint32_t)gpuMeta.outputs[i].format.semantic;
-    if (idx < gpuMeta.autoRegistry.size() && gpuMeta.autoRegistry[idx].post)
-    {
+      uint32_t idx = (uint32_t)gpuMeta.outputs[i].format.semantic;
       switch (gpuMeta.autoRegistry[idx].post(pipe, *this, i))
       {
       case AutoParam::eReportFailure:
-        return HybridNode::Result::eFailed;
+        
+        result = HybridNode::Result::eFailed;
+        return false;
       case AutoParam::eContinueIteration:
         result = HybridNode::Result::eContinue;
         break;
       }
-    }
-  }
+      return true;
+    },
+    gpuMeta.autoOutputs);
   return result;
 }
 
@@ -272,15 +278,12 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
 {
   auto&       ndat     = nodeData[pipe.id()];
   auto const& gpuMeta  = static_cast<GpuNodeMeta const&>(meta);
-  auto        autop    = gpuMeta.autoParams.begin();
-  auto        autopEnd = gpuMeta.autoParams.end();
   auto        autopVal = autoParam.begin();
 
   auto paramAccess = [&](uint32_t i) -> Parameter
   {
-    if (autop != autopEnd && *autop == i)
+    if ((1ull << i) & gpuMeta.preParams)
     {
-      autop++;
       Parameter p = (*autopVal++);
       return p;
     }
@@ -430,6 +433,14 @@ GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
       }
     }
   }
+  forEachBit(
+    [&](auto i)
+    {
+      auto idx = (uint32_t)meta.parameterDef[i].format.semantic;
+      meta.autoRegistry[idx].change(*this, i);
+      return true;
+    },
+    meta.depParams);
 }
 
 void GpuScriptNode::set(uint32_t i, Parameter const& param)

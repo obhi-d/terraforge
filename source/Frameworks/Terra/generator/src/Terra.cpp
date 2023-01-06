@@ -65,6 +65,14 @@ void Terra::scanShader(std::filesystem::path path)
       newMeta.as<GpuScriptNode>();
       addMeta(path.stem().string(), newMeta);
     }
+    else
+    {
+      sm.for_each_error(
+        [this](std::string const& e)
+        {
+          logError(e);
+        });
+    }
   }
   else
   {

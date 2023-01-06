@@ -642,7 +642,7 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
         auto const& node = get().get<DataSource>(id.src());
         if (id.isOutput())
         {
-          node.getFormat(id.id());
+          return node.getFormat(id.id());
         }
         else
           return static_cast<Node const&>(node).meta.parameterDef[id.id()].format;
