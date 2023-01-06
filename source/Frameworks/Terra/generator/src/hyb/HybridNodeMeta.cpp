@@ -56,8 +56,8 @@ void GpuNodeMeta::registerKnownMeta()
     meta.as<GpuImageNode>();
 
     meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::image>(), "source", ValueRange(), DataType::eImage,
-                                   DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D,
-                                   SemanticEnum::eNone, SamplerParam::eLinearWrap);
+                                   DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D, Semantic{},
+                                   SamplerParam::eLinearWrap);
     meta.parameterDef.emplace_back(MemberPtr<&GpuImageNode::sampleScale>(), "sample_scale",
                                    ValueRange(0.0f, -inf, inf, 0.1f), DataType::eFloat2, DataType::eFloat2,
                                    ImageFormat::eFloat, ParamDeclType::eScalar);
@@ -69,7 +69,7 @@ void GpuNodeMeta::registerKnownMeta()
 
     meta.outputs.emplace_back("heights",
                               DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
-                                         ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+                                         ParamDeclTypeEnum::eSampler2D, Semantic("heights")));
     meta.outputs.back().clear = true;
     meta.passes.emplace_back();
     GpuPass& pass      = meta.passes.back();
@@ -98,7 +98,7 @@ void GpuNodeMeta::registerKnownMeta()
                                    DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
     meta.outputs.emplace_back("heights",
                               DataFormat(DataTypeEnum::eBuffer, DataTypeEnum::eFloat, ImageFormatEnum::eFloat,
-                                         ParamDeclTypeEnum::eSampler2D, SemanticEnum::eHeights));
+                                         ParamDeclTypeEnum::eSampler2D, Semantic("heights")));
     meta.outputs.back().clear = true;
     meta.passes.emplace_back();
     GpuPass& pass      = meta.passes.back();

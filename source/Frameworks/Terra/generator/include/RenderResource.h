@@ -181,7 +181,10 @@ enum class GfxBindType
   eFloat2,
   eFloat3,
   eFloat4,
-  eMat4
+  eMat4,
+  eFloat16,
+  eInt16,
+  eUint16
 };
 
 enum class GfxAccess : uint8_t

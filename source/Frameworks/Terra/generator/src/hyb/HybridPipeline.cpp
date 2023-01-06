@@ -150,33 +150,28 @@ bool HybridPipeline::tick()
     ordered_.clear();
     iteration_ = 0;
 
-    heights_    = declareBuffer();
-    water_      = declareBuffer();
-    rocks_      = declareBuffer();
-    vegetation_ = declareBuffer();
-    describeImage(heights_, {}, size().x, size().y, ImageFormatEnum::eFloat);
-    describeImage(water_, {}, size().x, size().y, ImageFormatEnum::eFloat);
-    describeImage(rocks_, {}, size().x, size().y, ImageFormatEnum::eFloat);
-    describeImage(vegetation_, {}, size().x, size().y, ImageFormatEnum::eFloat);
-
     memoryUsed_    = 0;
     devMemoryUsed_ = 0;
     result_        = HybridNode::Result::eWaiting;
     cversion_      = version_;
   }
 
-  if (iteration_ == 0 && actor_)
+  if (result_ == HybridNode::Result::eWaiting && actor_)
   {
     get().get<HybridNode>(actor_).prepare(*this);
     orderSet_.clear();
   }
 
+  if (!actor_)
+    return false;
+
   if (result_ == HybridNode::Result::eWaiting || result_ == HybridNode::Result::eContinue)
   {
     execute();
-    if (heights_)
+    auto buffer = getBuffer(Semantic::heights);
+    if (buffer.buffer_)
     {
-      auto image = buffers_[heights_].image();
+      auto image = buffers_[buffer.buffer_].image();
       if (image)
       {
         minMax_ = GpuMinMax::execute(image, size());
@@ -204,19 +199,19 @@ void HybridPipeline::execute()
   switch (get().get<HybridNode>(item).execute(*this))
   {
   case HybridNode::Result::eContinue:
-    node.iteration++;
-    result_ = HybridNode::Result::eContinue;
+    iteration_ = ++node.iteration;
+    result_    = HybridNode::Result::eContinue;
     break;
   case HybridNode::Result::eDone:
     if constexpr (Debug)
     {
-      result_ = HybridNode::Result::eContinue;
+      if (ordered_.size() > 1)
+        ordered_.pop_back();
     }
     else
-    {
       ordered_.pop_back();
-      result_ = (ordered_.empty()) ? HybridNode::Result::eDone : HybridNode::Result::eContinue;
-    }
+
+    result_ = (ordered_.empty()) ? HybridNode::Result::eDone : HybridNode::Result::eContinue;
     break;
   case HybridNode::Result::eFailed:
     result_ = HybridNode::Result::eFailed;
@@ -228,35 +223,16 @@ void HybridPipeline::execute()
   {
     auto h = *it;
 
-    if (h == heights_ || h == rocks_ || h == vegetation_ || h == water_)
-    {
-      ++it;
-      continue;
-    }
-
     auto& ii = buffers_.at(h);
-    if (ii.lastUsed() < tick_)
+    if (ii.lastUsed() < tick_ - 2)
     {
       if (ii.offload())
       {
         auto s = ii.size();
         devMemoryUsed_ -= s;
       }
-
-      it = recents_.erase(it);
     }
-    else if (ii.isDetached())
-    {
-      auto s = ii.size();
-      memoryUsed_ -= s;
-      if (ii.buffer())
-        devMemoryUsed_ -= s;
-      ii.clear();
-
-      it = recents_.erase(it);
-    }
-    else
-      ++it;
+    ++it;
   }
   recents_.clear();
 }
@@ -273,37 +249,48 @@ void HybridPipeline::push(HDataSource item)
 
 void HybridPipeline::getResults(GfxImage::handle& heights, Layers& layerContrib)
 {
-  heights                 = heights_ ? readImage(heights_) : GfxImage::handle{};
-  layerContrib.water      = water_ ? readImage(water_) : GfxImage::handle{};
-  layerContrib.rocks      = rocks_ ? readImage(rocks_) : GfxImage::handle{};
-  layerContrib.vegetation = vegetation_ ? readImage(vegetation_) : GfxImage::handle{};
+  auto bheights    = getBuffer(Semantic::heights);
+  auto bwater      = getBuffer(Semantic::water);
+  auto brocks      = getBuffer(Semantic::rocks);
+  auto bvegetation = getBuffer(Semantic::vegetation);
+
+  heights                 = bheights.buffer_ ? readImage(bheights.buffer_) : GfxImage::handle{};
+  layerContrib.water      = bwater.buffer_ ? readImage(bwater.buffer_) : GfxImage::handle{};
+  layerContrib.rocks      = brocks.buffer_ ? readImage(brocks.buffer_) : GfxImage::handle{};
+  layerContrib.vegetation = bvegetation.buffer_ ? readImage(bvegetation.buffer_) : GfxImage::handle{};
 }
 
 GfxSampler::handle HybridPipeline::getSampler(SamplerParamEnum sampler)
 {
-  if (!samplers[sampler])
+  if (!samplers_[sampler])
   {
     switch (sampler)
     {
     case SamplerParamEnum::eLinearWrap:
-      samplers[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eLinear));
+      samplers_[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eLinear));
+      break;
+    case SamplerParamEnum::eLinearClamp:
+      samplers_[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
       break;
     case SamplerParamEnum::eTrilinearWrap:
-      samplers[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eTrilinear));
+      samplers_[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eTrilinear));
       break;
     case SamplerParamEnum::eNearestWrap:
-      samplers[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eNearest));
+      samplers_[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eNearest));
+      break;
+    case SamplerParamEnum::eNearestClamp:
+      samplers_[sampler] = get().getDevice().createSampler(ImageSampling(SamplingType::eNearest, Tiling::eClampToEdge));
       break;
     }
   }
-  return samplers[sampler];
+  return samplers_[sampler];
 }
 
 void HybridPipeline::cleanup()
 {
   buffers_.clear();
   ordered_.clear();
-  for (auto& sampler : samplers)
+  for (auto& sampler : samplers_)
   {
     get().getDevice().destroy(sampler);
     sampler = {};

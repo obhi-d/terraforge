@@ -230,31 +230,40 @@ void SourceBuilderAdapter::param(std::string_view name, DataFormat df)
 
 void SourceBuilderAdapter::scalar(std::string_view name, DataFormat df)
 {
+  std::string_view loc     = {};
+  uint32_t         consume = 1;
+  if (df.type == DataTypeEnum::eArray)
+  {
+    loc     = "[16]";
+    consume = 16;
+  }
+
   auto type = toGlsl(df.scalarSubType);
   auto sv   = name;
-  resources += fmt::format("layout(location={}) uniform  {} {};\n", location, type, sv);
+  resources += fmt::format("layout(location={}) uniform  {} {}{};\n", location, type, sv, loc);
   if (df.preEval)
     params.emplace_back(sv);
 
   GfxParamLayout::Entry entry;
-  entry.index = location++;
+  entry.index = location;
+  location += consume;
 
   switch (df.scalarSubType)
   {
   case DataTypeEnum::eUint:
-    entry.type = GfxBindType::eUint;
+    entry.type = df.type == DataTypeEnum::eArray ? GfxBindType::eUint16 : GfxBindType::eUint;
     break;
   case DataTypeEnum::eUint2:
     entry.type = GfxBindType::eUint2;
     break;
+  case DataTypeEnum::eInt:
+    entry.type = df.type == DataTypeEnum::eArray ? GfxBindType::eInt16 : GfxBindType::eInt;
+    break;
   case DataTypeEnum::eInt2:
     entry.type = GfxBindType::eInt2;
     break;
-  case DataTypeEnum::eInt:
-    entry.type = GfxBindType::eInt;
-    break;
   case DataTypeEnum::eFloat:
-    entry.type = GfxBindType::eFloat;
+    entry.type = df.type == DataTypeEnum::eArray ? GfxBindType::eFloat16 : GfxBindType::eFloat;
     break;
   case DataTypeEnum::eFloat2:
     entry.type = GfxBindType::eFloat2;

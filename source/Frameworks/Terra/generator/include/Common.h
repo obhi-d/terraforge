@@ -359,13 +359,46 @@ inline string_type parseU8(std::string_view from)
   return out;
 }
 
+struct Semantic
+{
+
+  Semantic() = default;
+  Semantic(std::string name) : id(fromString(std::move(name))) {}
+
+  static uint16_t fromString(std::string name)
+  {
+    auto result = semanticMap.try_emplace(std::move(name), (uint16_t)semanticMap.size() + 1);
+    return result.first->second;
+  }
+
+  inline explicit operator bool() const noexcept
+  {
+    return id != 0;
+  }
+
+  inline explicit operator uint32_t() const noexcept
+  {
+    return id;
+  }
+
+  inline auto operator<=>(Semantic const&) const noexcept = default;
+
+  static std::unordered_map<std::string, uint16_t> semanticMap;
+  static Semantic                                  heights;
+  static Semantic                                  water;
+  static Semantic                                  rocks;
+  static Semantic                                  vegetation;
+
+  uint16_t id = 0;
+};
+
 struct DataFormat
 {
+  Semantic          semantic      = {};
   DataTypeEnum      type          = DataTypeEnum::eInvalid;
   ImageFormatEnum   imageFormat   = ImageFormatEnum::eFloat;
   DataTypeEnum      scalarSubType = DataTypeEnum::eInvalid;
   ParamDeclTypeEnum declType      = ParamDeclTypeEnum::eNone;
-  SemanticEnum      semantic      = SemanticEnum::eNone;
   SamplerParamEnum  sampler       = SamplerParamEnum::eNone;
   bool              preEval       = false;
   bool              hidden        = false;
@@ -375,7 +408,7 @@ struct DataFormat
   constexpr DataFormat() = default;
   constexpr DataFormat(DataTypeEnum itype, DataTypeEnum iscalarSubType = DataTypeEnum::eFloat,
                        ImageFormatEnum   format = ImageFormatEnum::eNone,
-                       ParamDeclTypeEnum iindex = ParamDeclTypeEnum::eNone, SemanticEnum isem = SemanticEnum::eNone,
+                       ParamDeclTypeEnum iindex = ParamDeclTypeEnum::eNone, Semantic isem = {},
                        SamplerParamEnum isampler = SamplerParamEnum::eNone, bool pre = false)
       : type(itype), scalarSubType(iscalarSubType), imageFormat(format), declType(iindex), semantic(isem),
         sampler(isampler), preEval(pre)
@@ -650,19 +683,28 @@ struct Snorm
   float value = {};
 };
 
+using float16 = std::array<float, 16>;
+using int16   = std::array<int, 16>;
+using uint16  = std::array<uint32_t, 16>;
 union ScalarValue
 {
-  uvec2    uvalue2 = {0, 0};
+  mat4     value4x4;
+  float16  value16 = {};
+  int16    ivalue16;
+  uint16   uvalue16;
+  uvec2    uvalue2;
   ivec2    ivalue2;
   vec2     value2;
   vec3     value3;
   vec4     value4;
-  mat4     value4x4;
   float    value;
   int      ivalue;
   uint32_t uvalue;
   bool     bvalue;
 
+  inline ScalarValue() : value16() {}
+  inline ScalarValue(ScalarValue const& other) noexcept : value16(other.value16) {}
+  inline ScalarValue(ScalarValue&& other) noexcept : value16(other.value16) {}
   inline ScalarValue(Angle val) : value(val) {}
   inline ScalarValue(Unorm val) : value(val) {}
   inline ScalarValue(Snorm val) : value(val) {}
@@ -672,12 +714,26 @@ union ScalarValue
   inline ScalarValue(vec3 v) : value3(v) {}
   inline ScalarValue(vec4 v) : value4(v) {}
   inline ScalarValue(mat4 v) : value4x4(v) {}
-  inline ScalarValue() {}
+  inline ScalarValue(float16 v) : value16(v) {}
+  inline ScalarValue(int16 v) : ivalue16(v) {}
+  inline ScalarValue(uint16 v) : uvalue16(v) {}
   inline ScalarValue(vec2 v) : value2(v) {}
   inline ScalarValue(float v) : value(v) {}
   inline ScalarValue(int v) : ivalue(v) {}
   inline ScalarValue(uint32_t v) : ivalue(v) {}
   inline ScalarValue(bool v) : bvalue(v) {}
+
+  inline ScalarValue& operator=(ScalarValue const& other) noexcept
+  {
+    value16 = other.value16;
+    return *this;
+  }
+
+  inline ScalarValue& operator=(ScalarValue&& other) noexcept
+  {
+    value16 = other.value16;
+    return *this;
+  }
 };
 
 struct Rect

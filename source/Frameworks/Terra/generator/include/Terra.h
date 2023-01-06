@@ -97,7 +97,7 @@ public:
   template <typename Meta>
   void addMeta(std::string_view name, Meta const& meta)
   {
-    metaMap[name] = (uint32_t)nodeMetaTable.size();
+    metaMap[std::string{name}] = (uint32_t)nodeMetaTable.size();
     nodeMetaTable.push_back(std::static_pointer_cast<NodeMeta>(std::make_shared<Meta>(meta)));
     nodeMetaTable.back()->id = (uint32_t)nodeMetaTable.size();
     nodeMetaTable.back()->prepare();
@@ -105,7 +105,7 @@ public:
 
   inline NodeMeta* getNodeMeta(std::string_view name)
   {
-    auto it = metaMap.find(name);
+    auto it = metaMap.find(std::string{name});
     if (it != metaMap.end())
     {
       return nodeMetaTable[it->second].get();
@@ -185,7 +185,7 @@ private:
   uint32_t                 frame = 0;
   std::vector<std::string> semantics;
 
-  using NodeMetaMap = std::map<std::string_view, uint32_t>;
+  using NodeMetaMap = std::map<std::string, uint32_t>;
   std::vector<std::shared_ptr<NodeMeta>> nodeMetaTable;
   NodeMetaMap                            metaMap;
   neo::registry                          registry;

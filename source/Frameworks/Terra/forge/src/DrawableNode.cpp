@@ -34,11 +34,13 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
     for (uint32_t param = 0, end = (uint32_t)meta.parameterDef.size(); param < end; ++param)
     {
       auto const& def = meta.parameterDef[param];
+      if (def.format.hidden)
+        continue;
       if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
           def.format.type == DataTypeEnum::ePostProcess)
       {
-        PinData p = pack(id.um_index(), indexToInput(param));
-        imne::SetPinFlags(p, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+        auto p = PinData(PinData::input, id, param);
+        imne::SetPinFlags(p.pinId(), imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
         parameters.emplace_back(p);
       }
     }
@@ -48,8 +50,8 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
       if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
           def.format.type == DataTypeEnum::ePostProcess)
       {
-        PinData p = pack(id.um_index(), indexToOutput(out));
-        imne::SetPinFlags(p, imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
+        auto p = PinData(PinData::output, id, out);
+        imne::SetPinFlags(p.pinId(), imne::PinKind::Input, imne::ImneObjFlags::ImneObjFlags_ExplicitInteractions, true);
         outputs.emplace_back(p);
       }
     }
@@ -350,20 +352,17 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
     // Parameters
     for (uint32_t i = 0, end = (uint32_t)parameters.size(); i < end; ++i)
     {
-      auto [n, id] = unpack(parameters[i].Get());
-      id           = inputToIndex(id);
-      auto src     = node.param(id);
-      drawPinIcon(ne, style, parameters[i], (const char*)meta.parameterDef[id].displayInfo.name.data(),
+      uint32_t id  = parameters[i].id();
+      auto     src = node.param(id);
+      drawPinIcon(ne, style, parameters[i].pinId(), (const char*)meta.parameterDef[id].displayInfo.name.data(),
                   meta.parameterDef[id].format, false,
                   std::holds_alternative<Source>(src) && std::get<Source>(src).source);
     }
     for (uint32_t i = 0, end = (uint32_t)outputs.size(); i < end; ++i)
     {
-      auto [n, id] = unpack(outputs[i].Get());
-      id           = outputToIndex(id);
-      auto src     = node.param(i);
-      drawPinIcon(ne, style, outputs[i], (const char*)meta.outputs[id].displayInfo.name.data(), meta.outputs[id].format,
-                  true, std::holds_alternative<Source>(src) && std::get<Source>(src).source);
+      uint32_t id = outputs[i].id();
+      drawPinIcon(ne, style, outputs[i].pinId(), (const char*)meta.outputs[id].displayInfo.name.data(),
+                  meta.outputs[id].format, true, !node.isDetached());
     }
   }
   }

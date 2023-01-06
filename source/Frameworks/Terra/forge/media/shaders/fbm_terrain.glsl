@@ -13,7 +13,7 @@ void noise(in vec2 p)
   float y = 0;
   for(uint i = 0; i < octaves; ++i)
   {
-    y += pow(amp, exponent) * noisefn(vec3(p * freq, fseed));
+    y += pow(amp, exponent) * noisefn(vec3(p * freq + vec2(fseed * fseed), fseed));
     freq *= lacunarity;
     amp *= gain;
   }

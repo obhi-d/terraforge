@@ -15,7 +15,7 @@ void Node::accept(Source source, Event ev)
       if (std::holds_alternative<Source>(p))
       {
         if (std::get<Source>(p) == source)
-          p = meta.parameterDef[i].getDefault();
+          param(i, meta.parameterDef[i].getDefault());
       }
     }
   }

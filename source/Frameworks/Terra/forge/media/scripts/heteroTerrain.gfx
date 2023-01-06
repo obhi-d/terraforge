@@ -1,25 +1,25 @@
 
-name   : RidgedTerrain;
+name   : HeteroTerrain;
 style  : noise;
 
 output : heights (type = [buffer, float], semantic = heights, decltype = sampler2D);
 param  : octaves (type = uint, decltype = scalar, semantic = octaves, min = 1, max = 16, default = 8, step = 1);
 param  : fseed (type = [float, float], semantic = fseed, decltype = scalar) hidden;
 param  : frequency (type = float, semantic = frequency, decltype = scalar, min = -inf, max = inf, default = 0.33, step = 0.001);
-param  : amplitude (type = float, decltype = scalar, min = -inf, max = inf, default = 13.57, step = 0.01);
+param  : amplitude (type = float, decltype = scalar, min = -inf, max = inf, default = 10.7, step = 0.01);
 param  : exponent (type = float, semantic = exponent, decltype = scalar, min = 0.0, max = 10000.0, default = 1.42, step = 0.01);
 param  : exponents (type = [array, float], decltype = scalar, semantic = expoctave) hidden;
-param  : lacunarity (type = float, decltype = scalar, semantic = lacunarity, min = 0.0, max = 10000.0, default = 2.36, step = 0.01);
 param  : offset (type = float, decltype = scalar, min = -inf, max = inf, default = 1.05, step = 0.01);
-param  : gain (type = float, decltype = scalar, min = -inf, max = inf, default = 2.4, step = 0.01);
-param  : threshold (type = float, decltype = scalar, min = -inf, max = inf, default = 1.04, step = 0.01);
+param  : lacunarity (type = float, decltype = scalar, semantic = lacunarity, min = 0.0, max = 10000.0, default = 2.36, step = 0.01);
+param  : gain (type = float, decltype = scalar, min = -inf, max = inf, default = 0.34, step = 0.01);
 param  : start (type = float2, semantic = start, decltype = scalar) hidden;
 param  : size (type = float2, semantic = size, decltype = scalar) hidden;
 
 pass
 {
   function : noise;
-  shaders  : [opensimplex2s.glsl, ridged_terrain.glsl];
-  in       : [fseed, frequency, octaves, lacunarity, amplitude, exponents, gain, offset, threshold, start, size];
+  shaders  : [opensimplex2s.glsl, hetero_terrain.glsl];
+  in       : [fseed, frequency, octaves, lacunarity, amplitude, exponents, gain, offset, start, size];
   out      : heights;
 }
+

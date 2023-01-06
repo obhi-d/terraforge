@@ -14,6 +14,72 @@ namespace terra
 class ImguiBackend;
 class TerraMainApp;
 
+struct PinData
+{
+  struct Input
+  {};
+  struct Output
+  {};
+
+  static inline constexpr Input  input  = {};
+  static inline constexpr Output output = {};
+
+  PinData() = default;
+  PinData(Input, HDataSource src, uint16_t idx) : src_(src), id_(idx), valid_(DataSource::isValid(src)) {}
+  PinData(Output, HDataSource src, uint16_t idx)
+      : src_(src), id_(idx), isOutput_(true), valid_(DataSource::isValid(src))
+  {}
+  PinData(imne::PinId p)
+  {
+    *this = p;
+  }
+
+  inline auto operator<=>(PinData const&) const noexcept = default;
+
+  inline bool isValid() const
+  {
+    return valid_;
+  }
+
+  inline auto id() const
+  {
+    return id_;
+  }
+
+  inline HDataSource src() const
+  {
+    return src_;
+  }
+
+  inline PinData& operator=(imne::PinId p) noexcept
+  {
+    auto [src, id] = unpack(p.Get());
+    src_           = HDataSource{src};
+    id_            = uint16_t{id & 0xffff};
+    isOutput_      = (id & 0x80000000) != 0;
+    valid_         = DataSource::isValid(src_);
+    return *this;
+  }
+
+  inline bool isOutput() const noexcept
+  {
+    return isOutput_;
+  }
+
+  imne::PinId pinId() const noexcept
+  {
+    uint32_t id = id_;
+    if (isOutput())
+      id |= 0x80000000;
+    return imne::PinId(pack(src_.um_index(), id));
+  }
+
+  HDataSource src_;
+  uint16_t    id_       = 0xffff;
+  bool        isOutput_ = false;
+  bool        valid_    = false;
+};
+
 struct NodeStyle;
 // enum class PinStateFlags
 //{
@@ -48,8 +114,6 @@ public:
   void updateThumbnailFromImage(Image&);
 
 private:
-  using PinData = imne::PinId;
-
   void drawPinIcon(NodeEditor&, NodeStyle const&, imne::PinId id, const char* name, DataFormat type, bool output,
                    bool detached);
   void drawHeader(NodeEditor&, NodeStyle const&, ImVec2 headerMin, ImVec2 headerMax);
@@ -76,7 +140,7 @@ struct Link
 {
   imne::LinkId id;
   Color        color;
-  imne::PinId  start;
-  imne::PinId  end;
+  PinData      start;
+  PinData      end;
 };
 } // namespace terra

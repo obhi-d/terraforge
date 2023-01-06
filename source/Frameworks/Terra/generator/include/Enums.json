@@ -45,30 +45,8 @@
       "CurveData",
       "Bool",
       "PostProcess",
-      "Enum"
-    ]
-  },
-  {
-    "name": "Semantic",
-    "namespace": "terra",
-    "type": "uint8_t",
-    "usage": "enum",
-    "default": "None",
-    "stringModifier": "lower",
-    "values": [
-      "None",
-      "Source",
-      "Iteration",
-      "Heights",
-      "Water",
-      "Rocks",
-      "Terrain",
-      "Vegetation",
-      "FSeed",
-      "Seed",
-      "Start",
-      "Size",
-      "Frequency"
+      "Enum",
+      "Array"
     ]
   },
   {
@@ -105,7 +83,9 @@
     "values": [
       "None",
       "LinearWrap",
+      "LinearClamp",
       "NearestWrap",
+      "NearestClamp",
       "TrilinearWrap"
     ]
   }

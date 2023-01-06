@@ -140,12 +140,12 @@ void NodeMeta::prepare()
 {
   for (uint32_t i = 0, end = (uint32_t)parameterDef.size(); i < end; ++i)
   {
-    auto autoIdx = (uint32_t)parameterDef[i].format.semantic;
-    if (autoIdx != (uint32_t)SemanticEnum::eNone)
+    auto autoIdx = parameterDef[i].format.semantic;
+    if (autoIdx)
     {
-      if (autoIdx < autoRegistry.size())
+      if (autoIdx.id < autoRegistry.size())
       {
-        if (autoRegistry[autoIdx].pre || autoRegistry[autoIdx].post)
+        if (autoRegistry[autoIdx.id].pre || autoRegistry[autoIdx.id].post)
           autoParams.emplace_back(i);
       }
     }
@@ -153,12 +153,12 @@ void NodeMeta::prepare()
 
   for (uint32_t i = 0, end = (uint32_t)outputs.size(); i < end; ++i)
   {
-    auto autoIdx = (uint32_t)outputs[i].format.semantic;
-    if (autoIdx != (uint32_t)SemanticEnum::eNone)
+    auto autoIdx = outputs[i].format.semantic;
+    if (autoIdx)
     {
-      if (autoIdx < autoRegistry.size())
+      if (autoIdx.id < autoRegistry.size())
       {
-        if (autoRegistry[autoIdx].pre || autoRegistry[autoIdx].post)
+        if (autoRegistry[autoIdx.id].pre || autoRegistry[autoIdx.id].post)
           autoOutputs.emplace_back(i);
       }
     }

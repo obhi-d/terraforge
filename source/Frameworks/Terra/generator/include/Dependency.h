@@ -34,7 +34,10 @@ public:
   template <typename L>
   void forEachDependent(L&& lambda) const
   {
-    std::for_each(dependents.begin(), dependents.end(), lambda);
+    if (dependents.empty())
+      return;
+    std::unordered_set<Source, SourceHash> copy = dependents;
+    std::for_each(copy.begin(), copy.end(), lambda);
   }
 
   uint32_t countDependents(uint32_t outIdx) const

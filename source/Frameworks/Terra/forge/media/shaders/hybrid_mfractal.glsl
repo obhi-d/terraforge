@@ -16,24 +16,26 @@ void noise(in vec2 p)
   float amp = amplitude;
   float freq = frequency;
   float seed = (fseed * random(fseed));
-  float signal = abs(noisefn(vec3(p * freq + vec2(fseed), fseed)));
-  signal = offset - signal;
-  signal *= signal;
-  float y = amp * signal;
-  float weight = 1.0;
-
+  float y = (noisefn(vec3(p * freq + vec2(fseed), fseed)) + offset);
+  float h = amp * y;
+  float weight = gain * y;
+  
   for(uint i = 1; i < octaves; ++i)
   {
     freq *= lacunarity;
     seed *= (seed * random(seed));
-    weight = clamp(signal * threshold, 0.0, 1.0);
-    signal = abs(noisefn(vec3(p * freq + vec2(seed), fseed)));
-    signal = offset - signal;
-    signal *= signal;
-    signal *= weight;
-    y += amp * signal * exponents[i]; 
+    float noisers = noisefn(vec3(p * freq + vec2(seed), fseed));
+    if (weight < 0.0001)
+      h += amp * noisers * exponents[i];
+    else
+    {
+      float signal = (noisers + offset) * exponents[i];
+      h += amp * weight * signal;
+      weight *= signal * gain;
+    }
+
     amp *= gain;
   }
 
-  heights = y;
+  heights = h;
 }

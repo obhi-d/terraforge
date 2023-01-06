@@ -44,6 +44,9 @@ struct ShaderMaterial
   inline void pushScalar(uint32_t index, vec3 value);
   inline void pushScalar(uint32_t index, vec4 value);
   inline void pushScalar(uint32_t index, mat4 value);
+  inline void pushScalar(uint32_t index, float16 value);
+  inline void pushScalar(uint32_t index, int16 value);
+  inline void pushScalar(uint32_t index, uint16 value);
   inline void reset();
 
   ShaderProgram const& program;
@@ -259,6 +262,27 @@ inline void ShaderMaterial::pushScalar(uint32_t index, vec4 value)
 inline void ShaderMaterial::pushScalar(uint32_t index, mat4 value)
 {
   assert(program.bindings[index] == GfxBindType::eMat4);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(uint32_t index, float16 value)
+{
+  assert(program.bindings[index] == GfxBindType::eFloat16);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(uint32_t index, int16 value)
+{
+  assert(program.bindings[index] == GfxBindType::eInt16);
+  data.push(value);
+  index++;
+}
+
+inline void ShaderMaterial::pushScalar(uint32_t index, uint16 value)
+{
+  assert(program.bindings[index] == GfxBindType::eUint16);
   data.push(value);
   index++;
 }

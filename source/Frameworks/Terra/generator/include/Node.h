@@ -22,6 +22,18 @@ public:
     return meta.parameterDef[i].getter(*this, i);
   }
 
+  Parameter param(std::string name) const
+  {
+    Semantic sem{name};
+    for (uint32_t i = 0, e = (uint32_t)meta.parameterDef.size(); i < e; ++i)
+    {
+      auto& p = meta.parameterDef[i];
+      if (p.format.semantic == sem)
+        return p.getter(*this, i);
+    }
+    return ScalarValue();
+  }
+
   void state(uint32_t i, ScalarValue sv)
   {
     meta.parameterDef[i].setter(*this, i, sv);

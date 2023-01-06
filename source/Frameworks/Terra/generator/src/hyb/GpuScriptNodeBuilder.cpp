@@ -70,7 +70,11 @@ NodeCmdExecute(param, builder, state, cmd)
       }
       else if (entry.name() == "semantic")
       {
-        meta.format.semantic = Semantic::fromString(entry.value());
+        meta.format.semantic = Semantic(std::string(entry.value()));
+      }
+      else if (entry.name() == "sampler")
+      {
+        meta.format.sampler = SamplerParam::fromString(entry.value());
       }
       else if (entry.name() == "min")
       {
@@ -138,9 +142,10 @@ NodeCmdExecute(param, builder, state, cmd)
 }
 NodeCmdExecute(output, builder, state, cmd)
 {
-  auto        name   = terra::getIdxParam(cmd, 0, "source");
-  auto        output = OutputMeta(std::string(name));
-  auto const& params = cmd.params().value();
+  auto        name          = terra::getIdxParam(cmd, 0, "source");
+  auto        output        = OutputMeta(std::string(name));
+  auto const& params        = cmd.params().value();
+  output.format.imageFormat = ImageFormat::eFloat;
   for (auto& p : params)
   {
     if (std::holds_alternative<neo::single>(p))
@@ -164,7 +169,7 @@ NodeCmdExecute(output, builder, state, cmd)
       }
       else if (entry.name() == "semantic")
       {
-        output.format.semantic = Semantic::fromString(entry.value());
+        output.format.semantic = Semantic(std::string(entry.value()));
       }
       else if (entry.name() == "clear")
       {

@@ -227,7 +227,7 @@ struct ParameterMeta
   template <typename MembPtr>
   ParameterMeta(MembPtr, std::string_view iname, ValueRange values, DataTypeEnum type = DataTypeEnum::eBuffer,
                 DataTypeEnum subType = DataTypeEnum::eFloat, ImageFormatEnum imageFmt = ImageFormatEnum::eFloat,
-                ParamDeclTypeEnum declType = ParamDeclTypeEnum::eSampler2D, SemanticEnum semantic = SemanticEnum::eNone,
+                ParamDeclTypeEnum declType = ParamDeclTypeEnum::eSampler2D, Semantic semantic = {},
                 SamplerParamEnum sampler = SamplerParamEnum::eNone, bool preEval = false)
       : format(type, subType, imageFmt, declType, semantic, sampler, preEval), ranges(values), displayInfo(iname),
         setter(
@@ -250,8 +250,8 @@ struct ParameterMeta
 
   template <typename MembPtr>
   ParameterMeta(MembPtr, std::string_view iname, std::initializer_list<std::string_view> enums, int defEn = 0)
-      : format(DataTypeEnum::eEnum, DataTypeEnum::eInt, ImageFormatEnum::eNone, ParamDeclType::eNone,
-               SemanticEnum::eNone, false),
+      : format(DataTypeEnum::eEnum, DataTypeEnum::eInt, ImageFormatEnum::eNone, ParamDeclType::eNone, Semantic{},
+               false),
         displayInfo(iname), setter(
                               [](Node& node, uint32_t, Parameter param)
                               {
@@ -385,14 +385,14 @@ public:
 
   virtual void prepare();
 
-  static void registerAuto(SemanticEnum e, AutoParam param)
+  static void registerAuto(Semantic e, AutoParam param)
   {
-    if ((uint32_t)e >= autoRegistry.size())
-      autoRegistry.resize((uint32_t)e + 1);
-    autoRegistry[(uint32_t)e] = param;
+    if ((uint32_t)e.id >= autoRegistry.size())
+      autoRegistry.resize((uint32_t)e.id + 1);
+    autoRegistry[(uint32_t)e.id] = param;
   }
 
-  static void registerAuto(SemanticEnum e, AutoParam::CallbackPre pre, AutoParam::CallbackPost post)
+  static void registerAuto(Semantic e, AutoParam::CallbackPre pre, AutoParam::CallbackPost post)
   {
     registerAuto(e, AutoParam(pre, post));
   }

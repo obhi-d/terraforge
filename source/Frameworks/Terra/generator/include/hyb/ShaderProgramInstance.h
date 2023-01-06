@@ -32,7 +32,7 @@ struct ShaderProgramInstance
     program.pushScalar(index++, value);
   }
 
-  void pushValue(ScalarValue value, DataTypeEnum type);
+  void pushValue(ScalarValue value, DataTypeEnum type, DataTypeEnum subType);
   void pushValue(HybridBuffer::handle, DataFormat);
   void pushImage(GfxImage::handle, DataFormat);
   void pushBuffer(GfxBuffer::handle, uint32_t size, DataFormat);

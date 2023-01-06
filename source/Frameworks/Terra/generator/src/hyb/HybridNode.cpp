@@ -17,8 +17,8 @@ bool ClassicHybridNode::preExecute(HybridPipeline& pipe, std::vector<Parameter>&
   auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
   for (auto i : gpuMeta.autoParams)
   {
-    uint32_t idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
-    if (gpuMeta.autoRegistry[idx].pre)
+    auto idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
+    if (idx < gpuMeta.autoRegistry.size() && gpuMeta.autoRegistry[idx].pre)
     {
       parameters.emplace_back();
       if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, parameters.back()))
@@ -34,10 +34,10 @@ HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe)
   HybridNode::Result result  = HybridNode::Result::eDone;
   for (auto i : gpuMeta.autoParams)
   {
-    uint32_t idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
-    if (gpuMeta.autoRegistry[idx].post)
+    auto idx = gpuMeta.parameterDef[i].format.semantic;
+    if (idx.id < gpuMeta.autoRegistry.size() && gpuMeta.autoRegistry[idx.id].post)
     {
-      switch (gpuMeta.autoRegistry[idx].post(pipe, *this, i))
+      switch (gpuMeta.autoRegistry[idx.id].post(pipe, *this, i))
       {
       case AutoParam::eReportFailure:
         return HybridNode::Result::eFailed;
@@ -50,7 +50,7 @@ HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe)
   for (auto i : gpuMeta.autoOutputs)
   {
     uint32_t idx = (uint32_t)gpuMeta.outputs[i].format.semantic;
-    if (gpuMeta.autoRegistry[idx].post)
+    if (idx < gpuMeta.autoRegistry.size() && gpuMeta.autoRegistry[idx].post)
     {
       switch (gpuMeta.autoRegistry[idx].post(pipe, *this, i))
       {
@@ -70,8 +70,8 @@ bool GpuNode::prepare(HybridPipeline& pipe)
 {
   ProgramKey  option;
   HashMachine machine{0};
-  probe(pipe, option, machine);
   pipe.push(self);
+  probe(pipe, option, machine);
 
   auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
@@ -85,6 +85,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   {
     ndat.key       = option;
     ndat.gpuPasses = program;
+    createResources(ndat, pipe, gpuMeta);
     return true;
   }
 
@@ -108,8 +109,21 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   gpuMeta.addProgram(option, newProgram);
   ndat.key       = option;
   ndat.gpuPasses = std::move(newProgram);
-  ndat.outputs.resize(gpuMeta.outputs.size());
+  createResources(ndat, pipe, gpuMeta);
   return true;
+}
+
+void GpuNode::createResources(GpuNode::Data& ndat, HybridPipeline& pipe, GpuNodeMeta const& gpuMeta)
+{
+  ndat.outputs.resize(gpuMeta.outputs.size());
+  for (uint32_t i = 0, e = (uint32_t)gpuMeta.outputs.size(); i < e; ++i)
+  {
+    ndat.outputs[i] = pipe.declareBuffer();
+    pipe.describeImage(ndat.outputs[i], getSelf(), pipe.size().x, pipe.size().y, meta.outputs[i].format.imageFormat);
+    // declare output buffers upfront
+    if (gpuMeta.outputs[i].format.semantic)
+      pipe.setBuffer(gpuMeta.outputs[i].format.semantic, ndat.outputs[i], getSelf());
+  }
 }
 
 void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
@@ -142,6 +156,8 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       else
         paramAct = Action::ePushConstant;
     }
+    else
+      paramAct = Action::ePushConstant;
 
     switch (def.format.type)
     {
@@ -161,15 +177,16 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       }
       optionIdx++;
       break;
+    case DataTypeEnum::eInt:
+    case DataTypeEnum::eUint:
     case DataTypeEnum::eFloat:
     case DataTypeEnum::eFloat2:
-    case DataTypeEnum::eInt:
     case DataTypeEnum::eInt2:
-    case DataTypeEnum::eUint:
     case DataTypeEnum::eUint2:
     case DataTypeEnum::eFloat3:
     case DataTypeEnum::eFloat4:
     case DataTypeEnum::eMat4:
+    case DataTypeEnum::eArray:
       builder.param(def.name(), def.format);
       break;
     case DataTypeEnum::eBool:
@@ -302,7 +319,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
         }
         else
         {
-          program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
+          program.pushValue(std::get<ScalarValue>(p), def.format.type, def.format.scalarSubType);
         }
         optionIdx++;
         break;
@@ -315,7 +332,8 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
       case DataTypeEnum::eFloat3:
       case DataTypeEnum::eFloat4:
       case DataTypeEnum::eMat4:
-        program.pushValue(std::get<ScalarValue>(p), def.format.scalarSubType);
+      case DataTypeEnum::eArray:
+        program.pushValue(std::get<ScalarValue>(p), def.format.type, def.format.scalarSubType);
         break;
       case DataTypeEnum::eBool:
         optionIdx++;
@@ -335,7 +353,7 @@ void GpuNode::push(HybridPipeline& pipe, ShaderProgramInstance& program, uint32_
   auto&       ndat      = nodeData[pipe.id()];
   auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
   uint32_t    optionIdx = 0;
-  program.pushValue(ndat.outputs[outIdx], meta.parameterDef[outIdx].format);
+  program.pushValue(ndat.outputs[outIdx], meta.outputs[outIdx].format);
 }
 
 void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInstance& program)
@@ -346,35 +364,6 @@ void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInst
   auto const& code = gpuMeta.getCode(pass);
   for (uint32_t i : code.outputs)
   {
-    if (!ndat.outputs[i])
-    {
-      switch (gpuMeta.outputs[i].format.semantic)
-      {
-      case SemanticEnum::eHeights:
-        ndat.outputs[i] = pipe.heights();
-        break;
-      case SemanticEnum::eWater:
-        ndat.outputs[i] = pipe.water();
-        break;
-      case SemanticEnum::eRocks:
-        ndat.outputs[i] = pipe.rocks();
-        break;
-      case SemanticEnum::eVegetation:
-        ndat.outputs[i] = pipe.vegetation();
-        break;
-      case SemanticEnum::eTerrain:
-        ndat.outputs[i] = pipe.vegetation();
-        break;
-      default:
-        if (!ndat.outputs[i])
-        {
-          ndat.outputs[i] = pipe.declareBuffer();
-          pipe.describeImage(ndat.outputs[i], getSelf(), pipe.size().x, pipe.size().y,
-                             meta.outputs[i].format.imageFormat);
-        }
-      }
-    }
-
     program.pushOutput(ndat.outputs[i], meta.outputs[i].format, meta.outputs[i].clear, meta.outputs[i].clearValue);
   }
 }
@@ -406,6 +395,9 @@ GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
         break;
       case DataTypeEnum::eFloat:
         entries[i].offset = parameters.push(def.value);
+        break;
+      case DataTypeEnum::eArray:
+        entries[i].offset = parameters.push(def.value16);
         break;
       case DataTypeEnum::eFloat2:
         entries[i].offset = parameters.push(def.value2);

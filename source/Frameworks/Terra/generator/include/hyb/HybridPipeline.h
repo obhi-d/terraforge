@@ -35,6 +35,12 @@ class HybridPipeline : public Pipeline
   };
 
 public:
+  struct Buffer
+  {
+    HybridBuffer::handle buffer_;
+    HDataSource          src_;
+  };
+
   HybridPipeline();
 
   HybridBuffer::handle declareBuffer();
@@ -60,29 +66,17 @@ public:
   void cleanup() final;
   void push(HDataSource);
 
-  HybridBuffer::handle heights() const
+  Buffer getBuffer(Semantic sem) const
   {
-    return heights_;
+    auto it = sources_.find(sem.id);
+    if (it != sources_.end())
+      return it->second;
+    return Buffer{};
   }
 
-  HybridBuffer::handle water() const
+  void setBuffer(Semantic sem, HybridBuffer::handle buffer, HDataSource hsource)
   {
-    return water_;
-  }
-
-  HybridBuffer::handle rocks() const
-  {
-    return rocks_;
-  }
-
-  HybridBuffer::handle terrain() const
-  {
-    return rocks_;
-  }
-
-  HybridBuffer::handle vegetation() const
-  {
-    return vegetation_;
+    sources_[sem.id] = Buffer{.buffer_ = buffer, .src_ = hsource};
   }
 
 private:
@@ -91,17 +85,14 @@ private:
   using UseSet   = std::unordered_set<HybridBuffer::handle, HybridBuffer::hasher>;
   using OrderSet = std::unordered_set<HDataSource, HHashSource>;
 
-  std::array<GfxSampler::handle, SamplerParam::kCount> samplers;
+  std::array<GfxSampler::handle, SamplerParam::kCount> samplers_;
 
-  HybridBuffer::handle heights_;
-  HybridBuffer::handle water_;
-  HybridBuffer::handle rocks_;
-  HybridBuffer::handle vegetation_;
+  std::unordered_map<uint16_t, Buffer> sources_;
 
   size_t                          memoryUsed_    = 0;
   size_t                          devMemoryUsed_ = 0;
   HybridNode::Result              result_        = HybridNode::Result::eWaiting;
-  uint32_t                        tick_          = 1;
+  uint32_t                        tick_          = 100;
   uint32_t                        actorVersion_  = 0xffffffff;
   HDataSource                     current_;
   UseSet                          recents_;

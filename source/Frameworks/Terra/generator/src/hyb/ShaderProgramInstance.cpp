@@ -5,10 +5,27 @@
 
 namespace terra
 {
-void ShaderProgramInstance::pushValue(ScalarValue value, DataTypeEnum type)
+void ShaderProgramInstance::pushValue(ScalarValue value, DataTypeEnum type, DataTypeEnum subtype)
 {
   switch (type)
   {
+  case DataTypeEnum::eBuffer:
+    pushValue(value, subtype, subtype);
+    break;
+  case DataTypeEnum::eArray:
+    switch (subtype)
+    {
+    case DataTypeEnum::eFloat:
+      program.pushScalar(index++, value.value16);
+      break;
+    case DataTypeEnum::eInt:
+      program.pushScalar(index++, value.ivalue16);
+      break;
+    case DataTypeEnum::eUint:
+      program.pushScalar(index++, value.uvalue16);
+      break;
+    }
+    break;
   case DataTypeEnum::eInt:
     program.pushScalar(index++, value.ivalue);
     break;

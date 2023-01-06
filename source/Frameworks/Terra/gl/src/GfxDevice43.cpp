@@ -1099,6 +1099,15 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
     case GfxBindType::eMat4:
       gl43::glUniformMatrix4fv(e.index, 1, gl::GL_FALSE, glm::value_ptr(reader.read<mat4>()));
       break;
+    case GfxBindType::eFloat16:
+      gl43::glUniform1fv(e.index, 16, reader.read<float16>().data());
+      break;
+    case GfxBindType::eInt16:
+      gl43::glUniform1iv(e.index, 16, reader.read<int16>().data());
+      break;
+    case GfxBindType::eUint16:
+      gl43::glUniform1uiv(e.index, 16, reader.read<uint16>().data());
+      break;
     }
   }
 }

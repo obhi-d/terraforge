@@ -176,6 +176,7 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   auto const& style = app.getTheme();
   auto        v     = std::get<ScalarValue>(node.param(param));
   bool        set   = false;
+  static_assert(DataTypeEnum::kCount == 18);
   switch (def.format.scalarSubType)
   {
   case DataTypeEnum::eUint2:
@@ -259,6 +260,7 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
 {
   Parameter param = node.param(i);
   bool      isSrc = std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source);
+  static_assert(DataTypeEnum::kCount == 18);
   switch (def.format.type)
   {
   case DataTypeEnum::eFloat:
@@ -271,6 +273,7 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
   case DataTypeEnum::eUint:
   case DataTypeEnum::eUint2:
   case DataTypeEnum::eBool:
+  case DataTypeEnum::eArray:
   {
     drawScalar(app, backend, def, node, i);
   }
@@ -375,7 +378,7 @@ bool NodeEditor::acceptsAction()
   return pendingAction.action == Action::eNone;
 }
 
-void NodeEditor::showTooltip(ax::NodeEditor::PinId pin)
+void NodeEditor::showTooltip(PinData pin)
 {
   pendingAction.action = Action::eShowTooltip;
   pendingAction.pin    = pin;
@@ -486,7 +489,7 @@ void NodeEditor::doContextMenu(TerraMainApp& app, ImVec2 openPopupPosition)
   }
   else
   {
-    frameCache.linkTo         = {};
+    frameCache.linkTo         = PinData{};
     frameCache.filterHasFocus = false;
     frameCache.createSelected = nullptr;
     frameCache.filterData.fill(0);
@@ -512,14 +515,14 @@ void NodeEditor::openImage(TerraMainApp& app)
     else if (fileOpenData.action == Action::eImageData)
     {
       createImageNode(app, lastImagePath, fileOpenData.position);
-      if (fileOpenData.linkTo)
+      if (fileOpenData.linkTo.isValid())
       {
         setNextDataSource(theme.themeColors, drawableNodes.back()->getId(), pendingAction.linkTo);
       }
     }
     fileOpenData.action = Action::eNone;
     fileOpenData.node   = {};
-    fileOpenData.linkTo = {};
+    fileOpenData.linkTo = PinData{};
   }
 }
 
@@ -538,14 +541,14 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
     break;
   case Action::eCurveData:
     createCurveEditor(app, pendingAction.position);
-    if (pendingAction.linkTo)
+    if (pendingAction.linkTo.isValid())
     {
       setNextDataSource(theme.themeColors, drawableNodes.back()->getId(), pendingAction.linkTo);
     }
     break;
   case Action::eCreateNode:
     createNode(app, *pendingAction.meta, pendingAction.position);
-    if (pendingAction.linkTo)
+    if (pendingAction.linkTo.isValid())
     {
       setNextDataSource(theme.themeColors, drawableNodes.back()->getId(), pendingAction.linkTo);
     }
@@ -561,13 +564,14 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
       auto const& node = get().get<DataSource>((uint32_t)(size_t)pendingAction.node);
       info             = node.getHelpInfo(HelpType::eDataSource);
     }
-    else if (pendingAction.pin)
+    else if (pendingAction.pin.isValid())
     {
-      auto [nodel, param] = unpack((size_t)pendingAction.pin);
+      auto nodel = pendingAction.pin.src();
+      auto param = pendingAction.pin.id();
       if (get().isValid(nodel))
       {
         auto const& node = get().get<DataSource>(nodel);
-        info             = node.getHelpInfo((param == 0) ? HelpType::eOutput : HelpType::eParameter, param - 1);
+        info = node.getHelpInfo(pendingAction.pin.isOutput() ? HelpType::eOutput : HelpType::eParameter, param);
       }
     }
     if (!info.tooltip.empty())
@@ -586,10 +590,10 @@ void NodeEditor::executePendingAction(TerraMainApp& app)
     break;
   }
   pendingAction.action = Action::eNone;
-  pendingAction.pin    = {};
+  pendingAction.pin    = PinData{};
   pendingAction.meta   = nullptr;
   pendingAction.node   = {};
-  pendingAction.linkTo = {};
+  pendingAction.linkTo = PinData{};
 }
 
 void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
@@ -607,13 +611,12 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
   links.for_each(
     [&](auto& link)
     {
-      imne::Link(link.id, link.start, link.end, toImgui(link.color), theme.linkThickness);
+      imne::Link(link.id, link.start.pinId(), link.end.pinId(), toImgui(link.color), theme.linkThickness);
       return true;
     });
 
   // if (acceptsAction())
   {
-    uintpair newLinkPin;
     if (imne::BeginCreate(toImgui(theme.themeColors.link), theme.linkThickness))
     {
       auto showLabel = [](std::u8string_view label, Color color)
@@ -634,40 +637,40 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
         ImGui::TextUnformatted((const char*)label.data());
       };
 
-      auto getFormat = [](uintpair id) -> DataFormat
+      auto getFormat = [](PinData id) -> DataFormat
       {
-        auto const& node = get().get<DataSource>(id.first);
-        if (!id.second || node.getType() != DataSource::Type::eNode)
-          return node.getFormat();
-        return static_cast<Node const&>(node).meta.parameterDef[id.second - 1].format;
+        auto const& node = get().get<DataSource>(id.src());
+        if (id.isOutput())
+        {
+          node.getFormat(id.id());
+        }
+        else
+          return static_cast<Node const&>(node).meta.parameterDef[id.id()].format;
       };
 
       imne::PinId startPinId = 0, endPinId = 0;
       if (imne::QueryNewLink(&startPinId, &endPinId))
       {
-        auto startPin = unpack((size_t)startPinId);
-        auto endPin   = unpack((size_t)endPinId);
-
-        newLinkPin = startPinId ? startPin : endPin;
-
-        if (startPin.second)
+        auto startPin = PinData(startPinId);
+        auto endPin   = PinData(endPinId);
+        if (endPin.isOutput())
         {
           std::swap(startPin, endPin);
           std::swap(startPinId, endPinId);
         }
 
-        if (startPinId && endPinId)
+        if (startPin.isValid() && endPin.isValid())
         {
           if (endPin == startPin)
           {
             imne::RejectNewItem(ImColor(255, 0, 0), theme.linkThickness);
           }
-          else if (endPin.second && startPin.second)
+          else if (endPin.isOutput() == startPin.isOutput())
           {
             showLabel(tipIncompatType, theme.themeColors.pinLabelReject);
             imne::RejectNewItem(ImColor(255, 0, 0), theme.linkThickness);
           }
-          else if (getFormat(endPin) != getFormat(startPin))
+          else if (!getFormat(endPin).isCompatible(getFormat(startPin)))
           {
             showLabel(tipIncompatFormat, theme.themeColors.pinLabelReject);
             imne::RejectNewItem(ImColor(255, 0, 0), theme.linkThickness);
@@ -698,9 +701,6 @@ void NodeEditor::doNodes(TerraMainApp& app, ImguiBackend& backend)
         }
       }
     }
-    else
-      newLinkPin = {0, 0};
-
     imne::EndCreate();
     if (imne::BeginDelete())
     {
@@ -745,11 +745,8 @@ void NodeEditor::changeImage(HDataSource id)
 void NodeEditor::createNode(TerraMainApp& app, NodeMeta const& meta, ImVec2 pos)
 {
   drawableNodes.emplace_back(std::make_unique<DrawableNode>(app, get().createNode(meta), pos));
-  if (drawableNodes.size() == 1)
-  {
-    previewNode       = drawableNodes.back()->getId();
-    nodeRegenRequired = true;
-  }
+  previewNode       = drawableNodes.back()->getId();
+  nodeRegenRequired = true;
 }
 
 void NodeEditor::deleteNode(imne::NodeId node)
@@ -765,22 +762,21 @@ void NodeEditor::deleteNode(imne::NodeId node)
   get().destroy((uint32_t)(size_t)node);
 }
 
-void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair end)
+void NodeEditor::createLink(ImThemeColors const& col, PinData start, PinData end)
 {
-  auto& dst    = get().get<Node>(end.first);
+  auto& dst    = get().get<Node>(end.src());
   Color color  = col.dsLink;
-  auto  oldSrc = dst.param(end.second - 1, Source(HDataSource(start.first)));
+  auto  oldSrc = dst.param(end.id(), Source(start.src(), start.id()));
   if (std::holds_alternative<Source>(oldSrc))
   {
-    auto        oldSrcHandle = std::get<Source>(oldSrc).source;
-    uint32_t    del          = 0;
-    imne::PinId pinStart     = pack(oldSrcHandle.um_index(), 0);
-    imne::PinId pinEnd       = pack(end.first, end.second);
+    auto     oldSrcHandle = std::get<Source>(oldSrc);
+    uint32_t del          = 0;
+    auto     pinStart     = PinData(PinData::output, oldSrcHandle.source.um_index(), oldSrcHandle.secondary);
 
     links.for_each(
-      [&del, pinStart, pinEnd](auto const& l) -> bool
+      [&del, pinStart, end](auto const& l) -> bool
       {
-        if ((l.start == pinStart && l.end == pinEnd) || (l.end == pinStart && l.start == pinEnd))
+        if ((l.start == pinStart && l.end == end) || (l.end == pinStart && l.start == end))
         {
           del = (uint32_t)l.id.Get();
           return false;
@@ -792,36 +788,33 @@ void NodeEditor::createLink(ImThemeColors const& col, uintpair start, uintpair e
   }
   Link link;
   link.color      = color;
-  link.start      = pack(start.first, start.second);
-  link.end        = pack(end.first, end.second);
+  link.start      = start;
+  link.end        = end;
   auto id         = links.emplace(link);
   links.at(id).id = id.um_index();
 }
 
 void NodeEditor::deleteLink(imne::LinkId l)
 {
-  auto  addr  = (uint32_t)l.Get();
-  auto& lnk   = links.at(addr);
-  auto  start = unpack(lnk.start.Get());
-  auto  end   = unpack(lnk.end.Get());
+  auto  addr = (uint32_t)l.Get();
+  auto& lnk  = links.at(addr);
 
-  auto& dst = get().get<Node>(end.first);
+  auto& dst = get().get<Node>(lnk.end.src());
 
-  dst.resetValue(end.second - 1);
+  dst.resetValue(lnk.end.id());
   links.erase(addr);
 }
 
-void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imne::PinId src)
+void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, PinData src)
 {
   auto&       node    = get().get<Node>(id);
   auto const& meta    = node.meta;
-  auto        srcPin  = unpack(src.Get());
-  auto const& srcNode = get().get<DataSource>(srcPin.first);
+  auto const& srcNode = get().get<DataSource>(src.src());
 
-  if (isOutputPin(srcPin.second) || srcNode.getType() != DataSource::Type::eNode)
+  if (src.isOutput() || srcNode.getType() != DataSource::Type::eNode)
   {
     uint32_t paramChoice = (uint32_t)meta.parameterDef.size();
-    uint32_t outIdx      = outputToIndex(srcPin.second);
+    uint32_t outIdx      = src.id();
     for (uint32_t i = 0; i < paramChoice; ++i)
     {
       if (meta.parameterDef[i].format.isCompatible(srcNode.getFormat(outIdx)))
@@ -843,15 +836,15 @@ void NodeEditor::setNextDataSource(ImThemeColors const& col, HDataSource id, imn
     }
     if (paramChoice == (uint32_t)meta.parameterDef.size())
       return;
-    createLink(col, srcPin, uintpair(id, paramChoice + 1));
+    createLink(col, src, PinData(PinData::input, id, paramChoice));
   }
   else
   {
     for (uint32_t i = 0, end = (uint32_t)node.meta.outputs.size(); i < end; ++i)
     {
-      if (node.getFormat(i).isCompatible(static_cast<Node const&>(srcNode).meta.parameterDef[srcPin.second - 1].format))
+      if (node.getFormat(i).isCompatible(static_cast<Node const&>(srcNode).meta.parameterDef[src.id()].format))
       {
-        createLink(col, uintpair(id, indexToOutput(i)), srcPin);
+        createLink(col, PinData(PinData::output, id, i), src);
       }
     }
   }

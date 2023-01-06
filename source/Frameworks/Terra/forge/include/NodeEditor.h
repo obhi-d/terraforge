@@ -7,32 +7,6 @@ namespace terra
 class ImguiBackend;
 class TerraMainApp;
 
-inline constexpr uint32_t MaxInputPin = 64;
-inline constexpr bool     isOutputPin(uint32_t id)
-{
-  return id > MaxInputPin;
-}
-inline constexpr uint32_t pinToIndex(uint32_t id)
-{
-  return id > MaxInputPin ? id - MaxInputPin : id;
-}
-inline constexpr uint32_t inputToIndex(uint32_t id)
-{
-  return id;
-}
-inline constexpr uint32_t outputToIndex(uint32_t id)
-{
-  return id - MaxInputPin;
-}
-inline constexpr uint32_t indexToOutput(uint32_t id)
-{
-  return id + MaxInputPin;
-}
-inline constexpr uint32_t indexToInput(uint32_t id)
-{
-  return id;
-}
-
 class NodeEditor
 {
 public:
@@ -61,9 +35,9 @@ public:
 
   bool acceptsAction();
 
-  void showTooltip(imne::PinId pin);
+  void showTooltip(PinData pin);
 
-  void showHelp(imne::PinId pin)
+  void showHelp(PinData pin)
   {
     pendingAction.action = Action::eShowHelp;
     pendingAction.pin    = pin;
@@ -94,7 +68,7 @@ private:
   void drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const&, Node&, uint32_t param);
   void drawParameter(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const&, Node&, uint32_t param);
 
-  void createLink(ImThemeColors const&, uintpair start, uintpair end);
+  void createLink(ImThemeColors const&, PinData start, PinData end);
   void deleteLink(imne::LinkId);
   void deleteNode(imne::NodeId);
   void doContextMenu(TerraMainApp&, ImVec2 pos);
@@ -103,7 +77,7 @@ private:
   void createCurveEditor(TerraMainApp&, ImVec2);
   void createImageNode(TerraMainApp&, std::filesystem::path, ImVec2);
   void executePendingAction(TerraMainApp&);
-  void setNextDataSource(ImThemeColors const& col, HDataSource node, imne::PinId src);
+  void setNextDataSource(ImThemeColors const& col, HDataSource node, PinData src);
   void openImage(TerraMainApp& app);
 
   enum class Action
@@ -124,8 +98,8 @@ private:
     Action          action = Action::eNone;
     ImVec2          position;
     NodeMeta const* meta = nullptr;
-    imne::PinId     linkTo;
-    imne::PinId     pin;
+    PinData         linkTo;
+    PinData         pin;
     imne::NodeId    node;
   };
 
@@ -134,7 +108,7 @@ private:
     Action      action;
     ImVec2      position;
     HDataSource node;
-    imne::PinId linkTo;
+    PinData     linkTo;
   };
 
   FileOpen   fileOpenData;
@@ -172,7 +146,7 @@ private:
     std::array<char, 64> filterData     = {};
     bool                 filterHasFocus = false;
     NodeMeta const*      createSelected = nullptr;
-    imne::PinId          linkTo;
+    PinData              linkTo;
   };
 
   FrameCache           frameCache;
