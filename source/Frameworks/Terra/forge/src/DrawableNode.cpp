@@ -116,8 +116,8 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
   imne::BeginPin(id, output ? imne::PinKind::Output : imne::PinKind::Input);
   {
     auto drawArea = ImVec2(20, 20);
-    imne::PinPivotAlignment(ImVec2(1.0f, 0.5f));
-    imne::PinPivotSize(ImVec2(0, 0));
+    imne::PinPivotAlignment(ImVec2(0.f, 0.5f));
+    imne::PinPivotSize(ImVec2(10, 0));
 
     // ImGui::SetCursorPos(pin.xy - ImVec2(style.pinSize * 0.05f, style.pinSize * 0.05f));
     char idString[34] = {0}; // itoa can output 33 bytes maximum
@@ -157,13 +157,13 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
     drawIcon(drawList, cursorPos, ImVec2(cursorPos.x + size, cursorPos.y + size), icon, !detached, color,
              detached ? Color(0) : style.pinFillColor);
 
-    if (!output)
-    {
-      ImGui::SameLine();
-      ImGui::Text(name);
-    }
-
     imne::EndPin();
+  }
+
+  if (!output)
+  {
+    ImGui::SameLine();
+    ImGui::Text(name);
   }
 }
 /*

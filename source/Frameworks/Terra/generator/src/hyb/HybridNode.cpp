@@ -452,7 +452,7 @@ void GpuScriptNode::set(uint32_t i, Parameter const& param)
     auto def    = std::get<ScalarValue>(param);
     if (isSourceType(format.type))
     {
-      entries[i].type = DataTypeEnum::eBuffer;
+      entries[i].type = format.scalarSubType;
       parameters.replace(entries[i].offset, sizeof(Source), def.value2);
     }
     else
