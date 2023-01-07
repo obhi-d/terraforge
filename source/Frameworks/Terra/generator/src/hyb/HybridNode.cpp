@@ -22,8 +22,8 @@ bool ClassicHybridNode::preExecute(HybridPipeline& pipe, std::vector<Parameter>&
     {
       auto idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
       if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, (*begin++)))
-          return false;
-      
+        return false;
+
       return true;
     },
     gpuMeta.preParams);
@@ -58,7 +58,7 @@ HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe)
       switch (gpuMeta.autoRegistry[idx].post(pipe, *this, i))
       {
       case AutoParam::eReportFailure:
-        
+
         result = HybridNode::Result::eFailed;
         return false;
       case AutoParam::eContinueIteration:
@@ -382,15 +382,16 @@ GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
   entries.resize(m.parameterDef.size());
   for (size_t i = 0; i < m.parameterDef.size(); ++i)
   {
-    auto format     = m.parameterDef[i].format;
-    auto def        = m.parameterDef[i].getDefault();
-    entries[i].type = format.scalarSubType;
+    auto format = m.parameterDef[i].format;
+    auto def    = m.parameterDef[i].getDefault();
     if (isSourceType(format.type))
     {
-      entries[i].offset = parameters.push(def.value4);
+      entries[i].type   = format.scalarSubType;
+      entries[i].offset = parameters.push(def.value2);
     }
     else
     {
+      entries[i].type = format.type;
       switch (format.type)
       {
       case DataTypeEnum::eEnum:
@@ -451,13 +452,17 @@ void GpuScriptNode::set(uint32_t i, Parameter const& param)
     auto def    = std::get<ScalarValue>(param);
     if (isSourceType(format.type))
     {
-      entries[i].type = DataTypeEnum::eFloat2;
+      entries[i].type = DataTypeEnum::eBuffer;
       parameters.replace(entries[i].offset, sizeof(Source), def.value2);
     }
     else
     {
+      entries[i].type = format.type;
       switch (format.type)
       {
+      case DataTypeEnum::eArray:
+        parameters.replace(entries[i].offset, sizeof(def.value16), def.value16);
+        break;
       case DataTypeEnum::eEnum:
         parameters.replace(entries[i].offset, sizeof(def.ivalue), def.ivalue);
         break;
@@ -508,13 +513,14 @@ Parameter GpuScriptNode::get(uint32_t i) const
 {
   if (isSourceType(entries[i].type))
   {
-
     return parameters.at<Source>(entries[i].offset);
   }
   else
   {
     switch (entries[i].type)
     {
+    case DataTypeEnum::eArray:
+      return ScalarValue(parameters.at<float16>(entries[i].offset));
     case DataTypeEnum::eEnum:
       return ScalarValue(parameters.at<int>(entries[i].offset));
     case DataTypeEnum::eFloat:
