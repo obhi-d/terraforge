@@ -219,7 +219,8 @@ NodeCmdExecute(output, builder, state, cmd)
 NodeCmdExecute(pass, builder, state, cmd)
 {
   builder.meta.passes.emplace_back();
-  builder.meta.passes.back().function = std::string(terra::getIdxParam(cmd, 0, "main"));
+  builder.meta.passes.back().type = terra::getIdxParam(cmd, 0, "fs") == "compute" ? GpuNodeMeta::PassType::eCompute
+                                                                                  : GpuNodeMeta::PassType::eFullscreen;
   return neo::retcode::e_success;
 }
 

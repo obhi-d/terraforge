@@ -94,6 +94,8 @@ inline gl::GLenum toGLDrawMode(GfxMesh::Type type)
     return gl::GL_LINES;
   case GfxMesh::eTriangles:
     return gl::GL_TRIANGLES;
+  case GfxMesh::eStrips:
+    return gl::GL_TRIANGLE_STRIP;
   case GfxMesh::ePoints:
     return gl::GL_POINTS;
   }

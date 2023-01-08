@@ -256,18 +256,28 @@ void SourceBuilderAdapter::scalar(std::string_view name, DataFormat df)
 
 void SourceBuilderAdapter::output(std::string_view name, DataFormat df)
 {
-  switch (df.declType)
+  if (type == SourceType::eComputeProgram)
   {
-  case ParamDeclTypeEnum::eDepthOutput:
-    if (df.preEval)
-      params.emplace_back("gl_FragDepth");
-    break;
-  default:
-    resources += fmt::format("#if defined(FragmentShader)\n  layout(location={}) out {} {};\n#endif\n", outputIdx++,
-                             toGlsl(df.scalarSubType), name);
-    if (df.preEval)
-      params.emplace_back(std::string(name));
-    break;
+    // outputs are declared as images
+    if (df.declType != ParamDeclTypeEnum::eWriteonlyImage2D && df.declType != ParamDeclTypeEnum::eImage2D)
+      df.declType = ParamDeclTypeEnum::eWriteonlyImage2D;
+    sampleImage(name, df);
+  }
+  else
+  {
+    switch (df.declType)
+    {
+    case ParamDeclTypeEnum::eDepthOutput:
+      if (df.preEval)
+        params.emplace_back("gl_FragDepth");
+      break;
+    default:
+      resources += fmt::format("#if defined(FragmentShader)\n  layout(location={}) out {} {};\n#endif\n", outputIdx++,
+                               toGlsl(df.scalarSubType), name);
+      if (df.preEval)
+        params.emplace_back(std::string(name));
+      break;
+    }
   }
 }
 

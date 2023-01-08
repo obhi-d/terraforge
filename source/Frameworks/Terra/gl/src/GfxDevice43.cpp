@@ -769,8 +769,6 @@ void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& materi
   gl43::glUseProgram(resources.programs[material.program].glhandle);
   apply(material.layout, material.ubo, material.bindings);
   draw(drawDesc);
-  gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
-  gl43::glDrawBuffer(gl::GL_BACK_LEFT);
 }
 
 void GfxDevice43::apply(GfxMaterial const& mat)

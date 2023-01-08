@@ -101,7 +101,10 @@ bool GpuNode::prepare(HybridPipeline& pipe)
   for (uint32_t pass = 0; pass < passCount; ++pass)
   {
     {
-      auto builder = get().getDevice().createSourceBuilder(ShaderLang::eGLSL, SourceType::eFullscreenGraphNode);
+      auto builder = get().getDevice().createSourceBuilder(ShaderLang::eGLSL, gpuMeta.passes[pass].type ==
+                                                                                  GpuNodeMeta::PassType::eFullscreen
+                                                                                ? SourceType::eFullscreenGraphNode
+                                                                                : SourceType::eComputeProgram);
       build(pipe, pass, *builder);
       // use GpuProgramBuilder to build a program
       newProgram->passes.emplace_back(std::move(builder->finalize()));
@@ -328,7 +331,8 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
     gpuPipe->passes[pass]->touch();
     auto state          = code.state;
     state.viewport.size = pipe.size();
-    auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[pass], pipe);
+    auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[pass], pipe,
+                                                gpuMeta.passes[pass].type == GpuNodeMeta::PassType::eCompute);
     uint32_t optionIdx  = 0;
     // check if any conditions have changed
     for (auto i : code.parameters)
@@ -468,7 +472,7 @@ void GpuImageNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>&)
   gpuPipe->passes[0]->touch();
   auto state          = code.state;
   state.viewport.size = pipe.size();
-  auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[0], pipe);
+  auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[0], pipe, false);
   uint32_t optionIdx  = 0;
   auto&    imageObj   = get().get<GpuImage>(image);
   if (imageObj.isPushable())
@@ -521,7 +525,7 @@ void GpuCurveNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>&)
   gpuPipe->passes[0]->touch();
   auto state          = code.state;
   state.viewport.size = pipe.size();
-  auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[0], pipe);
+  auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[0], pipe, false);
   uint32_t optionIdx  = 0;
   auto&    curveObj   = get().get<GpuCurveData>(curve);
   program.pushBuffer(curveObj.getHandle(version), curveObj.size(), meta.parameterDef[0].format);

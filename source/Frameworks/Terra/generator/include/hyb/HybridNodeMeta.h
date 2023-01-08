@@ -38,8 +38,16 @@ class GpuNodeMeta : public HybridNodeMeta
 {
 public:
   static constexpr uint32_t kOutputMask = 0x80000000;
+
+  enum class PassType
+  {
+    eCompute,
+    eFullscreen
+  };
+
   struct GpuPass
   {
+    PassType              type;
     std::string           function;
     std::string           extensions;
     std::string           shaderContent;

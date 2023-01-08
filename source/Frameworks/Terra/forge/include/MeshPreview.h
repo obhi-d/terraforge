@@ -39,10 +39,13 @@ public:
   Property<TextureFile> rocks               = Property<TextureFile>("@rockColor", "images/rocks_color.png");
   Property<TextureFile> terrain             = Property<TextureFile>("@rockColor", "images/terrain_color.png");
   Property<float>       planetScale         = Property<float>("@planetScale", 1.0f);
-  Property<float>       heightScale         = Property<float>("@heightScale", 1.0f);
+  Property<float>       heightScale         = Property<float>("@heightScale", 10.0f);
   Property<Rotation>    sunRotation         = Property<Rotation>("@sunRotation", 60.f, 80.f);
   Property<uint32_t>    shadowMapResolution = Property<uint32_t>("@shadowMapResolution", 2);
   Property<vec4>        layerWeights        = Property<vec4>("@layerWeights", vec4(0.25f));
+  Property<bool>        showWaterLevel      = Property<bool>("@showWaterLevel", true);
+  Property<float>       wavePeriod          = Property<float>("@wavePeriodicty", 0.5f);
+  Property<float>       waveLevel           = Property<float>("@waveLevel", -0.5f);
 
   Camera& getCamera()
   {
@@ -54,8 +57,10 @@ public:
 private:
   void updateShadowMap(TerraMainApp const&);
   void drawTerrain(TerraMainApp const&);
+  void drawWater(TerraMainApp const&);
   void drawAtmosphere(TerraMainApp const&);
   void buildShadowMapProgram();
+  void buildWaterProgram();
   void buildTerrainDrawProgram();
   void buildScatterProgram();
   void updateSunDir(glm::ivec2 viewportSize, MouseState& ms);
@@ -79,18 +84,22 @@ private:
   GfxImage::handle              rocksContrib;
   GfxMesh::handle               layout;
   GfxSampler::handle            layerSampler;
+  GfxSampler::handle            nearestSampler;
   GfxSampler::handle            shadowSampler;
   GfxPass::handle               shadowGen;
   ShaderProgramPtr              materialProg;
   ShaderProgramPtr              shadowProg;
   ShaderProgramPtr              atmosphereProg;
+  ShaderProgramPtr              waterProg;
   std::optional<ShaderMaterial> terrainMat;
   std::optional<ShaderMaterial> shadowMat;
   std::optional<ShaderMaterial> atmosphereMat;
+  std::optional<ShaderMaterial> waterMat;
   ShaderOptions                 shadowProgOptions;
   uvec2                         tileSize     = {0, 0};
   uvec2                         shadowMapRez = {512, 512};
   GfxMesh::Draw                 drawCall;
+  GfxMesh::Draw                 waterDrawCall;
   uint64_t                      setActorEventListener = 0;
   Canvas                        canvas;
 

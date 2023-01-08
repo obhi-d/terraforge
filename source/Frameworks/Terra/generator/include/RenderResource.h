@@ -69,6 +69,7 @@ enum class GfxStorageClass
 
 enum GfxBarrierFlags
 {
+  fNone          = 0,
   fUniformBuffer = 1 << 0,
   fAtomicCounter = 1 << 1,
   fStorageBuffer = 1 << 2,
@@ -357,6 +358,7 @@ struct GfxMesh
   {
     eLines,
     eTriangles,
+    eStrips,
     ePoints
   };
 

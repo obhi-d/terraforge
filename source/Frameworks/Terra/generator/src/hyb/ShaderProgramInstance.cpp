@@ -62,11 +62,13 @@ void ShaderProgramInstance::pushValue(Parameter const& value, DataTypeEnum type,
 
 void ShaderProgramInstance::pushImage(GfxImage::handle image, DataFormat df)
 {
+  barrier = (GfxBarrierFlags)(barrier | GfxBarrierFlags::fImageAccess | GfxBarrierFlags::fTextureAccess);
   program.pushTexture(image, pipeline.getSampler(df.sampler));
 }
 
 void ShaderProgramInstance::pushBuffer(GfxBuffer::handle buffer, uint32_t size, DataFormat df)
 {
+  barrier = (GfxBarrierFlags)(barrier | GfxBarrierFlags::fStorageBuffer);
   program.pushBuffer(buffer, 0, size);
 }
 
@@ -109,33 +111,51 @@ void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
 
 void ShaderProgramInstance::pushOutput(HybridBuffer::handle value, DataFormat format, bool clear, vec4 clearVal)
 {
-  auto const& sett = get().getSettings();
-
-  if (format.declType == ParamDeclTypeEnum::eDepthOutput)
+  if (isComputePass)
   {
-    depth.clear    = clear;
-    depth.depthVal = sett.reverseZ ? 1 - clearVal.x : clearVal.x;
-    depth.image    = pipeline.writeImage(value, clear);
+    program.pushImage(pipeline.writeImage(value, clear), 0,
+                      format.declType == ParamDeclTypeEnum::eImage2D ? GfxAccess::eReadWrite : GfxAccess::eWriteOnly,
+                      false);
   }
   else
   {
-    outputs[outputIdx].clear    = clear;
-    outputs[outputIdx].colorVal = clearVal;
-    outputs[outputIdx].image    = pipeline.writeImage(value, clear);
+    auto const& sett = get().getSettings();
 
-    outputIdx++;
+    if (format.declType == ParamDeclTypeEnum::eDepthOutput)
+    {
+      depth.clear    = clear;
+      depth.depthVal = sett.reverseZ ? 1 - clearVal.x : clearVal.x;
+      depth.image    = pipeline.writeImage(value, clear);
+    }
+    else
+    {
+      outputs[outputIdx].clear    = clear;
+      outputs[outputIdx].colorVal = clearVal;
+      outputs[outputIdx].image    = pipeline.writeImage(value, clear);
+
+      outputIdx++;
+    }
   }
 }
 
 void ShaderProgramInstance::run()
 {
-  auto& dev  = get().getDevice();
-  auto  pass = dev.createPass(std::span<GfxPass::Attachment>(outputs.data(), outputs.data() + outputIdx), depth);
-  dev.setState(state);
-  dev.beginPass(pass);
-  dev.postProcessDraw(program.get());
-  dev.endPass();
-  dev.destroy(pass);
+  auto& dev = get().getDevice();
+  if (isComputePass)
+  {
+    dev.barrier(barrier);
+    dev.dispatchCompute(program.get(), pipeline.size().x, pipeline.size().y);
+    dev.barrier(barrier);
+  }
+  else
+  {
+    auto pass = dev.createPass(std::span<GfxPass::Attachment>(outputs.data(), outputs.data() + outputIdx), depth);
+    dev.setState(state);
+    dev.beginPass(pass);
+    dev.postProcessDraw(program.get());
+    dev.endPass();
+    dev.destroy(pass);
+  }
 }
 
 } // namespace terra

@@ -52,6 +52,7 @@ void MeshPreview::deinit(TerraMainApp& app)
   app.getDevice()->destroy(shadowMapImage);
   app.getDevice()->destroy(layout);
   app.getDevice()->destroy(layerSampler);
+  app.getDevice()->destroy(nearestSampler);
   app.getDevice()->destroy(shadowSampler);
   app.getDevice()->destroy(shadowGen);
   // app.getDevice()->destroy(heights);
@@ -59,10 +60,12 @@ void MeshPreview::deinit(TerraMainApp& app)
 
   app.dispatcher().remove(setActorEventListener);
 
+  waterProg      = {};
   materialProg   = {};
   shadowProg     = {};
   atmosphereProg = {};
   pipeline       = {};
+  waterMat.reset();
   terrainMat.reset();
   shadowMat.reset();
   atmosphereMat.reset();
@@ -138,13 +141,18 @@ void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
 void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
 {
   GfxMesh::Layout mesh;
-  mesh.vertexBufferCount = 0;
-  layout                 = dev.createMeshLayout(mesh);
-  drawCall.layout        = layout;
+  layout                    = dev.createMeshLayout(mesh);
+  drawCall.layout           = layout;
+  waterDrawCall.type        = GfxMesh::Type::eStrips;
+  waterDrawCall.vertexCount = 4;
+  waterDrawCall.layout      = layout;
+
   buildShadowMapProgram();
   buildScatterProgram();
-  layerSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
-  shadowSampler = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
+  buildWaterProgram();
+  layerSampler   = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
+  nearestSampler = dev.createSampler(ImageSampling(SamplingType::eNearest, Tiling::eClampToEdge));
+  shadowSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
                                                   camera.isReverseZ() ? SampleCompare::eGT : SampleCompare::eLT));
 }
 
@@ -230,6 +238,8 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
 
   drawAtmosphere(app);
   drawTerrain(app);
+  if (showWaterLevel.get())
+    drawWater(app);
 
   canvas.end();
 
@@ -449,6 +459,67 @@ void MeshPreview::buildScatterProgram()
   builder->append(code);
   atmosphereProg = builder->finalize();
   assert(atmosphereProg->program);
+}
+
+void MeshPreview::drawWater(TerraMainApp const& app)
+{
+  if (!waterMat)
+    waterMat.emplace(*waterProg);
+
+  waterMat->reset();
+  uint32_t index   = 0;
+  auto     sunDir  = sunRotation.get().toDir();
+  auto     hrange  = pipeline->minMax();
+  auto     hfactor = (hrange.y - hrange.x);
+  hfactor          = hfactor > 0.f ? 1.f / hfactor : 0.f;
+  waterMat->pushScalar(camera.getViewProj());
+  waterMat->pushTexture(heights, nearestSampler);
+  waterMat->pushTexture(terrainColors, layerSampler);
+  waterMat->pushScalar(waveLevel.get());
+  waterMat->pushScalar(wavePeriod.get());
+  waterMat->pushScalar(get().frameNumber() * 0.01f);
+  waterMat->pushScalar(heightScale.get());
+  waterMat->pushScalar((float)(tileSize.x - 1) * .5f);
+  waterMat->pushScalar((float)(tileSize.y - 1) * .5f);
+
+  GfxState state;
+  state.blend[0].mode   = BlendMode::eAdditive;
+  state.nbBlendModes    = 1;
+  state.depthTest       = camera.isReverseZ() ? DepthTestMode::eGreaterEq : DepthTestMode::eLessEq;
+  state.polygonOffset   = true;
+  state.polyOffSlope    = 2.f;
+  state.polyOffBias     = 0.01f;
+  state.depthWrite      = false;
+  state.scissorsEnabled = false;
+  state.viewport.size   = canvas.getSize();
+  state.cullMode        = CullMode::eCullFront;
+  app.getDevice()->setState(state);
+  app.getDevice()->draw(waterDrawCall, waterMat->get());
+}
+
+void MeshPreview::buildWaterProgram()
+{
+  auto builder = app().getDevice()->createSourceBuilder(ShaderLang::eGLSL, SourceType::eShaderProgram);
+
+  builder->param("view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
+  builder->param("heights",
+                 DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
+  builder->param("layer_colors",
+                 DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eRgba32f, ParamDeclType::eSampler1DArray));
+  builder->param("water_level", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("wave_period", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("ftime", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("hscale", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("width", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("height", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->output("color_buffer",
+                  DataFormat(DataType::eImage, DataType::eFloat4, ImageFormat::eRgba8, ParamDeclType::eSampler2D));
+
+  auto code = fileContentToString("shaders/water.glsl");
+  builder->append(code);
+  waterProg = builder->finalize();
+
+  assert(waterProg->program);
 }
 
 void MeshPreview::tick()

@@ -118,6 +118,11 @@ public:
     return frame;
   }
 
+  inline void tick()
+  {
+    frame++;
+  }
+
   void destroy();
 
   inline static Terra& get()

@@ -243,6 +243,7 @@ void TerraMainApp::run()
 void TerraMainApp::tick()
 {
   viewer.tick();
+  get().tick();
   frame++;
 }
 

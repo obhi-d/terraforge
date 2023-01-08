@@ -40,18 +40,20 @@ struct ShaderProgramInstance
   void pushOutput(HybridBuffer::handle, DataFormat, bool clear, vec4 clearVal);
   void run();
 
-  ShaderProgramInstance(GfxState const& gfxstate, ShaderProgram const& iprogram, HybridPipeline& pipe)
-      : pipeline(pipe), program(iprogram), state(gfxstate)
+  ShaderProgramInstance(GfxState const& gfxstate, ShaderProgram const& iprogram, HybridPipeline& pipe, bool isCompute)
+      : pipeline(pipe), program(iprogram), state(gfxstate), isComputePass(isCompute)
   {}
 
   std::array<GfxPass::Attachment, 8> outputs;
   GfxPass::Attachment                depth;
 
+  GfxBarrierFlags barrier = GfxBarrierFlags::fNone;
   GfxState const& state;
   HybridPipeline& pipeline;
   ShaderMaterial  program;
 
-  uint32_t outputIdx = 0;
+  uint8_t outputIdx     = 0;
+  bool    isComputePass = false;
 };
 
 } // namespace terra
