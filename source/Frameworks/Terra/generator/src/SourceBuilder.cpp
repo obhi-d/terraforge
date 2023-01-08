@@ -22,6 +22,36 @@ ShaderProgram::~ShaderProgram()
   }
 }
 
+std::string_view toGlsl(ParamDeclTypeEnum declType)
+{
+  switch (declType)
+  {
+  case ParamDeclTypeEnum::eDepthOutput:
+    return "float";
+  case ParamDeclTypeEnum::eWriteonlyImage2D:
+  case ParamDeclTypeEnum::eReadonlyImage2D:
+  case ParamDeclTypeEnum::eImage2D:
+    return "image2D";
+  case ParamDeclTypeEnum::eStorageBuffer:
+  case ParamDeclTypeEnum::eWriteonlyStorageBuffer:
+  case ParamDeclTypeEnum::eReadonlyStorageBuffer:
+    return "buffer";
+  case ParamDeclTypeEnum::eSampler1D:
+    return "sampler1D";
+  case ParamDeclTypeEnum::eSampler2D:
+    return "sampler2D";
+  case ParamDeclTypeEnum::eSampler1DArray:
+    return "sampler1DArray";
+  case ParamDeclTypeEnum::eSampler2DShadow:
+    return "sampler2DShadow";
+  case ParamDeclTypeEnum::eTextureBuffer:
+    return "samplerBuffer";
+  default:
+  case ParamDeclTypeEnum::eScalar:
+    return "float";
+  }
+}
+
 ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept
 {
   if (program)
@@ -198,8 +228,9 @@ void SourceBuilderAdapter::param(std::string_view name, DataFormat df)
 {
   if (df.preEval)
   {
-    auto lname = localName(name);
-    content += fmt::format("{} {} = sample_{}(uv);\n", toGlsl(df.scalarSubType), lname, name);
+    auto             lname = localName(name);
+    std::string_view uv    = this->type == SourceType::eComputeProgram ? "" : "uv";
+    content += fmt::format("{} {} = sample_{}({});\n", toGlsl(df.scalarSubType), lname, name, uv);
     params.emplace_back(std::move(lname));
   }
 
@@ -408,7 +439,7 @@ ShaderProgramPtr SourceBuilderAdapter::finalize()
 // ====================== SourceBuilderBindless ====================
 void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df)
 {
-  std::string_view sampler = ParamDeclType::toString(df.declType);
+  std::string_view sampler = toGlsl(df.declType);
   resources += fmt::format("layout(location={}, bindless_sampler) uniform {} {};\n", location, sampler, name);
 
   GfxParamLayout::Entry entry;
@@ -419,7 +450,7 @@ void SourceBuilderBindless::sampleTexture(std::string_view name, DataFormat df)
 
 void SourceBuilderBindless::sampleImage(std::string_view name, DataFormat df)
 {
-  std::string_view type = ParamDeclType::toString(df.declType);
+  std::string_view type = toGlsl(df.declType);
   resources += fmt::format("layout(location={}, bindless_image, {}) uniform {} {} {};\n", location,
                            toGlsl(df.imageFormat), qualifier(df.declType), type, name);
 
@@ -442,7 +473,7 @@ void SourceBuilderBindless::sampleTextureBuffer(std::string_view name, DataForma
 // ====================== SourceBuilderBindless ====================
 void SourceBuilderBindful::sampleTexture(std::string_view name, DataFormat df)
 {
-  std::string_view sampler = ParamDeclType::toString(df.declType);
+  std::string_view sampler = toGlsl(df.declType);
   resources += fmt::format("layout(binding={}) uniform {} {};\n", texBinding, sampler, name);
 
   GfxParamLayout::Entry entry;
@@ -453,7 +484,7 @@ void SourceBuilderBindful::sampleTexture(std::string_view name, DataFormat df)
 
 void SourceBuilderBindful::sampleImage(std::string_view name, DataFormat df)
 {
-  std::string_view type = ParamDeclType::toString(df.declType);
+  std::string_view type = toGlsl(df.declType);
   resources += fmt::format("layout(binding={}, {}) uniform {} {} {};\n", imageBinding, toGlsl(df.imageFormat),
                            qualifier(df.declType), type, name);
 

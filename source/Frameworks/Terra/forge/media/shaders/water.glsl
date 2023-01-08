@@ -58,6 +58,18 @@ float noise( in vec2 p )
                      dot( hash( i + vec2(1,1) ), (f - vec2(1,1))*R ), u.x), u.y);
 }
 
+float turb( in vec2 uv )
+{ 	float f = 0.0;
+	
+   level=1.;
+    mat2 m = mat2( 1.6,  1.2, -1.2,  1.6 );
+    f  = 0.5000*noise( uv ); uv = m*uv; level++;
+	f += 0.2500*noise( uv ); uv = m*uv; level++;
+	f += 0.1250*noise( uv ); uv = m*uv; level++;
+	f += 0.0625*noise( uv ); uv = m*uv; level++;
+	return f/.9375; 
+}
+
 void main()
 {   
   // float height = 0.6 * texture(heights, uv).x;
@@ -69,7 +81,7 @@ void main()
   // if (water_level < height)
   //   alpha = 0.01;
   float alpha = 0.5;
-  float water_contrib = noise(wave_period * uv) * 0.5 + 0.5;
+  float water_contrib = turb(wave_period * uv) * 0.5 + 0.5;
   color_buffer = vec4(texture(layer_colors, vec2(water_contrib, 0.0)).xyz, alpha);
 }
 

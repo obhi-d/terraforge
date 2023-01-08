@@ -1,0 +1,17 @@
+name  : Combine;
+style : operators;
+
+
+output : heights (type = [source, float], semantic = heights, decltype = writeonlyImage2D);
+param  : source_a (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
+param  : source_b (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
+param  : scale_a (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
+param  : scale_b (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
+param  : operator (type = [enum, int], enums = ["Add", "Multiply", "Divide", "Power", "AbsAdd"], default = 0);
+
+pass compute
+{
+  shaders  : [combine.glsl];
+  in       : [source_a, source_b, scale_a, scale_b, operator];
+  out      : heights;
+}

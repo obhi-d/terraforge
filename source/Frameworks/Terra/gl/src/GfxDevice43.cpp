@@ -945,13 +945,11 @@ void GfxDevice43::makeResident(BindlessHandleGl::handle hdl, GfxAccess access)
   auto& bhdl = resources.bindlessHandles[hdl];
   assert(bhdl.type == BindlessHandleType::eImage);
   if (!bhdl.resident)
-    gl43ext::glMakeImageHandleResidentARB(bhdl.hdev, toGl(access));
-  else if (bhdl.access != access)
-    gl43ext::glMakeImageHandleResidentARB(bhdl.hdev, toGl(access));
+    gl43ext::glMakeImageHandleResidentARB(bhdl.hdev, toGl(GfxAccess::eReadWrite));
 
   bhdl.residentFrame = frame;
   bhdl.resident      = true;
-  bhdl.access        = access;
+  // bhdl.access        = access;
 
   if (!bhdl.active)
   {

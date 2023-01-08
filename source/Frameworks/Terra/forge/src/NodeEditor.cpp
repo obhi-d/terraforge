@@ -366,12 +366,12 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
         for (int32_t e = 0; e < def.maxEnum; ++e)
         {
           bool selected = (e == sv);
-          if (ImGui::Selectable(def.enumDisplayInfo[i].getName(), selected))
+          if (ImGui::Selectable(def.enumDisplayInfo[e].getName(), selected))
           {
-            if (i != sv)
+            if (e != sv)
             {
               sv = e;
-              node.param(e, sv);
+              node.param(i, sv);
             }
           }
           if (selected)

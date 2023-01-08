@@ -14,8 +14,8 @@ GpuNodeMeta::GpuPipelineMap GpuNodeMeta::shaderMaps;
 void GpuNodeMeta::prepare()
 {
   ShaderOptions::Dictionary dict;
-  std::string               imgPrefix  = "HasImage_";
-  std::string               buffPrefix = "HasBuffer_";
+  std::string               imgPrefix  = "HasSource_";
+  std::string               buffPrefix = "HasSource_";
   std::string               srcPrefix  = "HasSource_";
   std::string               boolPrefix = "HasOption_";
   std::string               enumPrefix = "Enum_";

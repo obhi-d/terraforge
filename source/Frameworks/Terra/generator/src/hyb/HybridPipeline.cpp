@@ -6,6 +6,9 @@
 
 namespace terra
 {
+/// ============ Debug ============
+constexpr bool Debug = false;
+/// ===============================
 
 HybridPipeline::HybridPipeline() {}
 
@@ -184,10 +187,6 @@ bool HybridPipeline::tick()
 
 void HybridPipeline::execute()
 {
-  /// ============ Debug ============
-  constexpr bool Debug = true;
-  /// ===============================
-
   if (ordered_.empty())
   {
     result_ = HybridNode::Result::eWaiting;

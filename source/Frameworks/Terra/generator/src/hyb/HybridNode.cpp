@@ -233,7 +233,8 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
   builder.options(shoption);
   builder.pushExtension(code.extensions);
   builder.append(code.shaderContent);
-  builder.call(code.function);
+  if (!code.function.empty())
+    builder.call(code.function);
 }
 
 void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machine)
@@ -363,7 +364,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
         {
           auto  source = std::get<Source>(p);
           auto& node   = get().get<HybridNode>(source.source);
-          node.push(pipe, program, i, source.secondary);
+          node.push(pipe, program, source.secondary, def.format);
         }
         else
         {
@@ -396,12 +397,10 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
   }
 }
 
-void GpuNode::push(HybridPipeline& pipe, ShaderProgramInstance& program, uint32_t paramIdx, uint32_t outIdx)
+void GpuNode::push(HybridPipeline& pipe, ShaderProgramInstance& program, uint32_t outIdx, DataFormat inFmt)
 {
-  auto&       ndat      = nodeData[pipe.id()];
-  auto const& gpuMeta   = static_cast<GpuNodeMeta const&>(meta);
-  uint32_t    optionIdx = 0;
-  program.pushValue(ndat.outputs[outIdx], meta.outputs[outIdx].format);
+  auto& ndat = nodeData[pipe.id()];
+  program.pushValue(ndat.outputs[outIdx], inFmt);
 }
 
 void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInstance& program)

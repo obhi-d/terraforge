@@ -21,9 +21,9 @@ struct BindlessHandleGl
   gl::GLuint64       hdev          = 0;
   uint32_t           residentFrame = 0;
   BindlessHandleType type          = BindlessHandleType::eNone;
-  GfxAccess          access        = GfxAccess::eReadOnly;
-  bool               active        = false;
-  bool               resident      = false;
+  // GfxAccess          access        = GfxAccess::eReadOnly;
+  bool active   = false;
+  bool resident = false;
 };
 
 struct GfxBufferGl : GfxBuffer

@@ -84,6 +84,11 @@ Smooth                  = """Smoothning""";
 Smooth.help             = """Apply cubic smoothing based on two sources and smoothing param (blender maxsmooth). Use output and input scaling to do max/min smoothing""";
 Smooth.tip              = """Smooth out terrain using two sources.""";
 Smooth.category         = """Operator""";
+Combine                 = """Combine""";
+Combine.tip             = """Combine two sources by an operation.""";
+Combine.help            = """Note that you can perform unary operation by modifying scaling (to 0).""";
+Combine.category        = """Operator""";
+
 
 source                     = """Source""";
 source.help                = """Accepts output data from other nodes.""";
@@ -179,3 +184,15 @@ output_scale               = """Output Scaling""";
 output_scale.help          = """Rescale output by a value to reduce or invert the result value""";
 output_scale.tip           = """Scaling applied to output value""";
 output_scale.category      = """General""";
+scale_a                    = """Scale A""";
+scale_a.help               = """Value used to modulate source A""";
+scale_a.tip                = """Source A multiplier""";
+scale_a.category           = """General""";
+scale_b                    = """Scale B""";
+scale_b.help               = """Value used to modulate source B""";
+scale_b.tip                = """Source B multiplier""";
+scale_b.category           = """General""";
+operator                   = """Operator""";
+operator.tip               = """Math operator to use""";
+operator.help              = """Only limited set of operations are provided""";
+operator.category          = """General""";

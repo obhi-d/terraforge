@@ -39,14 +39,14 @@ struct HybridNode : public Node
 
   HybridNode(NodeMeta const& m) : Node(m) {}
 
-  virtual Queue  getQueue() const                                                                  = 0;
-  virtual Result execute(HybridPipeline&)                                                          = 0;
-  virtual bool   preExecute(HybridPipeline&, std::vector<Parameter>&)                              = 0;
-  virtual void   executeImpl(HybridPipeline&, std::vector<Parameter>&)                             = 0;
-  virtual Result postExecute(HybridPipeline&)                                                      = 0;
-  virtual bool   prepare(HybridPipeline&)                                                          = 0;
-  virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&)                                 = 0;
-  virtual void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) = 0;
+  virtual Queue  getQueue() const                                                                 = 0;
+  virtual Result execute(HybridPipeline&)                                                         = 0;
+  virtual bool   preExecute(HybridPipeline&, std::vector<Parameter>&)                             = 0;
+  virtual void   executeImpl(HybridPipeline&, std::vector<Parameter>&)                            = 0;
+  virtual Result postExecute(HybridPipeline&)                                                     = 0;
+  virtual bool   prepare(HybridPipeline&)                                                         = 0;
+  virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&)                                = 0;
+  virtual void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) = 0;
 };
 
 struct ClassicHybridNode : public HybridNode
@@ -68,7 +68,7 @@ struct ClassicHybridNode : public HybridNode
     }
     return Result::eFailed;
   }
-  void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override {}
+  void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) override {}
   bool   preExecute(HybridPipeline&, std::vector<Parameter>&) override;
   void   executeImpl(HybridPipeline&, std::vector<Parameter>&) override {}
   Result postExecute(HybridPipeline&) override;
@@ -94,7 +94,7 @@ struct GpuNode : public ClassicHybridNode
   void   probe(HybridPipeline&, ProgramKey&, HashMachine&) override;
   void   build(HybridPipeline&, uint32_t pass, SourceBuilder&);
   void   executeImpl(HybridPipeline&, std::vector<Parameter>&) override;
-  void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t paramIdx, uint32_t outIdx) override;
+  void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) override;
   Result postExecute(HybridPipeline&) override;
 
   virtual void createResources(GpuNode::Data&, HybridPipeline&, GpuNodeMeta const&);
