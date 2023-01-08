@@ -295,14 +295,13 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
     shadowMat.emplace(*shadowProg);
 
   shadowMat->reset();
-  uint32_t index = 0;
-  shadowMat->pushScalar(index++, camera.getLightViewProj());
-  shadowMat->pushTexture(index++, heights, {});
-  shadowMat->pushScalar(index++, heightScale.get());
-  shadowMat->pushScalar(index++, tileSize.x);
-  shadowMat->pushScalar(index++, tileSize.y);
-  shadowMat->pushScalar(index++, 1.f / (float)tileSize.x);
-  shadowMat->pushScalar(index++, 1.f / (float)tileSize.y);
+  shadowMat->pushScalar(camera.getLightViewProj());
+  shadowMat->pushTexture(heights, {});
+  shadowMat->pushScalar(heightScale.get());
+  shadowMat->pushScalar(tileSize.x);
+  shadowMat->pushScalar(tileSize.y);
+  shadowMat->pushScalar(1.f / (float)tileSize.x);
+  shadowMat->pushScalar(1.f / (float)tileSize.y);
 
   GfxState state;
   state.blend[0].mode   = BlendMode::eDisabled;
@@ -315,7 +314,7 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
   app.getDevice()->setState(state);
 
   app.getDevice()->beginPass(shadowGen);
-  app.getDevice()->draw(drawCall, shadowMat->program.material, shadowMat->data);
+  app.getDevice()->draw(drawCall, shadowMat->get());
   app.getDevice()->endPass();
 
   shadowMapDirty = false;
@@ -336,7 +335,7 @@ void MeshPreview::buildShadowMapProgram()
   auto code = fileContentToString("shaders/shadow.glsl");
   builder->append(code);
   shadowProg = builder->finalize();
-  assert(shadowProg->material.program);
+  assert(shadowProg->program);
 }
 
 void MeshPreview::drawTerrain(TerraMainApp const& app)
@@ -350,22 +349,22 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   auto     hrange  = pipeline->minMax();
   auto     hfactor = (hrange.y - hrange.x);
   hfactor          = hfactor > 0.f ? 1.f / hfactor : 0.f;
-  terrainMat->pushScalar(index++, camera.getLightViewProjBias());
-  terrainMat->pushScalar(index++, camera.getViewProj());
-  terrainMat->pushScalar(index++, layerWeights.get());
-  terrainMat->pushScalar(index++, vec4(sunDir, sunIntensity.get()));
-  terrainMat->pushScalar(index++, vec2(hrange.x, hfactor));
-  terrainMat->pushTexture(index++, heights, {});
-  terrainMat->pushTexture(index++, terrainColors, layerSampler);
-  terrainMat->pushTexture(index++, shadowMapImage, shadowSampler);
-  terrainMat->pushTexture(index++, waterContrib, layerSampler);
-  terrainMat->pushTexture(index++, vegetationContrib, layerSampler);
-  terrainMat->pushTexture(index++, rocksContrib, layerSampler);
-  terrainMat->pushScalar(index++, heightScale.get());
-  terrainMat->pushScalar(index++, tileSize.x);
-  terrainMat->pushScalar(index++, tileSize.y);
-  terrainMat->pushScalar(index++, 1.f / (float)tileSize.x);
-  terrainMat->pushScalar(index++, 1.f / (float)tileSize.y);
+  terrainMat->pushScalar(camera.getLightViewProjBias());
+  terrainMat->pushScalar(camera.getViewProj());
+  terrainMat->pushScalar(layerWeights.get());
+  terrainMat->pushScalar(vec4(sunDir, sunIntensity.get()));
+  terrainMat->pushScalar(vec2(hrange.x, hfactor));
+  terrainMat->pushTexture(heights, {});
+  terrainMat->pushTexture(terrainColors, layerSampler);
+  terrainMat->pushTexture(shadowMapImage, shadowSampler);
+  terrainMat->pushTexture(waterContrib, layerSampler);
+  terrainMat->pushTexture(vegetationContrib, layerSampler);
+  terrainMat->pushTexture(rocksContrib, layerSampler);
+  terrainMat->pushScalar(heightScale.get());
+  terrainMat->pushScalar(tileSize.x);
+  terrainMat->pushScalar(tileSize.y);
+  terrainMat->pushScalar(1.f / (float)tileSize.x);
+  terrainMat->pushScalar(1.f / (float)tileSize.y);
 
   GfxState state;
   state.blend[0].mode   = BlendMode::eDisabled;
@@ -374,7 +373,7 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   state.viewport.size   = canvas.getSize();
   state.cullMode        = CullMode::eCullNone;
   app.getDevice()->setState(state);
-  app.getDevice()->draw(drawCall, terrainMat->program.material, terrainMat->data);
+  app.getDevice()->draw(drawCall, terrainMat->get());
 }
 
 void MeshPreview::buildTerrainDrawProgram()
@@ -411,7 +410,7 @@ void MeshPreview::buildTerrainDrawProgram()
   auto code = fileContentToString("shaders/terrain.glsl");
   builder->append(code);
   materialProg = builder->finalize();
-  assert(materialProg->material.program);
+  assert(materialProg->program);
 }
 
 void MeshPreview::drawAtmosphere(TerraMainApp const& app)
@@ -422,8 +421,8 @@ void MeshPreview::drawAtmosphere(TerraMainApp const& app)
   atmosphereMat->reset();
   uint32_t index  = 0;
   auto     sunDir = sunRotation.get().toDir();
-  atmosphereMat->pushScalar(index++, planetScale.get());
-  atmosphereMat->pushScalar(index++, vec4(sunDir * domeRadius * 10.f, sunIntensity.get()));
+  atmosphereMat->pushScalar(vec4(sunDir * domeRadius * 10.f, sunIntensity.get()));
+  atmosphereMat->pushScalar(planetScale.get());
 
   GfxState state;
   state.blend[0].mode   = BlendMode::eDisabled;
@@ -432,8 +431,7 @@ void MeshPreview::drawAtmosphere(TerraMainApp const& app)
   state.viewport.size   = canvas.getSize();
   state.cullMode        = CullMode::eCullNone;
   app.getDevice()->setState(state);
-  app.getDevice()->postProcessDraw(atmosphereMat->program.material.program, atmosphereMat->program.material.layout,
-                                   atmosphereMat->data);
+  app.getDevice()->postProcessDraw(atmosphereMat->get());
 }
 
 void MeshPreview::buildScatterProgram()
@@ -442,15 +440,15 @@ void MeshPreview::buildScatterProgram()
   shadowProgOptions.setOption((uint32_t)shadowMapResolution.get());
 
   builder->options(shadowProgOptions);
-  builder->param("scale", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("sun_data", DataFormat(DataType::eFloat4, DataType::eFloat4));
+  builder->param("scale", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->output("color_buffer",
                   DataFormat(DataType::eImage, DataType::eFloat4, ImageFormat::eRgba8, ParamDeclType::eSampler2D));
 
   auto code = fileContentToString("shaders/scatter.glsl");
   builder->append(code);
   atmosphereProg = builder->finalize();
-  assert(atmosphereProg->material.program);
+  assert(atmosphereProg->program);
 }
 
 void MeshPreview::tick()

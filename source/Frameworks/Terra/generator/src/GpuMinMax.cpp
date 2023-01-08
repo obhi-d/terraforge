@@ -8,6 +8,7 @@ namespace terra
 
 ShaderProgramPtr GpuMinMax::texturePass;
 ShaderProgramPtr GpuMinMax::bufferPass;
+ShaderProgramPtr GpuMinMax::normalizePass;
 
 void GpuMinMax::buildProgram()
 {
@@ -21,8 +22,8 @@ void GpuMinMax::buildProgram()
     builder->param("pixel_count", DataFormat(DataType::eUint, DataType::eUint));
     builder->param("data_src",
                    DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
-    builder->param("data_dst",
-                   DataFormat(DataType::eBuffer, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eWriteonlySSBO));
+    builder->param("data_dst", DataFormat(DataType::eBuffer, DataType::eFloat, ImageFormat::eFloat,
+                                          ParamDeclType::eWriteonlyStorageBuffer));
     builder->append(code);
     texturePass = builder->finalize();
   }
@@ -33,17 +34,32 @@ void GpuMinMax::buildProgram()
     builder->param("pixel_count", DataFormat(DataType::eUint, DataType::eUint));
     builder->param("skip_block_size", DataFormat(DataType::eUint, DataType::eUint));
     builder->param("data_buffer",
-                   DataFormat(DataType::eBuffer, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSSBO));
+                   DataFormat(DataType::eBuffer, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eStorageBuffer));
 
     builder->append(code);
     bufferPass = builder->finalize();
+  }
+
+  {
+    auto norm    = fileContentToString("shaders/normalize.glsl");
+    auto builder = get().getDevice().createSourceBuilder(ShaderLang::eGLSL, SourceType::eComputeProgram);
+
+    builder->option("Pass_Normalize");
+    builder->param("source",
+                   DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eImage2D));
+    builder->param("data_buffer",
+                   DataFormat(DataType::eBuffer, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eStorageBuffer));
+
+    builder->append(code);
+    normalizePass = builder->finalize();
   }
 }
 
 void GpuMinMax::destroy()
 {
-  texturePass = {};
-  bufferPass  = {};
+  texturePass   = {};
+  bufferPass    = {};
+  normalizePass = {};
 }
 
 vec2 GpuMinMax::execute(GfxImage::handle image, glm::uvec2 size, uint32_t block)
@@ -59,38 +75,47 @@ vec2 GpuMinMax::execute(GfxImage::handle image, glm::uvec2 size, uint32_t block)
   dev.barrier(GfxBarrierFlags::fTextureAccess);
   // texture pass
   {
-    auto     tex   = ShaderMaterial(*texturePass);
-    uint32_t index = 0;
-    tex.pushScalar(index++, size.x);
-    tex.pushScalar(index++, block);
-    tex.pushScalar(index++, size.x * size.y);
-    tex.pushTexture(index++, image, {});
-    tex.pushBuffer(index++, buffer, 0, bufferSize);
+    auto tex = ShaderMaterial(*texturePass);
+    tex.pushScalar(size.x);
+    tex.pushScalar(block);
+    tex.pushScalar(size.x * size.y);
+    tex.pushTexture(image, {});
+    tex.pushBuffer(buffer, 0, bufferSize);
     // texture pass
-    dev.dispatchCompute(tex.program.material, tex.data, scratchBufferSize, 1);
+    dev.dispatchCompute(tex.get(), scratchBufferSize, 1);
   }
 
-  // gpu pass
-  auto     buff = ShaderMaterial(*bufferPass);
-  uint32_t skip = 1;
-  while (scratchBufferSize > 1)
   {
-    buff.reset();
-    uint32_t index = 0;
-    buff.pushScalar(index++, block);
-    buff.pushScalar(index++, scratchBufferSize);
-    buff.pushScalar(index++, skip);
-    buff.pushBuffer(index++, buffer, 0, bufferSize);
-    scratchBufferSize = (scratchBufferSize + block - 1) / block;
-    dev.barrier(GfxBarrierFlags::fStorageBuffer);
-    dev.dispatchCompute(buff.program.material, buff.data, scratchBufferSize, 1);
-    skip *= block;
+
+    // reduce pass
+    auto     buff = ShaderMaterial(*bufferPass);
+    uint32_t skip = 1;
+    while (scratchBufferSize > 1)
+    {
+      buff.reset();
+      uint32_t index = 0;
+      buff.pushScalar(block);
+      buff.pushScalar(scratchBufferSize);
+      buff.pushScalar(skip);
+      buff.pushBuffer(buffer, 0, bufferSize);
+      scratchBufferSize = (scratchBufferSize + block - 1) / block;
+      dev.barrier(GfxBarrierFlags::fStorageBuffer);
+      dev.dispatchCompute(buff.get(), scratchBufferSize, 1);
+      skip *= block;
+    }
   }
 
-  float hrange[2] = {0.f, 0.f};
-  dev.readBuffer(buffer, 0, std::span<ubyte_t>((ubyte_t*)hrange, sizeof(hrange)));
+  // final normalize pass
+  {
+    auto norm = ShaderMaterial(*normalizePass);
+    norm.pushImage(image, 0, GfxAccess::eReadWrite, false);
+    norm.pushBuffer(buffer, 0, 8);
+    dev.barrier(GfxBarrierFlags::fStorageBuffer);
+    dev.dispatchCompute(norm.get(), size.x, size.y);
+  }
   dev.destroy(buffer);
-  return vec2{hrange[0], hrange[1]};
+
+  return vec2{-1.0f, 1.0f};
 }
 
 } // namespace terra

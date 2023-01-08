@@ -10,28 +10,30 @@ namespace terra
 
 ShaderProgram::~ShaderProgram()
 {
-  if (material.program)
+  if (program)
   {
-    get().getDevice().destroy(material.program);
-    material.program = {};
+    get().getDevice().destroy(program);
+    program = {};
   }
-  if (material.layout)
+  if (layout)
   {
-    get().getDevice().destroy(material.layout);
-    material.layout = {};
+    get().getDevice().destroy(layout);
+    layout = {};
   }
 }
 
 ShaderProgram& ShaderProgram::operator=(ShaderProgram&& other) noexcept
 {
-  if (material.program)
-    get().getDevice().destroy(material.program);
-  if (material.layout)
-    get().getDevice().destroy(material.layout);
-  material       = other.material;
-  frame          = other.frame;
-  bindings       = std::move(other.bindings);
-  other.material = {};
+  if (program)
+    get().getDevice().destroy(program);
+  if (layout)
+    get().getDevice().destroy(layout);
+  program       = other.program;
+  layout        = other.layout;
+  frame         = other.frame;
+  entries       = std::move(other.entries);
+  other.program = {};
+  other.layout  = {};
   return *this;
 }
 
@@ -88,12 +90,12 @@ std::string_view qualifier(ParamDeclTypeEnum type)
   switch (type)
   {
   case ParamDeclTypeEnum::eReadonlyImage2D:
-  case ParamDeclTypeEnum::eReadonlySSBO:
+  case ParamDeclTypeEnum::eReadonlyStorageBuffer:
     return "restrict readonly";
   case ParamDeclTypeEnum::eImage2D:
-  case ParamDeclTypeEnum::eSSBO:
+  case ParamDeclTypeEnum::eStorageBuffer:
     return "restrict";
-  case ParamDeclTypeEnum::eWriteonlySSBO:
+  case ParamDeclTypeEnum::eWriteonlyStorageBuffer:
   case ParamDeclTypeEnum::eWriteonlyImage2D:
     return "restrict writeonly";
   }
@@ -110,9 +112,9 @@ GfxBindType toBindType(ParamDeclTypeEnum type)
   case ParamDeclTypeEnum::eReadonlyImage2D:
   case ParamDeclTypeEnum::eImage2D:
     return GfxBindType::eStorageImage2D;
-  case ParamDeclTypeEnum::eSSBO:
-  case ParamDeclTypeEnum::eWriteonlySSBO:
-  case ParamDeclTypeEnum::eReadonlySSBO:
+  case ParamDeclTypeEnum::eStorageBuffer:
+  case ParamDeclTypeEnum::eWriteonlyStorageBuffer:
+  case ParamDeclTypeEnum::eReadonlyStorageBuffer:
     return GfxBindType::eStorageBuffer;
   case ParamDeclTypeEnum::eScalar:
     return GfxBindType::eFloat;
@@ -203,9 +205,9 @@ void SourceBuilderAdapter::param(std::string_view name, DataFormat df)
 
   switch (df.declType)
   {
-  case ParamDeclTypeEnum::eWriteonlySSBO:
-  case ParamDeclTypeEnum::eSSBO:
-  case ParamDeclTypeEnum::eReadonlySSBO:
+  case ParamDeclTypeEnum::eWriteonlyStorageBuffer:
+  case ParamDeclTypeEnum::eStorageBuffer:
+  case ParamDeclTypeEnum::eReadonlyStorageBuffer:
     sampleSSBO(name, df);
     break;
   case ParamDeclTypeEnum::eSampler1D:
@@ -230,55 +232,26 @@ void SourceBuilderAdapter::param(std::string_view name, DataFormat df)
 
 void SourceBuilderAdapter::scalar(std::string_view name, DataFormat df)
 {
-  std::string_view loc     = {};
-  uint32_t         consume = 1;
+  std::string loc  = {};
+  uint32_t    size = 1;
   if (df.type == DataTypeEnum::eArray)
   {
-    loc     = "[16]";
-    consume = 16;
+    loc  = fmt::format("[{}]", (uint32_t)df.maxArraySize);
+    size = df.maxArraySize;
   }
 
   auto type = toGlsl(df.scalarSubType);
   auto sv   = name;
-  resources += fmt::format("layout(location={}) uniform  {} {}{};\n", location, type, sv, loc);
+  ubo += fmt::format("  {} {}{};\n", type, sv, loc);
   if (df.preEval)
     params.emplace_back(sv);
 
-  GfxParamLayout::Entry entry;
-  entry.index = location;
-  location += consume;
+  GfxParamLayout::UBOEntry entry;
+  entry.name            = name;
+  entry.maxArraySize    = df.maxArraySize;
+  entry.baseElementSize = ParamHelper::scalarSize(df.scalarSubType);
 
-  switch (df.scalarSubType)
-  {
-  case DataTypeEnum::eUint:
-    entry.type = df.type == DataTypeEnum::eArray ? GfxBindType::eUint16 : GfxBindType::eUint;
-    break;
-  case DataTypeEnum::eUint2:
-    entry.type = GfxBindType::eUint2;
-    break;
-  case DataTypeEnum::eInt:
-    entry.type = df.type == DataTypeEnum::eArray ? GfxBindType::eInt16 : GfxBindType::eInt;
-    break;
-  case DataTypeEnum::eInt2:
-    entry.type = GfxBindType::eInt2;
-    break;
-  case DataTypeEnum::eFloat:
-    entry.type = df.type == DataTypeEnum::eArray ? GfxBindType::eFloat16 : GfxBindType::eFloat;
-    break;
-  case DataTypeEnum::eFloat2:
-    entry.type = GfxBindType::eFloat2;
-    break;
-  case DataTypeEnum::eFloat3:
-    entry.type = GfxBindType::eFloat3;
-    break;
-  case DataTypeEnum::eFloat4:
-    entry.type = GfxBindType::eFloat4;
-    break;
-  case DataTypeEnum::eMat4:
-    entry.type = GfxBindType::eMat4;
-    break;
-  }
-  entries.push_back(entry);
+  uboEntries.push_back(entry);
 }
 
 void SourceBuilderAdapter::output(std::string_view name, DataFormat df)
@@ -332,6 +305,8 @@ void SourceBuilderAdapter::packCommon(std::vector<std::string_view>& snapshots)
     snapshots.emplace_back(extensions);
   if (!optionHeader.empty())
     snapshots.emplace_back(optionHeader);
+  if (!ubo.empty())
+    snapshots.emplace_back(ubo);
   if (!resources.empty())
     snapshots.emplace_back(resources);
   if (!includes.empty())
@@ -379,10 +354,17 @@ GfxProgram::handle SourceBuilderAdapter::makeComputeProgram(std::vector<std::str
   return dev.createProgram(code, GfxProgram::fCompute);
 }
 
+void SourceBuilderAdapter::packUbo()
+{
+  if (ubo.empty())
+    return;
+  ubo = fmt::format("layout(binding = 0) uniform Params {{\n{}\n}};\n", ubo);
+}
+
 ShaderProgramPtr SourceBuilderAdapter::finalize()
 {
   ShaderProgramPtr pret = std::make_shared<ShaderProgram>();
-
+  packUbo();
   std::vector<std::string_view> snapshots;
   packCommon(snapshots);
   GfxProgram::handle program;
@@ -402,16 +384,13 @@ ShaderProgramPtr SourceBuilderAdapter::finalize()
     break;
   }
 
-  if (program)
-  {
-    auto& dev              = get().getDevice();
-    pret->material.program = program;
-    pret->material.layout  = dev.createLayout(entries);
-    pret->bindings         = acl::dynamic_array<GfxBindType>((uint32_t)entries.size());
-    for (uint32_t i = 0; i < pret->bindings.size(); ++i)
-      pret->bindings[i] = entries[i].type;
-    pret->frame = get().frameNumber();
-  }
+  assert(program);
+
+  auto& dev     = get().getDevice();
+  pret->program = program;
+  pret->layout  = dev.createLayout(program, entries, uboEntries, pret->refl);
+  pret->entries = std::move(entries);
+  pret->frame   = get().frameNumber();
 
   return pret;
 }

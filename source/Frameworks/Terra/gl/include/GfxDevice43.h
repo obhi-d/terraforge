@@ -50,7 +50,7 @@ public:
   void readImage(GfxImage::handle image, std::span<ubyte_t> out) override;
   void dispatchCompute(GfxProgram::handle shader, GfxDescriptorSet::handle descriptorSet, uint32_t numGroupX,
                        uint32_t numGroupY) override;
-  void dispatchCompute(GfxMaterial2 const& material, Blob const& data, uint32_t numGroupX, uint32_t numGroupY) override;
+  void dispatchCompute(GfxMaterial2 const& material, uint32_t numGroupX, uint32_t numGroupY) override;
   void barrier(GfxBarrierFlags flags) override;
   std::shared_ptr<ShaderBuilder> createShaderBuilder(ShaderLang) override;
   std::shared_ptr<SourceBuilder> createSourceBuilder(ShaderLang, SourceType) override;
@@ -59,14 +59,16 @@ public:
   virtual GfxMesh::handle createMeshLayout(GfxMesh::Layout const&);
   virtual void            destroy(GfxMesh::handle);
   void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& material) override;
-  void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material, Blob const& data) override;
+  void                    draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material) override;
   void                    flushStates() override;
 
-  GfxParamLayout::handle createLayout(std::span<GfxParamLayout::Entry const> entries) override;
+  GfxParamLayout::handle createLayout(GfxProgram::handle, std::span<GfxParamLayout::Entry const> entries,
+                                      std::span<GfxParamLayout::UBOEntry const> uboEntries,
+                                      GfxParamLayout::UBOReflect&               uboRefl) override;
   void                   destroy(GfxParamLayout::handle) override;
-  void postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout, Blob const& data) override;
-  GfxProgram::handle createProgram(std::span<std::string_view> code, uint32_t activeStages) override;
-  GfxProgram::handle createFullscreenProgram(std::span<std::string_view> code) override;
+  void                   postProcessDraw(GfxMaterial2 const& material) override;
+  GfxProgram::handle     createProgram(std::span<std::string_view> code, uint32_t activeStages) override;
+  GfxProgram::handle     createFullscreenProgram(std::span<std::string_view> code) override;
 
   Caps getCaps() const
   {
@@ -83,7 +85,7 @@ protected:
   void                     setTextureParameters(gl::GLenum target, GfxImage::Swizzle);
   void                     releaseTexture(GfxImage::handle);
   void                     apply(GfxMaterial const&);
-  void                     apply(GfxParamLayout::handle descriptorLayout, Blob const& data);
+  void                     apply(GfxParamLayout::handle descriptorLayout, UboData const& uboData, Blob const& bindings);
   void                     bindSampledTexture(gl::GLenum target, uint32_t index, SampledTexture const&);
   void                     bindTextureBuffer(uint32_t index, TextureBuffer const&);
   virtual void             draw(GfxMesh::Draw const& drawDesc);
@@ -98,26 +100,18 @@ protected:
   void       init();
   gl::GLuint createShader(ShaderType, std::span<gl::GLchar const*> sources, std::span<gl::GLint> lengths);
 
-  struct UBO
-  {
-    // UBO will be thrown away at end frame
-    gl::GLuint buffer    = 0;
-    uint32_t   capacity  = 0;
-    uint32_t   available = 0;
-  };
-
   enum Flags
   {
     HasFramebuffer = 1 << 0,
   };
 
-  std::vector<UBO> ubo;
-  gl::GLuint       fullscreenVS  = 0;
-  gl::GLuint       fullscreenVAO = 0;
-  GlGfxState       state;
-  GfxFeature       features;
-  GfxResources     resources;
-  uint32_t         frame = 0;
-  uint32_t         flags = 0;
+  std::vector<gl::GLuint> uboList;
+  gl::GLuint              fullscreenVS  = 0;
+  gl::GLuint              fullscreenVAO = 0;
+  GlGfxState              state;
+  GfxFeature              features;
+  GfxResources            resources;
+  uint32_t                frame = 0;
+  uint32_t                flags = 0;
 };
 } // namespace terra

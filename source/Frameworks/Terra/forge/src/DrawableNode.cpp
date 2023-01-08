@@ -36,7 +36,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
       auto const& def = meta.parameterDef[param];
       if (def.format.hidden)
         continue;
-      if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
+      if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eSource ||
           def.format.type == DataTypeEnum::ePostProcess)
       {
         auto p = PinData(PinData::input, id, param);
@@ -47,7 +47,7 @@ DrawableNode::DrawableNode(TerraMainApp& app, HDataSource id, ImVec2 pos)
     for (uint32_t out = 0, end = (uint32_t)meta.outputs.size(); out < end; ++out)
     {
       auto const& def = meta.outputs[out];
-      if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eBuffer ||
+      if (def.format.type == DataTypeEnum::eInput || def.format.type == DataTypeEnum::eSource ||
           def.format.type == DataTypeEnum::ePostProcess)
       {
         auto p = PinData(PinData::output, id, out);
@@ -87,6 +87,7 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
   case DataTypeEnum::ePostProcess:
     icon = IconType::Square;
     break;
+  case DataTypeEnum::eSource:
   case DataTypeEnum::eBuffer:
     icon = IconType::Diamond;
     switch (format.scalarSubType)
@@ -166,108 +167,7 @@ void DrawableNode::drawPinIcon(NodeEditor& ne, NodeStyle const& style, imne::Pin
     ImGui::Text(name);
   }
 }
-/*
 
-void DrawableNode::drawParameter(NodeEditor& ne, NodeStyle const& style, Node& node, uint32_t i)
-{
-  ParameterMeta const& def   = node.meta.parameterDef[i];
-  Parameter const&     param = node.param(i);
-  auto&                pin   = parameters[i];
-  switch (def.format.type)
-  {
-  case DataTypeEnum::eFloat:
-  case DataTypeEnum::eFloat2:
-  case DataTypeEnum::eInt:
-  case DataTypeEnum::eInt2:
-  case DataTypeEnum::eBool:
-  {
-    ScalarValue value = std::get<ScalarValue>(param);
-    if (drawScalar(style, def, def.format.type, value))
-      node.param(i, value);
-  }
-  break;
-  case DataTypeEnum::eEnum:
-    // draw combo
-    {
-      ScalarValue value = std::get<ScalarValue>(param);
-      if (drawNodeEditorCombo(def.displayInfo.name, def.enumValues, value.ivalue2[0], value.ivalue2[1]))
-        node.param(i, value);
-      else
-        node.state(i, value);
-    }
-    break;
-  case DataTypeEnum::eCurveData:
-    ImGui::TextUnformatted(ICON_FA_BEZIER_CURVE);
-    ImGui::SameLine();
-    ImGui::TextUnformatted(def.displayInfo.getName());
-    break;
-  case DataTypeEnum::eInput:
-    ImGui::TextUnformatted(def.displayInfo.getName());
-    ImGui::Dummy(ImVec2(4, 4));
-    break;
-  case DataTypeEnum::ePostProcess:
-    ImGui::TextUnformatted(def.displayInfo.getName());
-    break;
-  case DataTypeEnum::eBuffer:
-    if (std::holds_alternative<Source>(param))
-    {
-      ImGui::TextUnformatted(def.displayInfo.getName());
-    }
-    else
-    {
-      ScalarValue value = std::get<ScalarValue>(param);
-      ImGui::SetNextItemWidth(style.fixedWidth);
-      if (drawScalar(style, def, def.format.scalarSubType, value))
-        node.param(i, value);
-    }
-    break;
-  case DataTypeEnum::eImage:
-  {
-    ImGui::TextUnformatted(ICON_FA_FILE_IMAGE);
-    ImGui::SameLine();
-    ImGui::TextUnformatted(def.displayInfo.getName());
-    break;
-  }
-  break;
-  }
-  if (ne.acceptsAction())
-  {
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
-      ne.showHelp(pin.id);
-    else if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-      ne.showTooltip(pin.id);
-  }
-}
-
-void DrawableNode::updateThumbnailFromImage(Image& image)
-{
-  app().getDevice()->destroy(thumbnail);
-  thumbnail = 0;
-  if (!image.isLoaded())
-    image.load();
-  if (!image.isLoaded())
-    return;
-  //
-  float du = 1.f / ThumbnailSize;
-
-  float                           v       = 0;
-  std::unique_ptr<std::uint8_t[]> sampled = std::make_unique<std::uint8_t[]>((int)ThumbnailSize * (int)ThumbnailSize);
-  for (int y = 0; y < (int)ThumbnailSize; y++, v += du)
-  {
-    float u = 0;
-    for (int x = 0; x < (int)ThumbnailSize; x++, u += du)
-    {
-      // nearest sampler
-      sampled[x + y * (int)ThumbnailSize] = static_cast<std::uint8_t>(image.sample(u, v) * 255.f);
-    }
-  }
-  thumbnail = app().getDevice()->create2DImage(
-    GfxStorageClass::eStaticDeviceReadonly, (uint32_t)ThumbnailSize, (uint32_t)ThumbnailSize, ImageFormatEnum::eUnorm8,
-    (ubyte_t const*)sampled.get(),
-    GfxImage::Swizzle{GfxImage::eRed, GfxImage::eRed, GfxImage::eRed, GfxImage::eOne});
-  thumbnailVersion = image.getVersion();
-}
-*/
 bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne, uint32_t styleFlags)
 {
   auto&       source = get().get<DataSource>(id);
@@ -285,34 +185,6 @@ bool DrawableNode::begin(TerraMainApp& app, ImguiBackend& backend, NodeEditor& n
 
   switch (source.getType())
   {
-    //  case DataSource::Type::eCurve:
-    //    // todo Editable text
-    //    ImGui::TextUnformatted((const char*)static_cast<CurveData&>(source).name.c_str());
-    //    headerMaxY = ImGui::GetCursorPosY() + 2;
-    //    if (drawCurveEditor(app, static_cast<CurveData&>(source)))
-    //    {
-    //      source.updateVersion();
-    //    }
-    //    break;
-    //  case DataSource::Type::eImage:
-    //  {
-    //    // static const char* browseImage = "@browseImage"_lsc;
-    //    auto name = static_cast<Image&>(source).source.filename().string();
-    //    if (ImGui::Button(ICON_FA_FILE_IMAGE))
-    //    {
-    //      ne.changeImage(id);
-    //    }
-    //
-    //    if (!name.empty())
-    //    {
-    //      ImGui::SameLine();
-    //      ImGui::TextUnformatted(name.c_str(), name.data() + name.length());
-    //    }
-    //    headerMaxY = ImGui::GetCursorPosY() + 2;
-    //    if (thumbnailVersion != source.getVersion())
-    //      updateThumbnailFromImage(static_cast<Image&>(source));
-    //    break;
-    //  }
   case DataSource::Type::eNode:
   {
     auto&       node = static_cast<Node&>(source);
@@ -356,13 +228,13 @@ void DrawableNode::end(TerraMainApp& app, ImguiBackend& backend, NodeEditor& ne,
       auto     src = node.param(id);
       drawPinIcon(ne, style, parameters[i].pinId(), (const char*)meta.parameterDef[id].displayInfo.name.data(),
                   meta.parameterDef[id].format, false,
-                  std::holds_alternative<Source>(src) && std::get<Source>(src).source);
+                  !(std::holds_alternative<Source>(src) && std::get<Source>(src).source));
     }
     for (uint32_t i = 0, end = (uint32_t)outputs.size(); i < end; ++i)
     {
       uint32_t id = outputs[i].id();
       drawPinIcon(ne, style, outputs[i].pinId(), (const char*)meta.outputs[id].displayInfo.name.data(),
-                  meta.outputs[id].format, true, !node.isDetached());
+                  meta.outputs[id].format, true, node.isDetached());
     }
   }
   }

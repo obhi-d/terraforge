@@ -174,85 +174,164 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
                             uint32_t param)
 {
   auto const& style = app.getTheme();
-  auto        v     = std::get<ScalarValue>(node.param(param));
-  bool        set   = false;
-  static_assert(DataTypeEnum::kCount == 18);
-  switch (def.format.scalarSubType)
+  auto        v     = node.param(param);
+
+  static_assert(DataTypeEnum::kCount == 19);
+  switch (v.index())
   {
-  case DataTypeEnum::eUint2:
-  case DataTypeEnum::eInt2:
+  case ParamHelper::eFloat:
   {
+    auto value = std::get<float>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt2(def.displayInfo.getName(), &v.ivalue2.x, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
-      set = true;
-  }
-  break;
-  case DataTypeEnum::eUint:
-  case DataTypeEnum::eInt:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragInt(def.displayInfo.getName(), &v.ivalue, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
-      set = true;
-  }
-  break;
-  case DataTypeEnum::eFloat2:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat2(def.displayInfo.getName(), &v.value2.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
-      set = true;
-  }
-  break;
-  case DataTypeEnum::eFloat3:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat3(def.displayInfo.getName(), &v.value3.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
-      set = true;
-  }
-  break;
-  case DataTypeEnum::eFloat4:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
-      set = true;
-  }
-  break;
-  case DataTypeEnum::eMat4:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[0].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
-      set = true;
-    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[1].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
-      set = true;
-    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[2].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
-      set = true;
-    if (ImGui::DragFloat4(def.displayInfo.getName(), &v.value4x4[3].x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
-      set = true;
-  }
-  break;
-  case DataTypeEnum::eFloat:
-  {
-    ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::DragFloat(def.displayInfo.getName(), &v.value, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+    if (ImGui::DragFloat(def.displayInfo.getName(), &value, def.ranges.stepVal.fval, def.ranges.minVal.fval,
                          def.ranges.maxVal.fval))
-      set = true;
+    {
+      value = std::clamp(value, def.ranges.minVal.fval, def.ranges.maxVal.fval);
+      node.param(param, value);
+    }
   }
   break;
-  case DataTypeEnum::eBool:
+  case ParamHelper::eUint:
   {
+    auto value = std::get<uint32_t>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt(def.displayInfo.getName(), (int*)&value, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
+    {
+      value = std::clamp(value, (uint32_t)def.ranges.minVal.ival, (uint32_t)def.ranges.maxVal.ival);
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eInt:
+  {
+    auto value = std::get<int>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt(def.displayInfo.getName(), (int*)&value, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
+    {
+      value = std::clamp(value, def.ranges.minVal.ival, def.ranges.maxVal.ival);
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eFloat2:
+  {
+    auto value = std::get<glm::vec2>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat2(def.displayInfo.getName(), &value.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+    {
+      value = glm::clamp(value, vec2(def.ranges.minVal.fval), vec2(def.ranges.maxVal.fval));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eUint2:
+  {
+    auto value = std::get<glm::uvec2>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt2(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
+                        def.ranges.maxVal.ival))
+    {
+      value.x = std::clamp(value.x, (uint32_t)def.ranges.minVal.ival, (uint32_t)def.ranges.maxVal.ival);
+      value.y = std::clamp(value.y, (uint32_t)def.ranges.minVal.ival, (uint32_t)def.ranges.maxVal.ival);
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eInt2:
+  {
+    auto value = std::get<glm::ivec2>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt2(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
+                        def.ranges.maxVal.ival))
+    {
+      value = glm::clamp(value, glm::ivec2(def.ranges.minVal.ival), glm::ivec2(def.ranges.maxVal.ival));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eFloat3:
+  {
+    auto value = std::get<glm::vec3>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat3(def.displayInfo.getName(), &value.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+    {
+      value = glm::clamp(value, vec3(def.ranges.minVal.fval), vec3(def.ranges.maxVal.fval));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eUint3:
+  {
+    auto value = std::get<glm::uvec3>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt3(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
+                        def.ranges.maxVal.ival))
+    {
+      value =
+        glm::clamp(value, glm::uvec3((uint32_t)def.ranges.minVal.ival), glm::uvec3((uint32_t)def.ranges.maxVal.ival));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eInt3:
+  {
+    auto value = std::get<glm::ivec3>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt3(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
+                        def.ranges.maxVal.ival))
+    {
+      value = glm::clamp(value, glm::ivec3(def.ranges.minVal.ival), glm::ivec3(def.ranges.maxVal.ival));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eFloat4:
+  {
+    auto value = std::get<glm::vec4>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragFloat4(def.displayInfo.getName(), &value.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
+                          def.ranges.maxVal.fval))
+    {
+      value = glm::clamp(value, vec4(def.ranges.minVal.fval), vec4(def.ranges.maxVal.fval));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eUint4:
+  {
+    auto value = std::get<glm::uvec4>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt4(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
+                        def.ranges.maxVal.ival))
+    {
+      value =
+        glm::clamp(value, glm::uvec4((uint32_t)def.ranges.minVal.ival), glm::uvec4((uint32_t)def.ranges.maxVal.ival));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eInt4:
+  {
+    auto value = std::get<glm::ivec4>(v);
+    ImGui::SetNextItemWidth(style.fixedWidth * 2);
+    if (ImGui::DragInt4(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
+                        def.ranges.maxVal.ival))
+    {
+      value = glm::clamp(value, glm::ivec4(def.ranges.minVal.ival), glm::ivec4(def.ranges.maxVal.ival));
+      node.param(param, value);
+    }
+  }
+  break;
+  case ParamHelper::eBool:
+  {
+    auto value = std::get<bool>(v);
     ImGui::SetNextItemWidth(style.fixedWidth);
-    if (ImGui::Checkbox(def.displayInfo.getName(), &v.bvalue))
-      set = true;
+    if (ImGui::Checkbox(def.displayInfo.getName(), &value))
+      node.param(param, value);
   }
   }
-  if (set)
-    node.param(param, v);
 }
 
 void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const& def, Node& node,
@@ -260,7 +339,7 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
 {
   Parameter param = node.param(i);
   bool      isSrc = std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source);
-  static_assert(DataTypeEnum::kCount == 18);
+  static_assert(DataTypeEnum::kCount == 19);
   switch (def.format.type)
   {
   case DataTypeEnum::eFloat:
@@ -281,17 +360,17 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
   case DataTypeEnum::eEnum:
     // draw combo
     {
-      auto sv = std::get<ScalarValue>(node.param(i));
-      if (ImGui::BeginCombo(def.displayInfo.getName(), def.enumDisplayInfo[sv.uvalue].getName()))
+      auto sv = std::get<int>(node.param(i));
+      if (ImGui::BeginCombo(def.displayInfo.getName(), def.enumDisplayInfo[sv].getName()))
       {
-        for (uint32_t e = 0; e < def.maxEnum; ++e)
+        for (int32_t e = 0; e < def.maxEnum; ++e)
         {
-          bool selected = (e == sv.uvalue);
+          bool selected = (e == sv);
           if (ImGui::Selectable(def.enumDisplayInfo[i].getName(), selected))
           {
-            if (i != sv.uvalue)
+            if (i != sv)
             {
-              sv.uvalue = e;
+              sv = e;
               node.param(e, sv);
             }
           }
@@ -319,7 +398,7 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
     break;
   case DataTypeEnum::ePostProcess:
     break;
-  case DataTypeEnum::eBuffer:
+  case DataTypeEnum::eSource:
     if (!isSrc)
       drawScalar(app, backend, def, node, i);
     break;

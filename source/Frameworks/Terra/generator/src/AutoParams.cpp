@@ -2,6 +2,7 @@
 #include "Node.h"
 #include "NodeMeta.h"
 #include "Pipeline.h"
+#include <numbers>
 
 namespace terra
 {
@@ -14,9 +15,9 @@ Semantic                                  Semantic::vegetation("vegetation");
 AutoParam::Result postIteration(Pipeline& pipe, Node& node, uint32_t i)
 {
   auto value = node.param(i);
-  if (std::holds_alternative<ScalarValue>(value))
+  if (std::holds_alternative<uint32_t>(value))
   {
-    if (pipe.iteration() < (uint32_t)std::get<ScalarValue>(value).ivalue)
+    if (pipe.iteration() < std::get<uint32_t>(value))
       return AutoParam::eContinueIteration;
   }
   return AutoParam::eOk;
@@ -24,63 +25,105 @@ AutoParam::Result postIteration(Pipeline& pipe, Node& node, uint32_t i)
 
 bool preFSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  pout = ScalarValue(float(pipe.seed() % 100));
+  pout = float(pipe.seed() % 100);
   return true;
 }
 
 bool preSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  pout = ScalarValue((int)pipe.seed());
+  pout = pipe.seed();
   return true;
 }
 
 bool preFrequency(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  pout = ScalarValue(pipe.frequency() * std::get<ScalarValue>(node.param(i)).value);
+  pout = pipe.frequency() * std::get<float>(node.param(i));
   return true;
 }
 
 bool preStart(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  pout = ScalarValue(vec2((float)pipe.offset().x + (pipe.size().x * pipe.tile().x),
-                          (float)pipe.offset().y + (pipe.size().y * pipe.tile().y)));
+  pout = vec2((float)pipe.offset().x + (pipe.size().x * pipe.tile().x),
+              (float)pipe.offset().y + (pipe.size().y * pipe.tile().y));
   return true;
 }
 
 bool preSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  pout = ScalarValue(vec2((float)pipe.size().x, (float)pipe.size().y));
+  pout = vec2((float)pipe.size().x, (float)pipe.size().y);
   return true;
 }
 
 bool preRecipSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  pout = ScalarValue(vec2(1.0f / (float)pipe.size().x, 1.0f / (float)pipe.size().y));
+  pout = vec2(1.0f / (float)pipe.size().x, 1.0f / (float)pipe.size().y);
   return true;
 }
 
 bool preMinMax(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto val = pipe.minMax();
-  pout = ScalarValue(vec2(val.x, 1.0f / (val.y - val.x)));
+  pout     = vec2(val.x, 1.0f / (val.y - val.x));
   return true;
 }
 
 void changeExpOctave(Node& node, uint32_t i)
 {
-  auto        exponentVal = std::get<ScalarValue>(node.param(Semantic("exponent"))).value;
-  auto        octaves     = std::get<ScalarValue>(node.param(Semantic("octaves"))).uvalue;
-  auto        lacunarity  = std::get<ScalarValue>(node.param(Semantic("lacunarity"))).value;
-  ScalarValue sv;
+  auto exponentVal = std::get<float>(node.param(Semantic("exponent")));
+  auto octaves     = std::get<uint32_t>(node.param(Semantic("octaves")));
+  auto lacunarity  = std::get<float>(node.param(Semantic("lacunarity")));
+  auto param       = node.param(i);
+  if (!std::holds_alternative<ArrayFloatRef>(param))
+    param = std::make_shared<ArrayFloat>();
+  ArrayFloatRef afr = std::get<ArrayFloatRef>(param);
+  afr->resize(16);
   for (uint32_t i = 0, e = std::min<uint32_t>(octaves, 16); i < e; ++i)
-    sv.value16[i] = std::pow(lacunarity, -float(i) * exponentVal);
-  node.state(i, sv);
+    afr->at(i) = std::pow(lacunarity, -float(i) * exponentVal);
+  node.state(i, afr);
 }
 
 void changeBlurFactor(Node& node, uint32_t i)
 {
-  auto blurWindow = std::get<ScalarValue>(node.param(Semantic("blur_window"))).uvalue;
-  node.state(i, ScalarValue(1.0f / ((float(blurWindow) * 2.0f + 1.0f) * (float(blurWindow) * 2.0f + 1.0f))));
+  auto blurWindow = std::get<int32_t>(node.param(Semantic("blur_window")));
+  node.state(i, float(1.0f / ((float(blurWindow) * 2.0f + 1.0f) * (float(blurWindow) * 2.0f + 1.0f))));
+}
+
+void changeGaussBlurKernel(Node& node, uint32_t i)
+{
+  auto param = node.param(i);
+  if (!std::holds_alternative<BufferRef>(param))
+    param = std::make_shared<GpuBuffer>();
+  auto     buffer       = std::get<BufferRef>(param);
+  auto     stdDeviation = std::get<float>(node.param(Semantic("blur_stddev")));
+  float    sqDeviation  = 2 * stdDeviation * stdDeviation;
+  auto     blurWindow   = std::get<int32_t>(node.param(Semantic("blur_window")));
+  float    k            = 1.0f / (std::numbers::pi_v<float> * sqDeviation);
+  uint32_t count        = (blurWindow * 2 + 1) * (blurWindow * 2 + 1);
+  buffer->setSize(count * sizeof(vec3) + 4);
+  buffer->ensure();
+  auto byteData        = buffer->map(0, count * sizeof(vec3) + 4);
+  *(uint32_t*)byteData = count;
+  byteData += 4;
+  vec3* factor = (vec3*)byteData;
+  int   ki     = 0;
+  float sum    = 0;
+  for (int x = -blurWindow; x <= blurWindow; ++x)
+  {
+    float nx = float(x);
+    for (int y = -blurWindow; y <= blurWindow; ++y)
+    {
+      float ny     = float(y);
+      factor[ki].x = nx;
+      factor[ki].y = ny;
+      factor[ki].z = k * std::exp(-(nx * nx + ny * ny) / sqDeviation);
+      sum += factor[ki].z;
+      ki++;
+    }
+  }
+  for (int k = 0; k < ki; ++k)
+    factor[k].z /= sum;
+  buffer->unmap();
+  node.state(i, buffer);
 }
 
 void registerAutos()
@@ -96,5 +139,7 @@ void registerAutos()
   NodeMeta::registerAuto(Semantic("expoctave"), changeExpOctave,
                          {Semantic("exponent"), Semantic("octaves"), Semantic("lacunarity")});
   NodeMeta::registerAuto(Semantic("blur_factor"), changeBlurFactor, {Semantic("blur_window")});
+  NodeMeta::registerAuto(Semantic("gauss_blur_factor"), changeGaussBlurKernel,
+                         {Semantic("blur_window"), Semantic("blur_stddev")});
 }
 } // namespace terra

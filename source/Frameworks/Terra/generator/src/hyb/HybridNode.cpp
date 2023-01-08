@@ -15,13 +15,13 @@ bool ClassicHybridNode::preExecute(HybridPipeline& pipe, std::vector<Parameter>&
 {
   auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
   parameters.clear();
-  parameters.resize((size_t)std::popcount(gpuMeta.preParams), ScalarValue());
-  auto begin = parameters.begin();
+  parameters.reserve((size_t)std::popcount(gpuMeta.preParams));
   return forEachBit(
     [&](auto i)
     {
+      parameters.emplace_back(gpuMeta.parameterDef[i].getDefault());
       auto idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
-      if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, (*begin++)))
+      if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, parameters.back()))
         return false;
 
       return true;
@@ -105,7 +105,7 @@ bool GpuNode::prepare(HybridPipeline& pipe)
       build(pipe, pass, *builder);
       // use GpuProgramBuilder to build a program
       newProgram->passes.emplace_back(std::move(builder->finalize()));
-      if (!newProgram->passes.back()->material.program)
+      if (!newProgram->passes.back()->program)
       {
         logError("Failed to compile program: {}", gpuMeta.getCode(pass).function);
         return false;
@@ -162,16 +162,34 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       else
         paramAct = Action::ePushConstant;
     }
+    else if (std::holds_alternative<BufferRef>(p))
+    {
+      auto r = std::get<BufferRef>(p);
+      if (r && r->getSize() > 0)
+        shoption.setOption(optionIdx);
+      else
+        paramAct = Action::ePushConstant;
+    }
     else
       paramAct = Action::ePushConstant;
 
     switch (def.format.type)
     {
+    case DataTypeEnum::eBuffer:
+    {
+      auto r = std::get<BufferRef>(p);
+      if (paramAct == Action::ePushConstant)
+        builder.scalar(def.name(), def.format);
+      else
+        builder.param(def.name(), def.format);
+      optionIdx++;
+      break;
+    }
     case DataTypeEnum::eCurveData:
     case DataTypeEnum::eImage:
     case DataTypeEnum::eInput:
     case DataTypeEnum::ePostProcess:
-    case DataTypeEnum::eBuffer:
+    case DataTypeEnum::eSource:
       switch (paramAct)
       {
       case Action::eSampleNode:
@@ -196,12 +214,12 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       builder.param(def.name(), def.format);
       break;
     case DataTypeEnum::eBool:
-      if (std::get<ScalarValue>(p).bvalue)
+      if (std::get<bool>(p))
         shoption.setOption(optionIdx);
       optionIdx++;
       break;
     case DataTypeEnum::eEnum:
-      shoption.setOption(optionIdx + (uint32_t)std::get<ScalarValue>(p).ivalue);
+      shoption.setOption(optionIdx + (uint32_t)std::get<int>(p));
       optionIdx += def.maxEnum;
       break;
     }
@@ -245,6 +263,16 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
         optionIdx++;
       }
     }
+    else if (std::holds_alternative<BufferRef>(p))
+    {
+      auto r = std::get<BufferRef>(p);
+      if (r && r->getSize() > 0)
+      {
+        option.active++;
+        shoption.setOption(optionIdx);
+      }
+      optionIdx++;
+    }
     else
     {
       switch (def.format.type)
@@ -254,15 +282,16 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
       case DataTypeEnum::eInput:
       case DataTypeEnum::ePostProcess:
       case DataTypeEnum::eBuffer:
+      case DataTypeEnum::eSource:
         optionIdx++;
         break;
       case DataTypeEnum::eBool:
-        if (std::get<ScalarValue>(p).bvalue)
+        if (std::get<bool>(p))
           shoption.setOption(optionIdx);
         optionIdx++;
         break;
       case DataTypeEnum::eEnum:
-        shoption.setOption(optionIdx + (uint32_t)std::get<ScalarValue>(p).ivalue);
+        shoption.setOption(optionIdx + (uint32_t)std::get<int>(p));
         optionIdx += def.maxEnum;
         break;
       }
@@ -309,11 +338,23 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
 
       switch (def.format.type)
       {
+      case DataTypeEnum::eBuffer:
+        if (ndat.activeOptions.isSet(optionIdx))
+        {
+          auto source = std::get<BufferRef>(p);
+          program.pushBuffer(source->buffer(), source->getSize(), def.format);
+        }
+        else
+        {
+          program.pushValue(p, def.format.scalarSubType, def.format.scalarSubType);
+        }
+        optionIdx++;
+        break;
       case DataTypeEnum::eCurveData:
       case DataTypeEnum::eImage:
       case DataTypeEnum::eInput:
       case DataTypeEnum::ePostProcess:
-      case DataTypeEnum::eBuffer:
+      case DataTypeEnum::eSource:
         if (ndat.activeOptions.isSet(optionIdx))
         {
           auto  source = std::get<Source>(p);
@@ -322,7 +363,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
         }
         else
         {
-          program.pushValue(std::get<ScalarValue>(p), def.format.type, def.format.scalarSubType);
+          program.pushValue(p, def.format.scalarSubType, def.format.scalarSubType);
         }
         optionIdx++;
         break;
@@ -336,7 +377,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
       case DataTypeEnum::eFloat4:
       case DataTypeEnum::eMat4:
       case DataTypeEnum::eArray:
-        program.pushValue(std::get<ScalarValue>(p), def.format.type, def.format.scalarSubType);
+        program.pushValue(p, def.format.type, def.format.scalarSubType);
         break;
       case DataTypeEnum::eBool:
         optionIdx++;
@@ -379,60 +420,11 @@ HybridNode::Result GpuNode::postExecute(HybridPipeline& pipe)
 //============== GpuScriptNode ==================
 GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
 {
-  entries.resize(m.parameterDef.size());
+  parameters.reserve(m.parameterDef.size());
   for (size_t i = 0; i < m.parameterDef.size(); ++i)
   {
     auto format = m.parameterDef[i].format;
-    auto def    = m.parameterDef[i].getDefault();
-    if (isSourceType(format.type))
-    {
-      entries[i].type   = format.scalarSubType;
-      entries[i].offset = parameters.push(def.value2);
-    }
-    else
-    {
-      entries[i].type = format.type;
-      switch (format.type)
-      {
-      case DataTypeEnum::eEnum:
-        entries[i].offset = parameters.push(def.ivalue);
-        break;
-      case DataTypeEnum::eFloat:
-        entries[i].offset = parameters.push(def.value);
-        break;
-      case DataTypeEnum::eArray:
-        entries[i].offset = parameters.push(def.value16);
-        break;
-      case DataTypeEnum::eFloat2:
-        entries[i].offset = parameters.push(def.value2);
-        break;
-      case DataTypeEnum::eFloat3:
-        entries[i].offset = parameters.push(def.value3);
-        break;
-      case DataTypeEnum::eFloat4:
-        entries[i].offset = parameters.push(def.value4);
-        break;
-      case DataTypeEnum::eMat4:
-        entries[i].offset = parameters.push(def.value4x4);
-        break;
-      case DataTypeEnum::eBool:
-      case DataTypeEnum::eInt:
-        entries[i].offset = parameters.push(def.ivalue);
-        break;
-      case DataTypeEnum::eInt2:
-        entries[i].offset = parameters.push(def.ivalue2);
-        break;
-      case DataTypeEnum::eUint:
-        entries[i].offset = parameters.push(def.uvalue);
-        break;
-      case DataTypeEnum::eUint2:
-        entries[i].offset = parameters.push(def.uvalue2);
-        break;
-      default:
-        entries[i].offset = parameters.push(def.value);
-        break;
-      }
-    }
+    parameters.emplace_back(m.parameterDef[i].getDefault());
   }
   forEachBit(
     [&](auto i)
@@ -446,106 +438,12 @@ GpuScriptNode::GpuScriptNode(NodeMeta const& m) : GpuNode(m)
 
 void GpuScriptNode::set(uint32_t i, Parameter const& param)
 {
-  if (std::holds_alternative<ScalarValue>(param))
-  {
-    auto format = meta.parameterDef[i].format;
-    auto def    = std::get<ScalarValue>(param);
-    if (isSourceType(format.type))
-    {
-      entries[i].type = format.scalarSubType;
-      parameters.replace(entries[i].offset, sizeof(Source), def.value2);
-    }
-    else
-    {
-      entries[i].type = format.type;
-      switch (format.type)
-      {
-      case DataTypeEnum::eArray:
-        parameters.replace(entries[i].offset, sizeof(def.value16), def.value16);
-        break;
-      case DataTypeEnum::eEnum:
-        parameters.replace(entries[i].offset, sizeof(def.ivalue), def.ivalue);
-        break;
-      case DataTypeEnum::eFloat:
-        parameters.replace(entries[i].offset, sizeof(def.value), def.value);
-        break;
-      case DataTypeEnum::eFloat2:
-        parameters.replace(entries[i].offset, sizeof(def.value2), def.value2);
-        break;
-      case DataTypeEnum::eFloat3:
-        parameters.replace(entries[i].offset, sizeof(def.value3), def.value3);
-        break;
-      case DataTypeEnum::eFloat4:
-        parameters.replace(entries[i].offset, sizeof(def.value4), def.value4);
-        break;
-      case DataTypeEnum::eMat4:
-        parameters.replace(entries[i].offset, sizeof(def.value4x4), def.value4x4);
-        break;
-      case DataTypeEnum::eBool:
-      case DataTypeEnum::eInt:
-        parameters.replace(entries[i].offset, sizeof(def.ivalue), def.ivalue);
-        break;
-      case DataTypeEnum::eInt2:
-        parameters.replace(entries[i].offset, sizeof(def.ivalue2), def.ivalue2);
-        break;
-      case DataTypeEnum::eUint:
-        parameters.replace(entries[i].offset, sizeof(def.uvalue), def.uvalue);
-        break;
-      case DataTypeEnum::eUint2:
-        parameters.replace(entries[i].offset, sizeof(def.uvalue2), def.uvalue2);
-        break;
-      default:
-        parameters.replace(entries[i].offset, sizeof(def.value), def.value);
-        break;
-      }
-    }
-  }
-  else
-  {
-    auto format     = meta.parameterDef[i].format;
-    auto def        = std::get<Source>(param);
-    entries[i].type = format.type;
-    parameters.replace(entries[i].offset, sizeof(Source), def);
-  }
+  parameters[i] = param;
 }
 
 Parameter GpuScriptNode::get(uint32_t i) const
 {
-  if (isSourceType(entries[i].type))
-  {
-    return parameters.at<Source>(entries[i].offset);
-  }
-  else
-  {
-    switch (entries[i].type)
-    {
-    case DataTypeEnum::eArray:
-      return ScalarValue(parameters.at<float16>(entries[i].offset));
-    case DataTypeEnum::eEnum:
-      return ScalarValue(parameters.at<int>(entries[i].offset));
-    case DataTypeEnum::eFloat:
-      return ScalarValue(parameters.at<float>(entries[i].offset));
-    case DataTypeEnum::eFloat2:
-      return ScalarValue(parameters.at<vec2>(entries[i].offset));
-    case DataTypeEnum::eFloat3:
-      return ScalarValue(parameters.at<vec3>(entries[i].offset));
-    case DataTypeEnum::eFloat4:
-      return ScalarValue(parameters.at<vec4>(entries[i].offset));
-    case DataTypeEnum::eMat4:
-      return ScalarValue(parameters.at<mat4>(entries[i].offset));
-    case DataTypeEnum::eBool:
-    case DataTypeEnum::eInt:
-      return ScalarValue(parameters.at<int>(entries[i].offset));
-    case DataTypeEnum::eInt2:
-      return ScalarValue(parameters.at<ivec2>(entries[i].offset));
-    case DataTypeEnum::eUint:
-      return ScalarValue(parameters.at<uint32_t>(entries[i].offset));
-    case DataTypeEnum::eUint2:
-      return ScalarValue(parameters.at<uvec2>(entries[i].offset));
-    default:
-      return ScalarValue(parameters.at<float>(entries[i].offset));
-    }
-  }
+  return parameters[i];
 }
 //============== GpuImageNode ==================
 GpuImageNode::GpuImageNode(NodeMeta const& m) : GpuNode(m)

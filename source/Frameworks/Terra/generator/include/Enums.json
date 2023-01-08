@@ -40,13 +40,14 @@
       "Float4",
       "Mat4",
       "Image",
-      "Buffer",
+      "Source",
       "Input",
       "CurveData",
       "Bool",
       "PostProcess",
       "Enum",
-      "Array"
+      "Array",
+      "Buffer"
     ]
   },
   {
@@ -58,9 +59,9 @@
     "stringModifier": "lowerCamelCase",
     "values": [
       "None",
-      "ReadonlySSBO",
-      "WriteonlySSBO",
-      "SSBO",
+      "ReadonlyStorageBuffer",
+      "WriteonlyStorageBuffer",
+      "StorageBuffer",
       "ReadonlyImage2D",
       "WriteonlyImage2D",
       "Image2D",

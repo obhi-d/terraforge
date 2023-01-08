@@ -105,14 +105,8 @@ struct GpuNode : public ClassicHybridNode
 
 struct GpuScriptNode : public GpuNode
 {
-  struct Entry
-  {
-    uint32_t     offset;
-    DataTypeEnum type;
-  };
 
-  Blob               parameters;
-  std::vector<Entry> entries;
+  std::vector<Parameter> parameters;
 
   static bool isSourceType(DataTypeEnum ty)
   {

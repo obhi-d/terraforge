@@ -9,10 +9,11 @@ namespace terra
 // Source builder is bindless shader builder
 struct ShaderProgram
 {
-  acl::dynamic_array<GfxBindType> bindings;
-
-  GfxMaterial2 material;
-  uint32_t     frame = 0;
+  std::vector<GfxParamLayout::Entry> entries;
+  GfxParamLayout::UBOReflect         refl;
+  GfxProgram::handle                 program;
+  GfxParamLayout::handle             layout;
+  uint32_t                           frame = 0;
 
   ShaderProgram()                              = default;
   ShaderProgram(ShaderProgram const&) noexcept = delete;
@@ -29,28 +30,27 @@ using ShaderProgramPtr = std::shared_ptr<ShaderProgram>;
 
 struct ShaderMaterial
 {
-  ShaderMaterial(ShaderProgram const& prog) : program(prog) {}
+  ShaderMaterial(ShaderProgram const& prog) : program(prog), ubo(prog.refl.uboSize) {}
 
-  inline void pushBuffer(uint32_t index, GfxBuffer::handle buff, uint32_t offset, uint32_t size);
-  inline void pushTexture(uint32_t index, GfxImage::handle handle, GfxSampler::handle);
-  inline void pushTexBuffer(uint32_t index, GfxBuffer::handle handle, ImageFormatEnum format);
-  inline void pushImage(uint32_t index, GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered);
-  inline void pushScalar(uint32_t index, int value);
-  inline void pushScalar(uint32_t index, uint32_t value);
-  inline void pushScalar(uint32_t index, ivec2 value);
-  inline void pushScalar(uint32_t index, uvec2 value);
-  inline void pushScalar(uint32_t index, float value);
-  inline void pushScalar(uint32_t index, vec2 value);
-  inline void pushScalar(uint32_t index, vec3 value);
-  inline void pushScalar(uint32_t index, vec4 value);
-  inline void pushScalar(uint32_t index, mat4 value);
-  inline void pushScalar(uint32_t index, float16 value);
-  inline void pushScalar(uint32_t index, int16 value);
-  inline void pushScalar(uint32_t index, uint16 value);
+  inline void pushBuffer(GfxBuffer::handle buff, uint32_t offset, uint32_t size);
+  inline void pushTexture(GfxImage::handle handle, GfxSampler::handle);
+  inline void pushTexBuffer(GfxBuffer::handle handle, ImageFormatEnum format);
+  inline void pushImage(GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered);
+  template <typename T>
+  inline void pushScalar(T const& value);
+  inline void pushArray(std::span<ubyte_t const> data);
   inline void reset();
 
-  ShaderProgram const& program;
-  Blob                 data;
+  inline GfxMaterial2 get() const
+  {
+    return GfxMaterial2(program.program, program.layout, bindings, ubo);
+  }
+
+  ShaderProgram const&        program;
+  Blob                        bindings;
+  acl::dynamic_array<ubyte_t> ubo;
+  uint32_t                    curBindingIdx = 0;
+  uint32_t                    curScalarIdx  = 0;
 };
 
 struct GpuPipeline
@@ -101,6 +101,7 @@ struct SourceBuilderAdapter : SourceBuilder
   ShaderProgramPtr finalize();
 
   void               scalar(std::string_view name, DataFormat df) final;
+  void               packUbo();
   void               packCommon(std::vector<std::string_view>&);
   GfxProgram::handle makeGpuNode(std::vector<std::string_view>&);
   GfxProgram::handle makePostProcess(std::vector<std::string_view>&);
@@ -115,8 +116,9 @@ struct SourceBuilderAdapter : SourceBuilder
     return std::format("lp_{}", input);
   }
 
-  std::vector<GfxParamLayout::Entry> entries;
-  std::vector<std::string>           params;
+  std::vector<GfxParamLayout::Entry>    entries;
+  std::vector<GfxParamLayout::UBOEntry> uboEntries;
+  std::vector<std::string>              params;
 
   SourceType type        = SourceType::eFullscreenGraphNode;
   uint32_t   outputIdx   = 0;
@@ -130,6 +132,7 @@ struct SourceBuilderAdapter : SourceBuilder
   std::string functions;
   std::string input;
   std::string content;
+  std::string ubo;
 
   uint32_t location = 0;
 };
@@ -158,138 +161,79 @@ struct SourceBuilderBindful : SourceBuilderAdapter
   uint32_t imageBinding = 0;
 };
 
-inline void ShaderMaterial::pushBuffer(uint32_t index, GfxBuffer::handle buff, uint32_t offset, uint32_t size)
+inline void ShaderMaterial::pushBuffer(GfxBuffer::handle buff, uint32_t offset, uint32_t size)
 {
-  assert(program.bindings[index] == StorageBuffer::type);
+  assert(program.entries[curBindingIdx].type == StorageBuffer::type);
   StorageBuffer ssbo;
   ssbo.buffer = buff;
   ssbo.offset = offset;
   ssbo.size   = size;
-  data.push(ssbo);
-  index++;
+  bindings.push(ssbo);
+  curBindingIdx++;
 }
 
-inline void ShaderMaterial::pushTexture(uint32_t index, GfxImage::handle handle, GfxSampler::handle sampler)
+inline void ShaderMaterial::pushTexture(GfxImage::handle handle, GfxSampler::handle sampler)
 {
-  assert(std::find(SampledTexture::type.begin(), SampledTexture::type.end(), program.bindings[index]) !=
+  assert(std::find(SampledTexture::type.begin(), SampledTexture::type.end(), program.entries[curBindingIdx].type) !=
          SampledTexture::type.end());
   SampledTexture stex;
   stex.texture = handle;
   stex.sampler = sampler;
-  data.push(stex);
-  index++;
+  bindings.push(stex);
+  curBindingIdx++;
 }
 
-inline void ShaderMaterial::pushTexBuffer(uint32_t index, GfxBuffer::handle handle, ImageFormatEnum format)
+inline void ShaderMaterial::pushTexBuffer(GfxBuffer::handle handle, ImageFormatEnum format)
 {
-  assert(program.bindings[index] == TextureBuffer::type);
+  assert(program.entries[curBindingIdx].type == TextureBuffer::type);
   TextureBuffer tbo;
   tbo.buffer = handle;
   tbo.format = format;
-  data.push(tbo);
-  index++;
+  bindings.push(tbo);
+  curBindingIdx++;
 }
 
-inline void ShaderMaterial::pushImage(uint32_t index, GfxImage::handle handle, uint16_t layer, GfxAccess access,
-                                      bool layered)
+inline void ShaderMaterial::pushImage(GfxImage::handle handle, uint16_t layer, GfxAccess access, bool layered)
 {
-  assert(program.bindings[index] == StorageImage::type);
+  assert(program.entries[curBindingIdx].type == StorageImage::type);
   StorageImage image;
   image.texture = handle;
   image.layer   = layer;
   image.access  = access;
   image.layered = layered;
-  data.push(image);
-  index++;
+  bindings.push(image);
+  curBindingIdx++;
 }
 
-inline void ShaderMaterial::pushScalar(uint32_t index, int value)
+template <typename T>
+inline void ShaderMaterial::pushScalar(T const& value)
 {
-  assert(program.bindings[index] == GfxBindType::eInt);
-  data.push(value);
-  index++;
+  if (program.refl.offsets[curScalarIdx].offset != 0xffffffff)
+    std::memcpy(ubo.begin() + program.refl.offsets[curScalarIdx].offset, &value, sizeof(value));
+  curScalarIdx++;
 }
 
-inline void ShaderMaterial::pushScalar(uint32_t index, uint32_t value)
+inline void ShaderMaterial::pushArray(std::span<ubyte_t const> data)
 {
-  assert(program.bindings[index] == GfxBindType::eUint);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, ivec2 value)
-{
-  assert(program.bindings[index] == GfxBindType::eInt2);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, uvec2 value)
-{
-  assert(program.bindings[index] == GfxBindType::eUint2);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, float value)
-{
-  assert(program.bindings[index] == GfxBindType::eFloat);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, vec2 value)
-{
-  assert(program.bindings[index] == GfxBindType::eFloat2);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, vec3 value)
-{
-  assert(program.bindings[index] == GfxBindType::eFloat3);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, vec4 value)
-{
-  assert(program.bindings[index] == GfxBindType::eFloat4);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, mat4 value)
-{
-  assert(program.bindings[index] == GfxBindType::eMat4);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, float16 value)
-{
-  assert(program.bindings[index] == GfxBindType::eFloat16);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, int16 value)
-{
-  assert(program.bindings[index] == GfxBindType::eInt16);
-  data.push(value);
-  index++;
-}
-
-inline void ShaderMaterial::pushScalar(uint32_t index, uint16 value)
-{
-  assert(program.bindings[index] == GfxBindType::eUint16);
-  data.push(value);
-  index++;
+  auto     d         = program.refl.offsets[curScalarIdx];
+  uint32_t remaining = 0;
+  auto     src       = data.data();
+  auto     end       = data.size() + src;
+  auto     dst       = ubo.begin() + d.offset;
+  while (src < end)
+  {
+    std::memcpy(dst, src, d.baseElementSize);
+    src += d.baseElementSize;
+    dst += d.arrayStride;
+  }
+  curScalarIdx++;
 }
 
 inline void ShaderMaterial::reset()
 {
-  data.clear();
+  curScalarIdx  = 0;
+  curBindingIdx = 0;
+  bindings.clear();
 }
 
 } // namespace terra

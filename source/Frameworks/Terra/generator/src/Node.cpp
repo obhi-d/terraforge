@@ -87,22 +87,18 @@ HelpInfo Node::getHelpInfo(HelpType type, int param) const
 
 void Node::updateAutos(uint32_t i)
 {
-  constexpr uint32_t one  = 1;
-  uint32_t           mask = one << i;
+  constexpr uint32_t one = 1;
   forEachBit(
     [&](auto p)
     {
-      if (mask & meta.parameterDef[p].dependencies)
+      auto idx = (uint32_t)meta.parameterDef[p].format.semantic;
+      if (idx < meta.autoRegistry.size() && meta.autoRegistry[idx].change)
       {
-        auto idx = (uint32_t)meta.parameterDef[p].format.semantic;
-        if (idx < meta.autoRegistry.size() && meta.autoRegistry[idx].change)
-        {
-          meta.autoRegistry[idx].change(*this, p);
-        }
+        meta.autoRegistry[idx].change(*this, p);
       }
       return true;
     },
-    meta.depParams);
+    meta.parameterDef[i].dependencies);
 }
 
 } // namespace terra

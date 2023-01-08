@@ -1,12 +1,13 @@
 
-#include "Terra.h"
 #include "GpuBuffer.h"
+#include "Terra.h"
 
 namespace terra
 {
 
-GpuBuffer::~GpuBuffer() 
+GpuBuffer::~GpuBuffer()
 {
+  auto& cd = terra::get().getDevice();
   if (pendingDeletion)
     cd.destroy(pendingDeletion);
   if (handle)
@@ -15,6 +16,7 @@ GpuBuffer::~GpuBuffer()
 
 void GpuBuffer::ensure()
 {
+  auto& cd = terra::get().getDevice();
   if (pendingDeletion)
     cd.destroy(pendingDeletion);
   pendingDeletion = {};
@@ -22,14 +24,16 @@ void GpuBuffer::ensure()
     handle = cd.createBuffer(storage, usage, size);
 }
 
-ubyte_t* GpuBuffer::map(uint32_t offset, uint32_t size) 
+ubyte_t* GpuBuffer::map(uint32_t offset, uint32_t size)
 {
+  auto& cd = terra::get().getDevice();
   return cd.mapBuffer(handle, offset, size);
 }
 
 void GpuBuffer::unmap()
 {
+  auto& cd = terra::get().getDevice();
   cd.unmapBuffer(handle);
 }
 
-}
+} // namespace terra

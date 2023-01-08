@@ -1,0 +1,18 @@
+name  : Smooth;
+style : operators;
+
+
+output : heights (type = [source, float], semantic = heights, decltype = sampler2D);
+param  : source_a (type = [source, float], semantic = heights, decltype = sampler2D, min = -inf, max = inf, default = 0.0, step = 0.001, sampler = none);
+param  : source_b (type = [source, float], semantic = heights, decltype = sampler2D, min = -inf, max = inf, default = 0.0, step = 0.001, sampler = none);
+param  : smooth_factor (type = [source, float], semantic = heights, decltype = sampler2D, min = 0.0001, max = 1.0, default = 0.5, step = 0.001, sampler = none);
+param  : input_scale (type = float, decltype = scalar, min = -1, max = 1, default = 1.0, step = 0.01);
+param  : output_scale (type = float, decltype = scalar, min = -1, max = 1, default = 1.0, step = 0.01);
+
+pass
+{
+  function : smoothen;
+  shaders  : [smooth.glsl];
+  in       : [source_a, source_b, smooth_factor, input_scale, output_scale];
+  out      : heights;
+}

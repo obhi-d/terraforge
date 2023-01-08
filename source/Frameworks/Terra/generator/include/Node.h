@@ -30,15 +30,16 @@ public:
       if (p.format.semantic == sem)
         return p.getter(*this, i);
     }
-    return ScalarValue();
+    return float(0.0f);
   }
 
+  template <typename ScalarValue>
   void state(uint32_t i, ScalarValue sv)
   {
     meta.parameterDef[i].setter(*this, i, sv);
   }
 
-  Parameter param(uint32_t i, Parameter sv)
+  Parameter param(uint32_t i, Parameter const& sv)
   {
     auto old = meta.parameterDef[i].getter(*this, i);
     meta.parameterDef[i].setter(*this, i, sv);

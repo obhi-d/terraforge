@@ -11,7 +11,7 @@ class Terra;
 class GpuBuffer
 {
 public:
-  GpuBuffer(GfxDevice& dev) : cd(dev) {}
+  GpuBuffer() = default;
   ~GpuBuffer();
 
   void setDesc(GfxBuffer::Usage usage, GfxStorageClass storage)
@@ -32,14 +32,17 @@ public:
 
   void setSize(uint32_t size)
   {
-    size = std::max(size, this->size);
-    if (size != this->size && handle)
+    if (size != this->size)
     {
-      this->size = size;
-      if (handle)
-        pendingDeletion = handle;
-      handle = {};
+      this->size      = size;
+      pendingDeletion = handle;
+      handle          = {};
     }
+  }
+
+  GfxBuffer::handle buffer() const
+  {
+    return handle;
   }
 
   void     ensure();
@@ -47,7 +50,6 @@ public:
   void     unmap();
 
 private:
-  GfxDevice&        cd;
   GfxBuffer::Usage  usage;
   GfxStorageClass   storage = GfxStorageClass::eStaticDeviceReadonly;
   GfxBuffer::handle handle;
@@ -55,4 +57,6 @@ private:
 
   GfxBuffer::handle pendingDeletion;
 };
+
+using BufferRef = std::shared_ptr<GpuBuffer>;
 } // namespace terra

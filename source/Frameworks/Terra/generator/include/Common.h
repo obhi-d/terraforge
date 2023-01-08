@@ -4,6 +4,7 @@
 #include <acl/linear_arena_allocator.hpp>
 #include <acl/link.hpp>
 #include <array>
+#include <bit>
 #include <cassert>
 #include <cctype>
 #include <compare>
@@ -20,7 +21,6 @@
 #include <span>
 #include <stdexcept>
 #include <vector>
-#include <bit>
 
 #define ENUM_FLAGS(Enum)                                                                                               \
   inline Enum operator|(Enum a, Enum b)                                                                                \
@@ -401,9 +401,10 @@ struct DataFormat
   DataTypeEnum      scalarSubType = DataTypeEnum::eInvalid;
   ParamDeclTypeEnum declType      = ParamDeclTypeEnum::eNone;
   SamplerParamEnum  sampler       = SamplerParamEnum::eNone;
+  uint8_t           maxArraySize  = 0;
   bool              preEval       = false;
   bool              hidden        = false;
-  
+
   inline auto operator<=>(const DataFormat&) const noexcept = default;
 
   constexpr DataFormat() = default;
@@ -687,55 +688,6 @@ struct Snorm
 using float16 = std::array<float, 16>;
 using int16   = std::array<int, 16>;
 using uint16  = std::array<uint32_t, 16>;
-union ScalarValue
-{
-  mat4     value4x4;
-  float16  value16 = {};
-  int16    ivalue16;
-  uint16   uvalue16;
-  uvec2    uvalue2;
-  ivec2    ivalue2;
-  vec2     value2;
-  vec3     value3;
-  vec4     value4;
-  float    value;
-  int      ivalue;
-  uint32_t uvalue;
-  bool     bvalue;
-
-  inline ScalarValue() : value16() {}
-  inline ScalarValue(ScalarValue const& other) noexcept : value16(other.value16) {}
-  inline ScalarValue(ScalarValue&& other) noexcept : value16(other.value16) {}
-  inline ScalarValue(Angle val) : value(val) {}
-  inline ScalarValue(Unorm val) : value(val) {}
-  inline ScalarValue(Snorm val) : value(val) {}
-  inline ScalarValue(int a, int b) : ivalue2{a, b} {}
-  inline ScalarValue(ivec2 v) : ivalue2(v) {}
-  inline ScalarValue(uvec2 v) : uvalue2(v) {}
-  inline ScalarValue(vec3 v) : value3(v) {}
-  inline ScalarValue(vec4 v) : value4(v) {}
-  inline ScalarValue(mat4 v) : value4x4(v) {}
-  inline ScalarValue(float16 v) : value16(v) {}
-  inline ScalarValue(int16 v) : ivalue16(v) {}
-  inline ScalarValue(uint16 v) : uvalue16(v) {}
-  inline ScalarValue(vec2 v) : value2(v) {}
-  inline ScalarValue(float v) : value(v) {}
-  inline ScalarValue(int v) : ivalue(v) {}
-  inline ScalarValue(uint32_t v) : ivalue(v) {}
-  inline ScalarValue(bool v) : bvalue(v) {}
-
-  inline ScalarValue& operator=(ScalarValue const& other) noexcept
-  {
-    value16 = other.value16;
-    return *this;
-  }
-
-  inline ScalarValue& operator=(ScalarValue&& other) noexcept
-  {
-    value16 = other.value16;
-    return *this;
-  }
-};
 
 struct Rect
 {
@@ -875,7 +827,6 @@ inline vec2 sub(vec2 a, vec2 b)
   return a - b;
 }
 
-
 template <typename L>
 bool forEachBit(L&& l, uint64_t params)
 {
@@ -884,11 +835,25 @@ bool forEachBit(L&& l, uint64_t params)
   {
     int s = std::countr_zero(params);
     it += (uint32_t)s;
-    if(!l(it))
+    if (!l(it))
       return false;
     params >>= ((uint32_t)s + 1);
     it++;
   }
   return true;
 }
+
+using ArrayFloat    = std::vector<float>;
+using ArrayInt      = std::vector<int>;
+using ArrayUint     = std::vector<uint32_t>;
+using ArrayFloatRef = std::shared_ptr<std::vector<float>>;
+using ArrayIntRef   = std::shared_ptr<std::vector<int>>;
+using ArrayUintRef  = std::shared_ptr<std::vector<uint32_t>>;
+
+template <typename T>
+std::span<ubyte_t const> toSpan(std::vector<T> const& ref)
+{
+  return std::span<ubyte_t const>((ubyte_t const*)ref.data(), ref.size() * sizeof(T));
+}
+
 } // namespace terra

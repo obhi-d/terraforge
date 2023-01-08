@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Common.h"
+#include "ParamHelper.h"
 #include "ShaderOptions.h"
 #include "SourceBuilder.h"
 #include "hyb/HybridBuffer.h"
@@ -14,25 +15,25 @@ struct ShaderProgramInstance
 {
   inline void pushValue(float value)
   {
-    program.pushScalar(index++, value);
+    program.pushScalar(value);
   }
 
   inline void pushValue(int value)
   {
-    program.pushScalar(index++, value);
+    program.pushScalar(value);
   }
 
   inline void pushValue(vec2 value)
   {
-    program.pushScalar(index++, value);
+    program.pushScalar(value);
   }
 
   inline void pushValue(ivec2 value)
   {
-    program.pushScalar(index++, value);
+    program.pushScalar(value);
   }
 
-  void pushValue(ScalarValue value, DataTypeEnum type, DataTypeEnum subType);
+  void pushValue(Parameter const& value, DataTypeEnum type, DataTypeEnum subType);
   void pushValue(HybridBuffer::handle, DataFormat);
   void pushImage(GfxImage::handle, DataFormat);
   void pushBuffer(GfxBuffer::handle, uint32_t size, DataFormat);
@@ -50,7 +51,6 @@ struct ShaderProgramInstance
   HybridPipeline& pipeline;
   ShaderMaterial  program;
 
-  uint32_t index     = 0;
   uint32_t outputIdx = 0;
 };
 

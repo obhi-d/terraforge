@@ -5,65 +5,69 @@
 
 namespace terra
 {
-void ShaderProgramInstance::pushValue(ScalarValue value, DataTypeEnum type, DataTypeEnum subtype)
+void ShaderProgramInstance::pushValue(Parameter const& value, DataTypeEnum type, DataTypeEnum subtype)
 {
   switch (type)
   {
   case DataTypeEnum::eBuffer:
     pushValue(value, subtype, subtype);
     break;
+  case DataTypeEnum::eMat4:
   case DataTypeEnum::eArray:
     switch (subtype)
     {
+    case DataTypeEnum::eFloat2:
+    case DataTypeEnum::eFloat3:
+    case DataTypeEnum::eFloat4:
+    case DataTypeEnum::eMat4:
     case DataTypeEnum::eFloat:
-      program.pushScalar(index++, value.value16);
+      program.pushArray(toSpan(*std::get<ArrayFloatRef>(value)));
       break;
+    case DataTypeEnum::eInt2:
     case DataTypeEnum::eInt:
-      program.pushScalar(index++, value.ivalue16);
+      program.pushArray(toSpan(*std::get<ArrayIntRef>(value)));
       break;
+    case DataTypeEnum::eUint2:
     case DataTypeEnum::eUint:
-      program.pushScalar(index++, value.uvalue16);
+      program.pushArray(toSpan(*std::get<ArrayUintRef>(value)));
       break;
     }
     break;
   case DataTypeEnum::eInt:
-    program.pushScalar(index++, value.ivalue);
+    program.pushScalar(std::get<int>(value));
     break;
   case DataTypeEnum::eInt2:
-    program.pushScalar(index++, value.ivalue2);
+    program.pushScalar(std::get<ivec2>(value));
     break;
   case DataTypeEnum::eUint:
-    program.pushScalar(index++, value.uvalue);
+    program.pushScalar(std::get<uint32_t>(value));
     break;
   case DataTypeEnum::eUint2:
-    program.pushScalar(index++, value.uvalue2);
+    program.pushScalar(std::get<uvec2>(value));
     break;
   case DataTypeEnum::eFloat:
-    program.pushScalar(index++, value.value);
+    program.pushScalar(std::get<float>(value));
     break;
   case DataTypeEnum::eFloat2:
-    program.pushScalar(index++, value.value2);
+    program.pushScalar(std::get<vec2>(value));
     break;
   case DataTypeEnum::eFloat3:
-    program.pushScalar(index++, value.value3);
+    program.pushScalar(std::get<vec3>(value));
     break;
   case DataTypeEnum::eFloat4:
-    program.pushScalar(index++, value.value4);
-    break;
-  case DataTypeEnum::eMat4:
-    program.pushScalar(index++, value.value4x4);
+    program.pushScalar(std::get<vec4>(value));
     break;
   }
 }
 
 void ShaderProgramInstance::pushImage(GfxImage::handle image, DataFormat df)
 {
-  program.pushTexture(index++, image, pipeline.getSampler(df.sampler));
+  program.pushTexture(image, pipeline.getSampler(df.sampler));
 }
 
 void ShaderProgramInstance::pushBuffer(GfxBuffer::handle buffer, uint32_t size, DataFormat df)
 {
-  program.pushBuffer(index++, buffer, 0, size);
+  program.pushBuffer(buffer, 0, size);
 }
 
 void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
@@ -75,29 +79,29 @@ void ShaderProgramInstance::pushValue(HybridBuffer::handle value, DataFormat df)
   case ParamDeclTypeEnum::eSampler2D:
   case ParamDeclTypeEnum::eSampler1DArray:
   case ParamDeclTypeEnum::eSampler2DShadow:
-    program.pushTexture(index++, pipeline.readImage(value), pipeline.getSampler(df.sampler));
+    program.pushTexture(pipeline.readImage(value), pipeline.getSampler(df.sampler));
     break;
-  case ParamDeclTypeEnum::eWriteonlySSBO:
-  case ParamDeclTypeEnum::eReadonlySSBO:
-  case ParamDeclTypeEnum::eSSBO:
+  case ParamDeclTypeEnum::eWriteonlyStorageBuffer:
+  case ParamDeclTypeEnum::eReadonlyStorageBuffer:
+  case ParamDeclTypeEnum::eStorageBuffer:
   {
     auto [buffer, size] = pipeline.readBuffer(value);
-    program.pushBuffer(index++, buffer, 0, size);
+    program.pushBuffer(buffer, 0, size);
   }
   break;
   case ParamDeclTypeEnum::eReadonlyImage2D:
-    program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eReadOnly, false);
+    program.pushImage(pipeline.readImage(value), 0, GfxAccess::eReadOnly, false);
     break;
   case ParamDeclTypeEnum::eImage2D:
-    program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eReadWrite, false);
+    program.pushImage(pipeline.readImage(value), 0, GfxAccess::eReadWrite, false);
     break;
   case ParamDeclTypeEnum::eWriteonlyImage2D:
-    program.pushImage(index++, pipeline.readImage(value), 0, GfxAccess::eWriteOnly, false);
+    program.pushImage(pipeline.readImage(value), 0, GfxAccess::eWriteOnly, false);
     break;
   case ParamDeclTypeEnum::eTextureBuffer:
   {
     auto [buffer, size] = pipeline.readBuffer(value);
-    program.pushTexBuffer(index++, buffer, df.imageFormat);
+    program.pushTexBuffer(buffer, df.imageFormat);
   }
   break;
   }
@@ -129,7 +133,7 @@ void ShaderProgramInstance::run()
   auto  pass = dev.createPass(std::span<GfxPass::Attachment>(outputs.data(), outputs.data() + outputIdx), depth);
   dev.setState(state);
   dev.beginPass(pass);
-  dev.postProcessDraw(program.program.material.program, program.program.material.layout, program.data);
+  dev.postProcessDraw(program.get());
   dev.endPass();
   dev.destroy(pass);
 }

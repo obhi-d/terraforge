@@ -16,6 +16,7 @@ void GpuNodeMeta::prepare()
   ShaderOptions::Dictionary dict;
   std::string               imgPrefix  = "HasImage_";
   std::string               buffPrefix = "HasBuffer_";
+  std::string               srcPrefix  = "HasSource_";
   std::string               boolPrefix = "HasOption_";
   std::string               enumPrefix = "Enum_";
 
@@ -27,6 +28,9 @@ void GpuNodeMeta::prepare()
     case DataTypeEnum::eImage:
       dict.names.emplace_back(imgPrefix + std::string(pdef.name()));
       break;
+    case DataTypeEnum::eSource:
+      dict.names.emplace_back(srcPrefix + std::string(pdef.name()));
+      break;
     case DataTypeEnum::eBuffer:
       dict.names.emplace_back(buffPrefix + std::string(pdef.name()));
       break;
@@ -35,7 +39,7 @@ void GpuNodeMeta::prepare()
       break;
     case DataTypeEnum::eEnum:
     {
-      for (uint32_t i = 0; i < pdef.maxEnum; ++i)
+      for (int32_t i = 0; i < pdef.maxEnum; ++i)
         dict.names.emplace_back(fmt::format("Enum_{}", pdef.enumDisplayInfo[i].id));
     }
     break;
@@ -93,7 +97,7 @@ void GpuNodeMeta::registerKnownMeta()
     meta.displayInfo.from("CurveMask");
     meta.as<GpuCurveNode>();
     meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::curve>(), "source", ValueRange(), DataType::eCurveData,
-                                   DataType::eFloat, ImageFormat::eNone, ParamDeclType::eReadonlySSBO);
+                                   DataType::eFloat, ImageFormat::eNone, ParamDeclType::eReadonlyStorageBuffer);
     meta.parameterDef.emplace_back(MemberPtr<&GpuCurveNode::scale>(), "amplitude", ValueRange(0.0f, -inf, inf, 0.1f),
                                    DataType::eFloat2, DataType::eFloat2, ImageFormat::eFloat, ParamDeclType::eScalar);
     meta.outputs.emplace_back("heights",

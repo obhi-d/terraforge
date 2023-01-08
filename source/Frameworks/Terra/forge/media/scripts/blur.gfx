@@ -2,9 +2,9 @@ name  : Blur;
 style : operators;
 
 
-output : heights (type = [buffer, float], semantic = heights, decltype = sampler2D);
-param  : source (type = [buffer, float], semantic = heights, decltype = sampler2D, min = -inf, max = inf, default = 0.0, step = 0.001, sampler = linearclamp);
-param  : blur_window (type = int, decltype = scalar, min = 0, max = 4, default = 1, step = 1, semantic = blur_window);
+output : heights (type = [source, float], semantic = heights, decltype = sampler2D);
+param  : source (type = [source, float], semantic = heights, decltype = sampler2D, min = -inf, max = inf, default = 0.0, step = 0.001, sampler = linearclamp);
+param  : blur_window (type = int, decltype = scalar, min = 0, max = 9, default = 1, step = 1, semantic = blur_window);
 param  : blur_factor (type = float, decltype = scalar, semantic = blur_factor) hidden;
 param  : rsize (type = float2, decltype = scalar, semantic = rsize) hidden;
 

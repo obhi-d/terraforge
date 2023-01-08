@@ -64,6 +64,13 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         meta.format.preEval = true;
       }
+      else if (entry.name() == "array_size")
+      {
+        auto     value  = entry.value();
+        uint32_t ivalue = 0;
+        std::from_chars(value.data(), value.data() + value.size(), ivalue);
+        meta.format.maxArraySize = (uint8_t)ivalue;
+      }
       else if (entry.name() == "format")
       {
         meta.format.imageFormat = ImageFormat::fromString(entry.value());
@@ -96,7 +103,6 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         meta.format.hidden = true;
       }
-    
     }
     else if (std::holds_alternative<neo::list>(p))
     {
@@ -117,7 +123,6 @@ NodeCmdExecute(param, builder, state, cmd)
           meta.enumDisplayInfo[i].from(std::get<neo::single>(values[i]).value());
         }
       }
-      
     }
   }
 

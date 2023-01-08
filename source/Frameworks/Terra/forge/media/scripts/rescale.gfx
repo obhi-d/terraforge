@@ -2,8 +2,8 @@ name  : Rescale;
 style : operators;
 
 
-output : heights (type = [buffer, float], semantic = heights, decltype = sampler2D);
-param  : source (type = [buffer, float], semantic = heights, decltype = sampler2D, min = -inf, max = inf, default = 0.0, step = 0.001, sampler = none);
+output : heights (type = [source, float], semantic = heights, decltype = sampler2D);
+param  : source (type = [source, float], semantic = heights, decltype = sampler2D, min = -inf, max = inf, default = 0.0, step = 0.001, sampler = none);
 param  : minmax (type = float2, semantic = minmax, decltype = scalar) hidden;
 param  : scale_min (type = float, decltype = scalar, min = -inf, max = inf, default = -1.0, step = 0.1);
 param  : scale_max (type = float, decltype = scalar, min = -inf, max = inf, default =  1.0, step = 0.1);
@@ -11,7 +11,7 @@ param  : scale_max (type = float, decltype = scalar, min = -inf, max = inf, defa
 pass
 {
   function : rescale;
-  shaders  : [normalize.glsl];
+  shaders  : [rescale.glsl];
   in       : [source, minmax, scale_min, scale_max];
   out      : heights;
 }

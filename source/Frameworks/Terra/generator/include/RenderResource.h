@@ -161,7 +161,7 @@ struct GfxDescriptorSet
   using rhandle = std::pair<uint32_t, uint32_t>;
 };
 
-enum class GfxBindType
+enum class GfxBindType : uint8_t
 {
   eNone,
   eStorageBuffer,
@@ -182,9 +182,9 @@ enum class GfxBindType
   eFloat3,
   eFloat4,
   eMat4,
-  eFloat16,
-  eInt16,
-  eUint16
+  eFloatArray,
+  eIntArray,
+  eUintArray
 };
 
 enum class GfxAccess : uint8_t
@@ -230,8 +230,28 @@ struct GfxParamLayout
 {
   struct Entry
   {
+    uint32_t    index = 0;
     GfxBindType type;
-    uint32_t    index;
+  };
+
+  struct UBOEntry
+  {
+    std::string name;
+    uint16_t    maxArraySize    = 0;
+    uint16_t    baseElementSize = 0;
+  };
+
+  struct UBOOffset
+  {
+    uint16_t baseElementSize = 0;
+    uint16_t arrayStride     = 0;
+    uint32_t offset          = 0;
+  };
+
+  struct UBOReflect
+  {
+    std::vector<UBOOffset> offsets;
+    uint32_t               uboSize = 0;
   };
 
   using handle = terra::handle<GfxParamLayout>;
@@ -402,10 +422,23 @@ struct GfxMaterial
   GfxDescriptorSet::handle descriptorSet;
 };
 
+using UboData = acl::dynamic_array<ubyte_t>;
 struct GfxMaterial2
 {
   GfxProgram::handle     program;
   GfxParamLayout::handle layout;
+  Blob const&            bindings;
+  UboData const&         ubo;
+
+  GfxMaterial2(GfxProgram::handle iprogram, GfxParamLayout::handle ilayout, Blob const& ibindings, UboData const& iubo)
+      : program(iprogram), layout(ilayout), bindings(ibindings), ubo(iubo)
+  {}
+  GfxMaterial2(GfxMaterial2 const& other)
+      : program(other.program), layout(other.layout), bindings(other.bindings), ubo(other.ubo)
+  {}
+  GfxMaterial2(GfxMaterial2&& other)
+      : program(other.program), layout(other.layout), bindings(other.bindings), ubo(other.ubo)
+  {}
 };
 
 struct GfxFeature

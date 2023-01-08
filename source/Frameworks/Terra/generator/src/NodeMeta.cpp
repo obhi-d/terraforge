@@ -31,16 +31,16 @@ bool ParameterMeta::canBeScalar() const
   return true;
 }
 
-ScalarValue ParameterMeta::getDefault() const
+Parameter ParameterMeta::getDefault() const
 {
   if (DataTypeEnum::eBool == format.type)
-    return ScalarValue((bool)(ranges.defaultVal.ival != 0));
+    return (bool)(ranges.defaultVal.ival != 0);
   else if (DataTypeEnum::eEnum == format.type)
-    return ScalarValue(ranges.defaultVal.ival, 0);
+    return ranges.defaultVal.ival;
   switch (format.scalarSubType)
   {
   case DataTypeEnum::eFloat:
-    return ScalarValue(ranges.defaultVal.fval);
+    return ranges.defaultVal.fval;
   case DataTypeEnum::eFloat2:
     return vec2{ranges.defaultVal.fval};
   case DataTypeEnum::eFloat3:
@@ -48,10 +48,12 @@ ScalarValue ParameterMeta::getDefault() const
   case DataTypeEnum::eFloat4:
     return vec4{ranges.defaultVal.fval};
   case DataTypeEnum::eMat4:
-    return mat4{ranges.defaultVal.fval};
-  case DataTypeEnum::eBool:
+  {
+    auto m4 = mat4{ranges.defaultVal.fval};
+    return std::make_shared<ArrayFloat>(&m4[0][0], &m4[0][0] + 16);
+  }
   case DataTypeEnum::eInt:
-    return ScalarValue(ranges.defaultVal.ival);
+    return ranges.defaultVal.ival;
   case DataTypeEnum::eInt2:
     return ivec2{ranges.defaultVal.ival, ranges.defaultVal.ival};
   case DataTypeEnum::eUint:
@@ -59,7 +61,7 @@ ScalarValue ParameterMeta::getDefault() const
   case DataTypeEnum::eUint2:
     return uvec2((uint32_t)ranges.defaultVal.ival);
   default:
-    return ScalarValue();
+    return float(0.0f);
   }
 }
 
@@ -147,17 +149,17 @@ void NodeMeta::prepare()
       {
         if (autoRegistry[autoIdx.id].pre)
           preParams |= 1ull << i;
-        if(autoRegistry[autoIdx.id].post)
+        if (autoRegistry[autoIdx.id].post)
           postParams |= 1ull << i;
-        if(autoRegistry[autoIdx.id].change)
+        if (autoRegistry[autoIdx.id].change)
         {
           depParams |= 1ull << i;
           for (auto d : autoRegistry[autoIdx.id].naturalDeps)
           {
-            uint32_t i = paramIdx(d);
-            if (i != 0xffffffff)
-              parameterDef[i].dependencies |= 1ull << i;
-          }          
+            uint32_t pd = paramIdx(d);
+            if (pd != 0xffffffff)
+              parameterDef[pd].dependencies |= 1ull << i;
+          }
         }
       }
     }

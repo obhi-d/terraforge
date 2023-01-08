@@ -6,28 +6,31 @@
 #include <variant>
 #include <vector>
 
-#include "Common.h"
-#include "CurveData.h"
-#include "DataSource.h"
-#include "Dependency.h"
-#include "GfxDevice.h"
-#include "GpuBuffer.h"
-#include "Image.h"
+#include "ParamHelper.h"
 #include "Serializer.h"
 
 namespace terra
 {
 class Terra;
 
-using Parameter = std::variant<ScalarValue, Source>;
+template <typename T>
+inline bool store(T& s, Parameter const& param)
+{
+  if (std::holds_alternative<T>(param))
+  {
+    s = std::get<T>(param);
+    return true;
+  }
+  return false;
+}
 
-inline bool store(Parameter& s, Parameter param)
+inline bool store(Parameter& s, Parameter const& param)
 {
   s = param;
   return true;
 }
 
-inline bool store(Source& s, Parameter param)
+inline bool store(Source& s, Parameter const& param)
 {
   if (std::holds_alternative<Source>(param))
   {
@@ -37,7 +40,7 @@ inline bool store(Source& s, Parameter param)
   return false;
 }
 
-inline bool store(HDataSource& s, Parameter param)
+inline bool store(HDataSource& s, Parameter const& param)
 {
   if (std::holds_alternative<Source>(param))
   {
@@ -47,81 +50,31 @@ inline bool store(HDataSource& s, Parameter param)
   return false;
 }
 
-inline bool store(float& s, Parameter param)
+inline bool store(Angle& s, Parameter const& param)
 {
-  if (std::holds_alternative<ScalarValue>(param))
+  if (std::holds_alternative<float>(param))
   {
-    s = std::get<ScalarValue>(param).value;
+    s = std::get<float>(param);
     return true;
   }
   return false;
 }
 
-inline bool store(int& s, Parameter param)
+inline bool store(Unorm& s, Parameter const& param)
 {
-  if (std::holds_alternative<ScalarValue>(param))
+  if (std::holds_alternative<float>(param))
   {
-    s = std::get<ScalarValue>(param).ivalue;
+    s = std::get<float>(param);
     return true;
   }
   return false;
 }
 
-inline bool store(bool& s, Parameter param)
+inline bool store(Snorm& s, Parameter const& param)
 {
-  if (std::holds_alternative<ScalarValue>(param))
+  if (std::holds_alternative<float>(param))
   {
-    s = std::get<ScalarValue>(param).bvalue;
-    return true;
-  }
-  return false;
-}
-
-inline bool store(vec2& s, Parameter param)
-{
-  if (std::holds_alternative<ScalarValue>(param))
-  {
-    s = std::get<ScalarValue>(param).value2;
-    return true;
-  }
-  return false;
-}
-
-inline bool store(ivec2& s, Parameter param)
-{
-  if (std::holds_alternative<ScalarValue>(param))
-  {
-    s = std::get<ScalarValue>(param).ivalue2;
-    return true;
-  }
-  return false;
-}
-
-inline bool store(Angle& s, Parameter param)
-{
-  if (std::holds_alternative<ScalarValue>(param))
-  {
-    s = std::get<ScalarValue>(param).value;
-    return true;
-  }
-  return false;
-}
-
-inline bool store(Unorm& s, Parameter param)
-{
-  if (std::holds_alternative<ScalarValue>(param))
-  {
-    s = std::get<ScalarValue>(param).value;
-    return true;
-  }
-  return false;
-}
-
-inline bool store(Snorm& s, Parameter param)
-{
-  if (std::holds_alternative<ScalarValue>(param))
-  {
-    s = std::get<ScalarValue>(param).value;
+    s = std::get<float>(param);
     return true;
   }
   return false;
@@ -196,7 +149,7 @@ struct ParameterMeta
 
   union
   {
-    uint32_t maxEnum = 1;
+    int32_t  maxEnum = 1;
     uint32_t maxOption;
   };
 
@@ -220,7 +173,7 @@ struct ParameterMeta
     if (other.enumDisplayInfo)
     {
       enumDisplayInfo.reset(new DisplayInfo[maxEnum]);
-      for (uint32_t i = 0; i < maxEnum; ++i)
+      for (int32_t i = 0; i < maxEnum; ++i)
         enumDisplayInfo[i] = other.enumDisplayInfo[i];
     }
     return *this;
@@ -294,7 +247,7 @@ struct ParameterMeta
   bool canBeSource() const;
   bool canBeScalar() const;
 
-  ScalarValue getDefault() const;
+  Parameter getDefault() const;
 
   void setTypeFromString(std::string_view type, std::string_view scalarType);
   void setValueFromString(ValueType, std::string_view);

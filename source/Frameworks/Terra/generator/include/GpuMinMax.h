@@ -17,6 +17,7 @@ public:
 private:
   static ShaderProgramPtr texturePass;
   static ShaderProgramPtr bufferPass;
+  static ShaderProgramPtr normalizePass;
 };
 
 } // namespace terra

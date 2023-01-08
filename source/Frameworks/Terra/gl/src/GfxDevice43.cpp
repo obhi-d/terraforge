@@ -337,6 +337,9 @@ void GfxDevice43::releaseTexture(GfxImage::handle h)
     if (res.hdev)
       destroy(res.hdev);
 
+    if (res.himg)
+      destroy(res.himg);
+
     for (auto& s : res.hsamplerMap)
     {
       destroy(s.second);
@@ -720,11 +723,10 @@ void GfxDevice43::dispatchCompute(GfxProgram::handle shader, GfxDescriptorSet::h
   gl43::glDispatchCompute(numGroupX, numGroupY, 1);
 }
 
-void GfxDevice43::dispatchCompute(GfxMaterial2 const& material, Blob const& data, uint32_t numGroupX,
-                                  uint32_t numGroupY)
+void GfxDevice43::dispatchCompute(GfxMaterial2 const& material, uint32_t numGroupX, uint32_t numGroupY)
 {
   gl43::glUseProgram(resources.programs[material.program].glhandle);
-  apply(material.layout, data);
+  apply(material.layout, material.ubo, material.bindings);
   gl43::glDispatchCompute(numGroupX, numGroupY, 1);
 }
 void GfxDevice43::barrier(GfxBarrierFlags flags)
@@ -762,10 +764,10 @@ void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial const& mat)
   draw(drawDesc);
 }
 
-void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& mat, Blob const& data)
+void GfxDevice43::draw(GfxMesh::Draw const& drawDesc, GfxMaterial2 const& material)
 {
-  gl43::glUseProgram(resources.programs[mat.program].glhandle);
-  apply(mat.layout, data);
+  gl43::glUseProgram(resources.programs[material.program].glhandle);
+  apply(material.layout, material.ubo, material.bindings);
   draw(drawDesc);
   gl43::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
   gl43::glDrawBuffer(gl::GL_BACK_LEFT);
@@ -847,13 +849,57 @@ void GfxDevice43::bindResources(GfxDescriptorSet::handle descriptorSet)
 }
 void GfxDevice43::applyLayoutToProgram(GfxProgram::handle program, GfxDescriptorSetLayout::handle layout) {}
 
-GfxParamLayout::handle GfxDevice43::createLayout(std::span<GfxParamLayout::Entry const> entries)
+GfxParamLayout::handle GfxDevice43::createLayout(GfxProgram::handle                        program,
+                                                 std::span<GfxParamLayout::Entry const>    entries,
+                                                 std::span<GfxParamLayout::UBOEntry const> uboEntries,
+                                                 GfxParamLayout::UBOReflect&               uboRefl)
 {
   auto  h         = resources.bindlessLayout.emplace();
   auto& res       = resources.bindlessLayout.at(h);
   auto  nbEntries = (uint32_t)entries.size();
   res.entries     = acl::dynamic_array<GfxBindlessLayoutGl::Entry>(nbEntries);
   std::memcpy(res.entries.data(), entries.data(), entries.size_bytes());
+
+  auto prog = resources.programs[program].glhandle;
+
+  {
+    gl::GLuint loc = gl43::glGetProgramResourceIndex(prog, gl::GL_UNIFORM_BLOCK, "Params");
+    if (loc == gl::GL_INVALID_INDEX)
+      uboRefl.uboSize = 0;
+    else
+    {
+      gl::GLenum props  = {gl::GL_BUFFER_DATA_SIZE};
+      gl::GLint  values = {};
+      // get total buffer size
+      gl43::glGetProgramResourceiv(prog, gl::GL_UNIFORM_BLOCK, loc, 1, &props, 1, nullptr, &values);
+      uboRefl.uboSize = (uint32_t)values;
+    }
+  }
+
+  for (auto& e : uboEntries)
+  {
+    gl::GLuint loc = gl43::glGetProgramResourceIndex(prog, gl::GL_UNIFORM, e.name.c_str());
+    if (loc == gl::GL_INVALID_INDEX)
+    {
+      GfxParamLayout::UBOOffset offset;
+      offset.baseElementSize = 0;
+      offset.arrayStride     = 0;
+      offset.offset          = 0xffffffff;
+      uboRefl.offsets.emplace_back(offset);
+    }
+    else
+    {
+      gl::GLenum props[]   = {gl::GL_ARRAY_STRIDE, gl::GL_OFFSET};
+      gl::GLint  values[2] = {};
+      gl43::glGetProgramResourceiv(prog, gl::GL_UNIFORM, loc, 2, props, 2, nullptr, values);
+      GfxParamLayout::UBOOffset offset;
+      offset.baseElementSize = e.baseElementSize;
+      offset.arrayStride     = (uint16_t)values[0];
+      offset.offset          = (uint16_t)values[1];
+      uboRefl.offsets.emplace_back(offset);
+    }
+  }
+
   return h;
 }
 
@@ -1022,11 +1068,22 @@ void GfxDevice43::bindTextureBuffer(uint32_t index, TextureBuffer const& buffer)
   }
 }
 
-void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& data)
+void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, UboData const& uboData, Blob const& bindings)
 {
-  auto  reader  = data.reader();
+  auto  reader  = bindings.reader();
   auto& layout  = resources.bindlessLayout[descriptorLayout];
   auto& entries = layout.entries;
+  if (uboData.size() > 0)
+  {
+    gl::GLuint ubo;
+    gl43::glGenBuffers(1, &ubo);
+    gl43::glBindBuffer(gl43::GL_UNIFORM_BUFFER, ubo);
+    gl43::glBufferData(gl43::GL_UNIFORM_BUFFER, uboData.size(), uboData.data(), gl43::GL_STATIC_DRAW);
+    gl43::glBindBuffer(gl43::GL_UNIFORM_BUFFER, 0);
+    gl43::glBindBufferRange(gl::GL_UNIFORM_BUFFER, 0, ubo, 0, uboData.size());
+    uboList.push_back(ubo);
+  }
+
   for (auto& e : entries)
   {
     switch (e.type)
@@ -1073,40 +1130,17 @@ void GfxDevice43::apply(GfxParamLayout::handle descriptorLayout, Blob const& dat
     }
     break;
     case GfxBindType::eInt:
-      gl43::glUniform1i(e.index, reader.read<int>());
-      break;
     case GfxBindType::eUint:
-      gl43::glUniform1ui(e.index, reader.read<int>());
-      break;
     case GfxBindType::eInt2:
-      gl43::glUniform2iv(e.index, 1, glm::value_ptr(reader.read<ivec2>()));
-      break;
     case GfxBindType::eUint2:
-      gl43::glUniform2uiv(e.index, 1, glm::value_ptr(reader.read<uvec2>()));
-      break;
     case GfxBindType::eFloat:
-      gl43::glUniform1f(e.index, reader.read<float>());
-      break;
     case GfxBindType::eFloat2:
-      gl43::glUniform2fv(e.index, 1, glm::value_ptr(reader.read<vec2>()));
-      break;
     case GfxBindType::eFloat3:
-      gl43::glUniform3fv(e.index, 1, glm::value_ptr(reader.read<vec3>()));
-      break;
     case GfxBindType::eFloat4:
-      gl43::glUniform4fv(e.index, 1, glm::value_ptr(reader.read<vec4>()));
-      break;
     case GfxBindType::eMat4:
-      gl43::glUniformMatrix4fv(e.index, 1, gl::GL_FALSE, glm::value_ptr(reader.read<mat4>()));
-      break;
-    case GfxBindType::eFloat16:
-      gl43::glUniform1fv(e.index, 16, reader.read<float16>().data());
-      break;
-    case GfxBindType::eInt16:
-      gl43::glUniform1iv(e.index, 16, reader.read<int16>().data());
-      break;
-    case GfxBindType::eUint16:
-      gl43::glUniform1uiv(e.index, 16, reader.read<uint16>().data());
+    case GfxBindType::eFloatArray:
+    case GfxBindType::eIntArray:
+    case GfxBindType::eUintArray:
       break;
     }
   }
@@ -1246,10 +1280,10 @@ GfxProgram::handle GfxDevice43::createFullscreenProgram(std::span<std::string_vi
   return h;
 }
 
-void GfxDevice43::postProcessDraw(GfxProgram::handle program, GfxParamLayout::handle descriptorLayout, Blob const& data)
+void GfxDevice43::postProcessDraw(GfxMaterial2 const& material)
 {
-  gl43::glUseProgram(resources.programs[program].glhandle);
-  apply(descriptorLayout, data);
+  gl43::glUseProgram(resources.programs[material.program].glhandle);
+  apply(material.layout, material.ubo, material.bindings);
   if (!fullscreenVAO)
     gl43::glGenVertexArrays(1, &fullscreenVAO);
   gl43::glBindVertexArray(fullscreenVAO);
@@ -1267,12 +1301,25 @@ void GfxDevice43::endFrame()
                                                  [this](auto hdl)
                                                  {
                                                    auto& bhdl = resources.bindlessHandles[hdl];
+                                                   if (!bhdl.resident)
+                                                   {
+                                                     bhdl.active = false;
+                                                     return true;
+                                                   }
                                                    if (bhdl.residentFrame < this->frame - 1)
                                                    {
                                                      if (bhdl.type == BindlessHandleType::eTexture)
                                                        gl43ext::glMakeTextureHandleNonResidentARB(bhdl.hdev);
                                                      else
                                                        gl43ext::glMakeImageHandleNonResidentARB(bhdl.hdev);
+                                                     // are there any bhdl handles same as me
+                                                     // resources.bindlessHandles.for_each(
+                                                     //   [&bhdl](auto& handle)
+                                                     //   {
+                                                     //     if (handle.hdev == bhdl.hdev)
+                                                     //       handle.resident = false;
+                                                     //     return true;
+                                                     //   });
                                                      bhdl.resident = false;
                                                      bhdl.active   = false;
                                                      return true;
@@ -1280,6 +1327,8 @@ void GfxDevice43::endFrame()
                                                    return false;
                                                  }),
                                   resources.activeResidents.end());
+  gl43::glDeleteBuffers((gl::GLsizei)uboList.size(), uboList.data());
+  uboList.clear();
 }
 
 GfxPass::handle GfxDevice43::createPass(std::span<GfxPass::Attachment> colors, GfxPass::Attachment depth)
