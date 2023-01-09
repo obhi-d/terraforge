@@ -6,7 +6,7 @@ pack (index=resize, file=icons/resize.png, x=32, y=32);
 tint = ffffffff;
 clear = ff282424;
 
-node noise
+node erosion
 {
   color = f1544f4f;
 }

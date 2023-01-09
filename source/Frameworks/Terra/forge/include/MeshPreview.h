@@ -44,7 +44,7 @@ public:
   Property<uint32_t>    shadowMapResolution = Property<uint32_t>("@shadowMapResolution", 2);
   Property<vec4>        layerWeights        = Property<vec4>("@layerWeights", vec4(0.25f));
   Property<bool>        showWaterLevel      = Property<bool>("@showWaterLevel", true);
-  Property<float>       wavePeriod          = Property<float>("@wavePeriodicty", 0.5f);
+  Property<float>       wavePeriod          = Property<float>("@wavePeriodicty", 3.0f);
   Property<float>       waveLevel           = Property<float>("@waveLevel", -0.5f);
 
   Camera& getCamera()

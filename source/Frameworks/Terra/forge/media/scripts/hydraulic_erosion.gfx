@@ -1,0 +1,8 @@
+
+
+name   : HydraulicErosion;
+style  : erosion;
+
+output : heights (type = [source, float], semantic = heights, decltype = image2D);
+output : flux = (type = [source, float2], semantic = flux, format = rgba8, decltype = image2D);
+

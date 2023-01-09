@@ -197,12 +197,12 @@ void ImguiTerraWindow::drawSettings(TerraMainApp& app)
         drawProp(app, meshPreview.rocks);
         drawProp(app, meshPreview.terrain);
         drawProp(app, meshPreview.layerWeights, 0.0f, 1.0f, .01f);
-        drawProp(app, meshPreview.shadowMapResolution, 0, 3);
-        drawProp(app, meshPreview.planetScale, 0.0f, std::numeric_limits<float>::max(), 0.5f);
+        // drawProp(app, meshPreview.shadowMapResolution, 0, 3);
+        // drawProp(app, meshPreview.planetScale, 0.0f, std::numeric_limits<float>::max(), 0.5f);
         drawProp(app, meshPreview.heightScale, 0.0f, std::numeric_limits<float>::max(), 0.5f);
         drawProp(app, meshPreview.showWaterLevel);
         drawProp(app, meshPreview.waveLevel, 1.0f, -1.0f, 0.005f);
-        drawProp(app, meshPreview.wavePeriod, 0.0f, std::numeric_limits<float>::max(), 0.5f);
+        drawProp(app, meshPreview.wavePeriod, 0.0f, 21.f, 0.5f);
       }
       {
         static std::u8string_view header = app.localize("camera");
