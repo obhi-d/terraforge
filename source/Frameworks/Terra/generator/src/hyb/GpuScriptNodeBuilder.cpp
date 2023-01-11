@@ -103,6 +103,14 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         meta.format.hidden = true;
       }
+      else if (entry.name() == "content")
+      {
+        meta.contents = builder.localizedString(entry.value());
+      }
+      else if (entry.name() == "toggle")
+      {
+        meta.contents = ButtonData{builder.localizedString(entry.value())};
+      }
     }
     else if (std::holds_alternative<neo::list>(p))
     {
@@ -116,12 +124,12 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         auto& values  = entry.value();
         auto  maxEnum = values.size();
-        meta.maxEnum  = (uint32_t)maxEnum;
-        meta.enumDisplayInfo.reset(new terra::DisplayInfo[maxEnum]);
+        auto  ed      = EnumData(maxEnum, {});
         for (size_t i = 0; i < maxEnum; ++i)
         {
-          meta.enumDisplayInfo[i].from(std::get<neo::single>(values[i]).value());
+          ed[i].from(std::get<neo::single>(values[i]).value());
         }
+        meta.contents = ed;
       }
     }
   }
@@ -219,8 +227,20 @@ NodeCmdExecute(output, builder, state, cmd)
 NodeCmdExecute(pass, builder, state, cmd)
 {
   builder.meta.passes.emplace_back();
-  builder.meta.passes.back().type = terra::getIdxParam(cmd, 0, "fs") == "compute" ? GpuNodeMeta::PassType::eCompute
-                                                                                  : GpuNodeMeta::PassType::eFullscreen;
+  builder.meta.passes.back().name = terra::getIdxParam(cmd, 0, builder.meta.name());
+  auto const& params              = cmd.params().value();
+  for (auto& p : params)
+  {
+    if (std::holds_alternative<neo::single>(p))
+    {
+      auto const& entry = std::get<neo::single>(p);
+      if (entry.name() == "semantic")
+        builder.meta.passes.back().semantic = Semantic(std::string(entry.value()));
+      else if (entry.name() == "type")
+        builder.meta.passes.back().type =
+          entry.value() == "compute" ? GpuNodeMeta::PassType::eCompute : GpuNodeMeta::PassType::eFullscreen;
+    }
+  }
   return neo::retcode::e_success;
 }
 

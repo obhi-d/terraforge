@@ -576,15 +576,13 @@ bool ImguiBackend::drawResizeControl(glm::ivec2 windowSize)
   return isDragging;
 }
 
-bool ImguiBackend::toggleButton(std::string_view name, bool& toggled, ImVec2 size, std::u8string_view tip,
-                                float padding)
+bool ImguiBackend::toggleButton(const char* name, bool& toggled, ImVec2 size, std::u8string_view tip, float padding)
 {
-  bool        clicked = false;
-  std::string nameAlt = "##";
-  nameAlt += name;
+  bool clicked = false;
+  ImGui::PushID((void*)name);
   auto x = ImGui::GetCursorPosX();
   auto y = ImGui::GetCursorPosY();
-  if (ImGui::InvisibleButton(nameAlt.c_str(), size))
+  if (ImGui::InvisibleButton("~", size))
     clicked = true;
 
   if (ImGui::IsItemHovered() && !tip.empty())
@@ -608,12 +606,13 @@ bool ImguiBackend::toggleButton(std::string_view name, bool& toggled, ImVec2 siz
   if (padding)
     ImGui::SetCursorPosY(y + padding);
   ImGui::SetCursorPosX(x + padding);
-  ImGui::Text(name.data());
+  ImGui::Text(name);
 
   ImGui::PopStyleColor();
 
   if (clicked)
     toggled = !toggled;
+  ImGui::PopID();
   return clicked;
 }
 

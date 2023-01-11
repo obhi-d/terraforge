@@ -2,6 +2,7 @@
 #include "Node.h"
 #include "NodeMeta.h"
 #include "Pipeline.h"
+#include <fmt/format.h>
 #include <numbers>
 
 namespace terra
@@ -20,51 +21,51 @@ AutoParam::Result postIteration(Pipeline& pipe, Node& node, uint32_t i)
     if (pipe.iteration() < std::get<uint32_t>(value))
       return AutoParam::eContinueIteration;
   }
-  return AutoParam::eOk;
+  return AutoParam::eReturnResult;
 }
 
-bool preFSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+AutoParam::Result preFSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   pout = float(pipe.seed() % 100);
-  return true;
+  return AutoParam::Result::eOk;
 }
 
-bool preSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+AutoParam::Result preSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   pout = pipe.seed();
-  return true;
+  return AutoParam::Result::eOk;
 }
 
-bool preFrequency(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+AutoParam::Result preFrequency(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   pout = pipe.frequency() * std::get<float>(node.param(i));
-  return true;
+  return AutoParam::Result::eOk;
 }
 
-bool preStart(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+AutoParam::Result preStart(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   pout = vec2((float)pipe.offset().x + (pipe.size().x * pipe.tile().x),
               (float)pipe.offset().y + (pipe.size().y * pipe.tile().y));
-  return true;
+  return AutoParam::Result::eOk;
 }
 
-bool preSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+AutoParam::Result preSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   pout = vec2((float)pipe.size().x, (float)pipe.size().y);
-  return true;
+  return AutoParam::Result::eOk;
 }
 
-bool preRecipSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+AutoParam::Result preRecipSize(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   pout = vec2(1.0f / (float)pipe.size().x, 1.0f / (float)pipe.size().y);
-  return true;
+  return AutoParam::Result::eOk;
 }
 
-bool preMinMax(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+AutoParam::Result preMinMax(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto val = pipe.minMax();
   pout     = vec2(val.x, 1.0f / (val.y - val.x));
-  return true;
+  return AutoParam::Result::eOk;
 }
 
 void changeExpOctave(Node& node, uint32_t i)
@@ -126,6 +127,40 @@ void changeGaussBlurKernel(Node& node, uint32_t i)
   node.state(i, buffer);
 }
 
+AutoParam::Result preparePass(Pipeline& pipe, Node& node, uint32_t p)
+{
+  if (pipe.iteration() == 0)
+    return AutoParam::Result::eOk;
+  return AutoParam::eSkipPass;
+}
+
+AutoParam::Result prePausePlay(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+{
+  auto bs = std::get<Button>(node.param(i));
+  pout    = bs;
+  if (bs.state)
+    return AutoParam::Result::ePauseExecution;
+  return AutoParam::Result::eContinueIteration;
+}
+
+AutoParam::Result postStopSim(Pipeline& pipe, Node& node, uint32_t i)
+{
+  auto value = std::get<Button>(node.param(i));
+  if (value.state)
+  {
+    node.state(i, value);
+    value.state = false;
+    return AutoParam::eReturnResult;
+  }
+  return AutoParam::Result::eContinueIteration;
+}
+
+AutoParam::Result preWater(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
+{
+  pout = node.param(i);
+  return AutoParam::Result::eOk;
+}
+
 void registerAutos()
 {
   NodeMeta::registerAuto(Semantic("iteration"), nullptr, postIteration);
@@ -141,5 +176,8 @@ void registerAutos()
   NodeMeta::registerAuto(Semantic("blur_factor"), changeBlurFactor, {Semantic("blur_window")});
   NodeMeta::registerAuto(Semantic("gauss_blur_factor"), changeGaussBlurKernel,
                          {Semantic("blur_window"), Semantic("blur_stddev")});
+  NodeMeta::registerAuto(Semantic("prepare_pass"), preparePass);
+  NodeMeta::registerAuto(Semantic("play_pause"), prePausePlay, nullptr);
+  NodeMeta::registerAuto(Semantic("stop"), nullptr, postStopSim);
 }
 } // namespace terra

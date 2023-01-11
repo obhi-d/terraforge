@@ -47,6 +47,8 @@ public:
 
   struct GpuPass
   {
+    std::string           name;
+    Semantic              semantic;
     PassType              type;
     std::string           function;
     std::string           extensions;

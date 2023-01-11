@@ -176,17 +176,19 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   auto const& style = app.getTheme();
   auto        v     = node.param(param);
 
-  static_assert(DataTypeEnum::kCount == 19);
+  auto dranges = std::get<RangeData>(def.contents);
+
+  static_assert(DataTypeEnum::kCount == 21);
   switch (v.index())
   {
   case ParamHelper::eFloat:
   {
     auto value = std::get<float>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat(def.displayInfo.getName(), &value, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                         def.ranges.maxVal.fval))
+    if (ImGui::DragFloat(def.displayInfo.getName(), &value, dranges.stepVal.fval, dranges.minVal.fval,
+                         dranges.maxVal.fval))
     {
-      value = std::clamp(value, def.ranges.minVal.fval, def.ranges.maxVal.fval);
+      value = std::clamp(value, dranges.minVal.fval, dranges.maxVal.fval);
       node.param(param, value);
     }
   }
@@ -195,9 +197,9 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<uint32_t>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt(def.displayInfo.getName(), (int*)&value, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
+    if (ImGui::DragInt(def.displayInfo.getName(), (int*)&value, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value = std::clamp(value, (uint32_t)def.ranges.minVal.ival, (uint32_t)def.ranges.maxVal.ival);
+      value = std::clamp(value, (uint32_t)dranges.minVal.ival, (uint32_t)dranges.maxVal.ival);
       node.param(param, value);
     }
   }
@@ -206,9 +208,9 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<int>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt(def.displayInfo.getName(), (int*)&value, 1.0f, def.ranges.minVal.ival, def.ranges.maxVal.ival))
+    if (ImGui::DragInt(def.displayInfo.getName(), (int*)&value, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value = std::clamp(value, def.ranges.minVal.ival, def.ranges.maxVal.ival);
+      value = std::clamp(value, dranges.minVal.ival, dranges.maxVal.ival);
       node.param(param, value);
     }
   }
@@ -217,10 +219,10 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::vec2>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat2(def.displayInfo.getName(), &value.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
+    if (ImGui::DragFloat2(def.displayInfo.getName(), &value.x, dranges.stepVal.fval, dranges.minVal.fval,
+                          dranges.maxVal.fval))
     {
-      value = glm::clamp(value, vec2(def.ranges.minVal.fval), vec2(def.ranges.maxVal.fval));
+      value = glm::clamp(value, vec2(dranges.minVal.fval), vec2(dranges.maxVal.fval));
       node.param(param, value);
     }
   }
@@ -229,11 +231,10 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::uvec2>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt2(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
-                        def.ranges.maxVal.ival))
+    if (ImGui::DragInt2(def.displayInfo.getName(), (int*)&value.x, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value.x = std::clamp(value.x, (uint32_t)def.ranges.minVal.ival, (uint32_t)def.ranges.maxVal.ival);
-      value.y = std::clamp(value.y, (uint32_t)def.ranges.minVal.ival, (uint32_t)def.ranges.maxVal.ival);
+      value.x = std::clamp(value.x, (uint32_t)dranges.minVal.ival, (uint32_t)dranges.maxVal.ival);
+      value.y = std::clamp(value.y, (uint32_t)dranges.minVal.ival, (uint32_t)dranges.maxVal.ival);
       node.param(param, value);
     }
   }
@@ -242,10 +243,9 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::ivec2>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt2(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
-                        def.ranges.maxVal.ival))
+    if (ImGui::DragInt2(def.displayInfo.getName(), (int*)&value.x, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value = glm::clamp(value, glm::ivec2(def.ranges.minVal.ival), glm::ivec2(def.ranges.maxVal.ival));
+      value = glm::clamp(value, glm::ivec2(dranges.minVal.ival), glm::ivec2(dranges.maxVal.ival));
       node.param(param, value);
     }
   }
@@ -254,10 +254,10 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::vec3>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat3(def.displayInfo.getName(), &value.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
+    if (ImGui::DragFloat3(def.displayInfo.getName(), &value.x, dranges.stepVal.fval, dranges.minVal.fval,
+                          dranges.maxVal.fval))
     {
-      value = glm::clamp(value, vec3(def.ranges.minVal.fval), vec3(def.ranges.maxVal.fval));
+      value = glm::clamp(value, vec3(dranges.minVal.fval), vec3(dranges.maxVal.fval));
       node.param(param, value);
     }
   }
@@ -266,11 +266,9 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::uvec3>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt3(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
-                        def.ranges.maxVal.ival))
+    if (ImGui::DragInt3(def.displayInfo.getName(), (int*)&value.x, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value =
-        glm::clamp(value, glm::uvec3((uint32_t)def.ranges.minVal.ival), glm::uvec3((uint32_t)def.ranges.maxVal.ival));
+      value = glm::clamp(value, glm::uvec3((uint32_t)dranges.minVal.ival), glm::uvec3((uint32_t)dranges.maxVal.ival));
       node.param(param, value);
     }
   }
@@ -279,10 +277,9 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::ivec3>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt3(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
-                        def.ranges.maxVal.ival))
+    if (ImGui::DragInt3(def.displayInfo.getName(), (int*)&value.x, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value = glm::clamp(value, glm::ivec3(def.ranges.minVal.ival), glm::ivec3(def.ranges.maxVal.ival));
+      value = glm::clamp(value, glm::ivec3(dranges.minVal.ival), glm::ivec3(dranges.maxVal.ival));
       node.param(param, value);
     }
   }
@@ -291,10 +288,10 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::vec4>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragFloat4(def.displayInfo.getName(), &value.x, def.ranges.stepVal.fval, def.ranges.minVal.fval,
-                          def.ranges.maxVal.fval))
+    if (ImGui::DragFloat4(def.displayInfo.getName(), &value.x, dranges.stepVal.fval, dranges.minVal.fval,
+                          dranges.maxVal.fval))
     {
-      value = glm::clamp(value, vec4(def.ranges.minVal.fval), vec4(def.ranges.maxVal.fval));
+      value = glm::clamp(value, vec4(dranges.minVal.fval), vec4(dranges.maxVal.fval));
       node.param(param, value);
     }
   }
@@ -303,11 +300,9 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::uvec4>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt4(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
-                        def.ranges.maxVal.ival))
+    if (ImGui::DragInt4(def.displayInfo.getName(), (int*)&value.x, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value =
-        glm::clamp(value, glm::uvec4((uint32_t)def.ranges.minVal.ival), glm::uvec4((uint32_t)def.ranges.maxVal.ival));
+      value = glm::clamp(value, glm::uvec4((uint32_t)dranges.minVal.ival), glm::uvec4((uint32_t)dranges.maxVal.ival));
       node.param(param, value);
     }
   }
@@ -316,10 +311,9 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
   {
     auto value = std::get<glm::ivec4>(v);
     ImGui::SetNextItemWidth(style.fixedWidth * 2);
-    if (ImGui::DragInt4(def.displayInfo.getName(), (int*)&value.x, 1.0f, def.ranges.minVal.ival,
-                        def.ranges.maxVal.ival))
+    if (ImGui::DragInt4(def.displayInfo.getName(), (int*)&value.x, 1.0f, dranges.minVal.ival, dranges.maxVal.ival))
     {
-      value = glm::clamp(value, glm::ivec4(def.ranges.minVal.ival), glm::ivec4(def.ranges.maxVal.ival));
+      value = glm::clamp(value, glm::ivec4(dranges.minVal.ival), glm::ivec4(dranges.maxVal.ival));
       node.param(param, value);
     }
   }
@@ -337,11 +331,43 @@ void NodeEditor::drawScalar(TerraMainApp& app, ImguiBackend& backend, ParameterM
 void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, ParameterMeta const& def, Node& node,
                                uint32_t i)
 {
-  Parameter param = node.param(i);
-  bool      isSrc = std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source);
-  static_assert(DataTypeEnum::kCount == 19);
+  auto const& style = app.getTheme();
+  Parameter   param = node.param(i);
+  bool        isSrc = std::holds_alternative<Source>(param) && DataSource::isValid(std::get<Source>(param).source);
+  static_assert(DataTypeEnum::kCount == 21);
   switch (def.format.type)
   {
+  case DataTypeEnum::eButton:
+  {
+    auto        sv = std::get<Button>(node.param(i));
+    auto const& tb = std::get<ButtonData>(def.contents);
+    if (!tb.toggleTxt.empty())
+    {
+      if (backend.toggleButton(sv.state ? (const char*)tb.toggleTxt.data() : def.displayInfo.getName(), sv.state,
+                               ImVec2(style.fixedWidth, style.fixedWidth), def.displayInfo.help, 2.0f))
+      {
+        node.param(i, sv);
+      }
+    }
+    else
+    {
+      if (ImGui::Button(def.displayInfo.getName()))
+      {
+        sv.state = true;
+        node.param(i, sv);
+      }
+    }
+  }
+  break;
+  case DataTypeEnum::eString:
+  {
+    auto sv = std::get<FixedString>(node.param(i));
+    if (sv && !sv->empty())
+    {
+      ImGui::Text("%s", sv->c_str());
+    }
+  }
+  break;
   case DataTypeEnum::eFloat:
   case DataTypeEnum::eFloat2:
   case DataTypeEnum::eFloat3:
@@ -360,13 +386,14 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
   case DataTypeEnum::eEnum:
     // draw combo
     {
-      auto sv = std::get<int>(node.param(i));
-      if (ImGui::BeginCombo(def.displayInfo.getName(), def.enumDisplayInfo[sv].getName()))
+      auto const& denum = std::get<EnumData>(def.contents);
+      auto        sv    = std::get<int>(node.param(i));
+      if (ImGui::BeginCombo(def.displayInfo.getName(), denum[sv].getName()))
       {
-        for (int32_t e = 0; e < def.maxEnum; ++e)
+        for (int32_t e = 0; e < denum.size(); ++e)
         {
           bool selected = (e == sv);
-          if (ImGui::Selectable(def.enumDisplayInfo[e].getName(), selected))
+          if (ImGui::Selectable(denum[e].getName(), selected))
           {
             if (e != sv)
             {

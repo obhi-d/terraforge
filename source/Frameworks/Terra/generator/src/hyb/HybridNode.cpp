@@ -11,28 +11,41 @@ namespace terra
 {
 //============== ClassicHybridNode ==================
 
-bool ClassicHybridNode::preExecute(HybridPipeline& pipe, std::vector<Parameter>& parameters)
+HybridNode::Result ClassicHybridNode::preExecute(HybridPipeline& pipe, std::vector<Parameter>& parameters)
 {
   auto const& gpuMeta = static_cast<GpuNodeMeta const&>(meta);
   parameters.clear();
   parameters.reserve((size_t)std::popcount(gpuMeta.preParams));
-  return forEachBit(
+  std::optional<HybridNode::Result> result;
+  forEachBit(
     [&](auto i)
     {
       parameters.emplace_back(gpuMeta.parameterDef[i].getDefault());
       auto idx = (uint32_t)gpuMeta.parameterDef[i].format.semantic;
-      if (!gpuMeta.autoRegistry[idx].pre(pipe, *this, i, parameters.back()))
+      switch (gpuMeta.autoRegistry[idx].pre(pipe, *this, i, parameters.back()))
+      {
+      case AutoParam::Result::eReportFailure:
+        result = HybridNode::Result::eFailed;
         return false;
-
+      case AutoParam::Result::ePauseExecution:
+        if (!result)
+          result = HybridNode::Result::ePause;
+        break;
+      case AutoParam::Result::eSkipPass:
+        if (!result)
+          result = HybridNode::Result::eSkip;
+        break;
+      }
       return true;
     },
     gpuMeta.preParams);
+  return result ? result.value() : HybridNode::Result::eDone;
 }
 
-HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe)
+HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe, Result preState)
 {
-  auto const&        gpuMeta = static_cast<GpuNodeMeta const&>(meta);
-  HybridNode::Result result  = HybridNode::Result::eDone;
+  auto const&                       gpuMeta = static_cast<GpuNodeMeta const&>(meta);
+  std::optional<HybridNode::Result> result;
   if (!forEachBit(
         [&](auto i)
         {
@@ -43,13 +56,17 @@ HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe)
             result = HybridNode::Result::eFailed;
             return false;
           case AutoParam::eContinueIteration:
-            result = HybridNode::Result::eContinue;
+            if (!result)
+              result = HybridNode::Result::eContinue;
+            break;
+          case AutoParam::eReturnResult:
+            result = HybridNode::Result::eDone;
             break;
           }
           return true;
         },
         gpuMeta.postParams))
-    return result;
+    return result ? result.value() : preState;
 
   forEachBit(
     [&](auto i)
@@ -58,17 +75,17 @@ HybridNode::Result ClassicHybridNode::postExecute(HybridPipeline& pipe)
       switch (gpuMeta.autoRegistry[idx].post(pipe, *this, i))
       {
       case AutoParam::eReportFailure:
-
         result = HybridNode::Result::eFailed;
         return false;
       case AutoParam::eContinueIteration:
-        result = HybridNode::Result::eContinue;
+        if (!result)
+          result = HybridNode::Result::eContinue;
         break;
       }
       return true;
     },
     gpuMeta.autoOutputs);
-  return result;
+  return result ? result.value() : preState;
 }
 
 //============== GpuNode ==================
@@ -216,6 +233,11 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     case DataTypeEnum::eArray:
       builder.param(def.name(), def.format);
       break;
+    case DataTypeEnum::eButton:
+      if (std::get<Button>(p).state)
+        shoption.setOption(optionIdx);
+      optionIdx++;
+      break;
     case DataTypeEnum::eBool:
       if (std::get<bool>(p))
         shoption.setOption(optionIdx);
@@ -223,7 +245,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       break;
     case DataTypeEnum::eEnum:
       shoption.setOption(optionIdx + (uint32_t)std::get<int>(p));
-      optionIdx += def.maxEnum;
+      optionIdx += std::get<EnumData>(def.contents).size();
       break;
     }
   }
@@ -289,6 +311,11 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
       case DataTypeEnum::eSource:
         optionIdx++;
         break;
+      case DataTypeEnum::eButton:
+        if (std::get<Button>(p).state)
+          shoption.setOption(optionIdx);
+        optionIdx++;
+        break;
       case DataTypeEnum::eBool:
         if (std::get<bool>(p))
           shoption.setOption(optionIdx);
@@ -296,7 +323,7 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
         break;
       case DataTypeEnum::eEnum:
         shoption.setOption(optionIdx + (uint32_t)std::get<int>(p));
-        optionIdx += def.maxEnum;
+        optionIdx += std::get<EnumData>(def.contents).size();
         break;
       }
     }
@@ -327,9 +354,24 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
   auto&    gpuPipe   = ndat.gpuPasses;
   for (uint32_t pass = 0; pass < passCount; ++pass)
   {
-    auto const& code = gpuMeta.getCode(pass);
-
     gpuPipe->passes[pass]->touch();
+    auto const& code = gpuMeta.getCode(pass);
+    if (gpuMeta.passes[pass].semantic)
+    {
+      auto idx = (uint32_t)gpuMeta.passes[pass].semantic;
+      if (idx < gpuMeta.autoRegistry.size() && gpuMeta.autoRegistry[idx].pass)
+      {
+        auto result = (gpuMeta.autoRegistry[idx].pass(pipe, *this, pass));
+        if (result == AutoParam::Result::eReportFailure)
+        {
+          logError("Pass execution failed: {}-{}", gpuMeta.name(), pass);
+          return;
+        }
+        if (result == AutoParam::Result::eSkipPass)
+          continue;
+      }
+    }
+
     auto state          = code.state;
     state.viewport.size = pipe.size();
     auto     program    = ShaderProgramInstance(state, *gpuPipe->passes[pass], pipe,
@@ -384,11 +426,12 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
       case DataTypeEnum::eArray:
         program.pushValue(p, def.format.type, def.format.scalarSubType);
         break;
+      case DataTypeEnum::eButton:
       case DataTypeEnum::eBool:
         optionIdx++;
         break;
       case DataTypeEnum::eEnum:
-        optionIdx += def.maxEnum;
+        optionIdx += std::get<EnumData>(def.contents).size();
         break;
       }
     }

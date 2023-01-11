@@ -8,7 +8,7 @@ param  : blur_stddev (type = float, decltype = scalar, min = 0, max = 10, defaul
 param  : gauss_blur_factor (type = [buffer, float], decltype = readonlyStorageBuffer, semantic = gauss_blur_factor) hidden;
 param  : rsize (type = float2, decltype = scalar, semantic = rsize) hidden;
 
-pass
+pass GaussianBlur
 {
   function : blur;
   shaders  : [gaussian_blur.glsl];

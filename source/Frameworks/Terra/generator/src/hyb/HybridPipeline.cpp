@@ -197,10 +197,14 @@ void HybridPipeline::execute()
 
   switch (get().get<HybridNode>(item).execute(*this))
   {
+  case HybridNode::Result::ePause:
+    result_ = HybridNode::Result::eContinue;
+    break;
   case HybridNode::Result::eContinue:
     iteration_ = ++node.iteration;
     result_    = HybridNode::Result::eContinue;
     break;
+  case HybridNode::Result::eSkip:
   case HybridNode::Result::eDone:
     if constexpr (Debug)
     {

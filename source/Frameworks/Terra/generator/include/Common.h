@@ -856,4 +856,11 @@ std::span<ubyte_t const> toSpan(std::vector<T> const& ref)
   return std::span<ubyte_t const>((ubyte_t const*)ref.data(), ref.size() * sizeof(T));
 }
 
+struct Button
+{
+  bool state = false;
+};
+
+using FixedString = std::shared_ptr<std::string>;
+
 } // namespace terra

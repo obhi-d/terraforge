@@ -15,7 +15,7 @@ param  : gain (type = float, decltype = scalar, min = -inf, max = inf, default =
 param  : start (type = float2, semantic = start, decltype = scalar) hidden;
 param  : size (type = float2, semantic = size, decltype = scalar) hidden;
 
-pass
+pass HeteroTerrain
 {
   function : noise;
   shaders  : [opensimplex2s.glsl, hetero_terrain.glsl];

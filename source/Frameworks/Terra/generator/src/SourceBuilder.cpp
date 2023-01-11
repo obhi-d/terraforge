@@ -101,6 +101,10 @@ std::string_view toGlsl(ImageFormatEnum type)
     return "r32f";
   case ImageFormatEnum::eRg32f:
     return "rg32f";
+  case ImageFormatEnum::eRgba16f:
+    return "rgba16f";
+  case ImageFormatEnum::eRg16f:
+    return "rg16f";
   case ImageFormatEnum::eRgba32f:
     return "rgba32f";
   case ImageFormatEnum::eSrgb8Alpha8:

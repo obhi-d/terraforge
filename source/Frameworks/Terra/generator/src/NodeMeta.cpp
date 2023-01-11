@@ -33,33 +33,38 @@ bool ParameterMeta::canBeScalar() const
 
 Parameter ParameterMeta::getDefault() const
 {
-  if (DataTypeEnum::eBool == format.type)
-    return (bool)(ranges.defaultVal.ival != 0);
+  static_assert(DataTypeEnum::kCount == 21);
+  if (DataTypeEnum::eButton)
+    return Parameter(Button{});
+  else if (DataTypeEnum::eString)
+    return Parameter(std::make_shared<std::string>());
+  else if (DataTypeEnum::eBool == format.type)
+    return (bool)(std::get<RangeData>(contents).defaultVal.ival != 0);
   else if (DataTypeEnum::eEnum == format.type)
-    return ranges.defaultVal.ival;
+    return (std::get<RangeData>(contents).defaultVal.ival);
   switch (format.scalarSubType)
   {
   case DataTypeEnum::eFloat:
-    return ranges.defaultVal.fval;
+    return (std::get<RangeData>(contents).defaultVal.fval);
   case DataTypeEnum::eFloat2:
-    return vec2{ranges.defaultVal.fval};
+    return vec2{(std::get<RangeData>(contents).defaultVal.fval)};
   case DataTypeEnum::eFloat3:
-    return vec3{ranges.defaultVal.fval};
+    return vec3{(std::get<RangeData>(contents).defaultVal.fval)};
   case DataTypeEnum::eFloat4:
-    return vec4{ranges.defaultVal.fval};
+    return vec4{(std::get<RangeData>(contents).defaultVal.fval)};
   case DataTypeEnum::eMat4:
   {
-    auto m4 = mat4{ranges.defaultVal.fval};
+    auto m4 = mat4{(std::get<RangeData>(contents).defaultVal.fval)};
     return std::make_shared<ArrayFloat>(&m4[0][0], &m4[0][0] + 16);
   }
   case DataTypeEnum::eInt:
-    return ranges.defaultVal.ival;
+    return (std::get<RangeData>(contents).defaultVal.ival);
   case DataTypeEnum::eInt2:
-    return ivec2{ranges.defaultVal.ival, ranges.defaultVal.ival};
+    return ivec2{(std::get<RangeData>(contents).defaultVal.ival), (std::get<RangeData>(contents).defaultVal.ival)};
   case DataTypeEnum::eUint:
-    return (uint32_t)ranges.defaultVal.ival;
+    return (uint32_t)(std::get<RangeData>(contents).defaultVal.ival);
   case DataTypeEnum::eUint2:
-    return uvec2((uint32_t)ranges.defaultVal.ival);
+    return uvec2((uint32_t)(std::get<RangeData>(contents).defaultVal.ival));
   default:
     return float(0.0f);
   }
@@ -83,16 +88,16 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
     switch (valType)
     {
     case ValueType::eDefault:
-      ranges.defaultVal = DataValue(value);
+      std::get<RangeData>(contents).defaultVal = DataValue(value);
       break;
     case ValueType::eMax:
-      ranges.maxVal = DataValue(value);
+      std::get<RangeData>(contents).maxVal = DataValue(value);
       break;
     case ValueType::eMin:
-      ranges.minVal = DataValue(value);
+      std::get<RangeData>(contents).minVal = DataValue(value);
       break;
     case ValueType::eStep:
-      ranges.stepVal = DataValue(value);
+      std::get<RangeData>(contents).stepVal = DataValue(value);
       break;
     }
   };

@@ -23,6 +23,10 @@ inline gl::GLenum toGlFormat(ImageFormatEnum format)
     return gl::GLenum::GL_SRGB8_ALPHA8;
   case ImageFormatEnum::eRg32f:
     return gl::GLenum::GL_RG32F;
+  case ImageFormatEnum::eRg16f:
+    return gl::GLenum::GL_RG16F;
+  case ImageFormatEnum::eRgba16f:
+    return gl::GLenum::GL_RGBA16F;
   case ImageFormatEnum::eRgba32f:
     return gl::GLenum::GL_RGBA32F;
   case ImageFormatEnum::eDepth24:
@@ -41,12 +45,15 @@ inline gl::GLenum toGlDataFormat(ImageFormatEnum format)
   case ImageFormatEnum::eSnorm16:
   case ImageFormatEnum::eUnorm16:
     return gl::GLenum::GL_RED;
+  case ImageFormatEnum::eRgba16f:
   case ImageFormatEnum::eRgba8:
   case ImageFormatEnum::eSrgb8Alpha8:
   case ImageFormatEnum::eRgba32f:
     return gl::GLenum::GL_RGBA;
+  case ImageFormatEnum::eRg16f:
   case ImageFormatEnum::eRg32f:
     return gl::GLenum::GL_RG;
+
   case ImageFormatEnum::eDepth24:
     return gl::GLenum::GL_DEPTH_COMPONENT24;
   case ImageFormatEnum::eDepth32f:
@@ -58,6 +65,8 @@ inline gl::GLenum toGlType(ImageFormatEnum format)
 {
   switch (format)
   {
+  case ImageFormatEnum::eRg16f:
+  case ImageFormatEnum::eRgba16f:
   case ImageFormatEnum::eRg32f:
   case ImageFormatEnum::eRgba32f:
   case ImageFormatEnum::eFloat:

@@ -34,6 +34,8 @@ struct HybridNode : public Node
     eDone,
     eContinue,
     eFailed,
+    ePause,
+    eSkip,
     eWaiting
   };
 
@@ -41,9 +43,9 @@ struct HybridNode : public Node
 
   virtual Queue  getQueue() const                                                                 = 0;
   virtual Result execute(HybridPipeline&)                                                         = 0;
-  virtual bool   preExecute(HybridPipeline&, std::vector<Parameter>&)                             = 0;
+  virtual Result preExecute(HybridPipeline&, std::vector<Parameter>&)                             = 0;
   virtual void   executeImpl(HybridPipeline&, std::vector<Parameter>&)                            = 0;
-  virtual Result postExecute(HybridPipeline&)                                                     = 0;
+  virtual Result postExecute(HybridPipeline&, Result preState)                                    = 0;
   virtual bool   prepare(HybridPipeline&)                                                         = 0;
   virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&)                                = 0;
   virtual void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) = 0;
@@ -61,17 +63,19 @@ struct ClassicHybridNode : public HybridNode
   Result execute(HybridPipeline& pipe) override
   {
     std::vector<Parameter> autoParams;
-    if (preExecute(pipe, autoParams))
+    Result                 pre = preExecute(pipe, autoParams);
+    if (pre != Result::eFailed)
     {
-      executeImpl(pipe, autoParams);
-      return postExecute(pipe);
+      if (pre != Result::ePause && pre != Result::eSkip)
+        executeImpl(pipe, autoParams);
+      return postExecute(pipe, pre);
     }
-    return Result::eFailed;
+    return pre;
   }
   void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) override {}
-  bool   preExecute(HybridPipeline&, std::vector<Parameter>&) override;
+  Result preExecute(HybridPipeline&, std::vector<Parameter>&) override;
   void   executeImpl(HybridPipeline&, std::vector<Parameter>&) override {}
-  Result postExecute(HybridPipeline&) override;
+  Result postExecute(HybridPipeline&, Result preState) override;
 
   uvec2 constraintTileStart = uvec2(0, 0);
   uvec2 constraintTileCount = uvec2(0, 0);

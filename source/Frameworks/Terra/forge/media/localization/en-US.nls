@@ -196,3 +196,6 @@ operator                   = """Operator""";
 operator.tip               = """Math operator to use""";
 operator.help              = """Only limited set of operations are provided""";
 operator.category          = """General""";
+
+
+sim_status                 = """Simulation is {}""";

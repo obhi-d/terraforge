@@ -8,7 +8,7 @@ param  : blur_window (type = int, decltype = scalar, min = 0, max = 9, default =
 param  : blur_factor (type = float, decltype = scalar, semantic = blur_factor) hidden;
 param  : rsize (type = float2, decltype = scalar, semantic = rsize) hidden;
 
-pass
+pass Blur
 {
   function : blur;
   shaders  : [blur.glsl];

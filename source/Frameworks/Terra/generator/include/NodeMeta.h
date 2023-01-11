@@ -128,6 +128,15 @@ struct FmtEnum
   }
 };
 
+using EnumData   = acl::dynamic_array<DisplayInfo>;
+using StringData = std::u8string_view;
+using RangeData  = ValueRange;
+
+struct ButtonData
+{
+  std::u8string_view toggleTxt;
+};
+
 struct ParameterMeta
 {
   enum ValueType
@@ -143,13 +152,13 @@ struct ParameterMeta
 
   DataFormat format;
 
-  std::unique_ptr<DisplayInfo[]> enumDisplayInfo = {};
-  ValueRange                     ranges;
-  uint64_t                       dependencies = 0;
+  std::variant<EnumData, StringData, RangeData, ButtonData> contents;
+
+  uint64_t dependencies = 0;
 
   union
   {
-    int32_t  maxEnum = 1;
+
     uint32_t maxOption;
   };
 
@@ -166,16 +175,9 @@ struct ParameterMeta
   {
     displayInfo = other.displayInfo;
     format      = other.format;
-    maxEnum     = other.maxEnum;
+    contents    = other.contents;
     setter      = other.setter;
     getter      = other.getter;
-    ranges      = other.ranges;
-    if (other.enumDisplayInfo)
-    {
-      enumDisplayInfo.reset(new DisplayInfo[maxEnum]);
-      for (int32_t i = 0; i < maxEnum; ++i)
-        enumDisplayInfo[i] = other.enumDisplayInfo[i];
-    }
     return *this;
   }
   ParameterMeta& operator=(ParameterMeta&&) noexcept = default;
@@ -185,7 +187,7 @@ struct ParameterMeta
                 DataTypeEnum subType = DataTypeEnum::eFloat, ImageFormatEnum imageFmt = ImageFormatEnum::eFloat,
                 ParamDeclTypeEnum declType = ParamDeclTypeEnum::eSampler2D, Semantic semantic = {},
                 SamplerParamEnum sampler = SamplerParamEnum::eNone, bool preEval = false)
-      : format(type, subType, imageFmt, declType, semantic, sampler, preEval), ranges(values), displayInfo(iname),
+      : format(type, subType, imageFmt, declType, semantic, sampler, preEval), contents(values), displayInfo(iname),
         setter(
           [](Node& node, uint32_t, Parameter param)
           {
@@ -225,13 +227,7 @@ struct ParameterMeta
             return Parameter(cnode.*pmember);
           })
   {
-
-    maxEnum = (uint32)enums.size();
-    enumDisplayInfo.reset(new DisplayInfo[maxEnum]);
-    for (uint32_t i = 0; i < maxEnum; ++i)
-    {
-      enumDisplayInfo[i].from(enums[i]);
-    }
+    contents = EnumData(enums.begin(), enums.end());
   }
 
   std::string_view name() const
@@ -263,16 +259,21 @@ struct AutoParam
     eContinueIteration,
     eReturnResult,
     eOk,
+    eSkipPass,
+    ePauseExecution,
     eReportFailure
   };
 
-  using CallbackPre    = bool (*)(Pipeline&, Node&, uint32_t, Parameter&);
+  using CallbackPre    = Result (*)(Pipeline&, Node&, uint32_t, Parameter&);
   using CallbackPost   = Result (*)(Pipeline&, Node&, uint32_t);
   using CallbackChange = void (*)(Node&, uint32_t);
+  using CallbackPass   = Result (*)(Pipeline&, Node&, uint32_t pass);
 
-  CallbackPre           pre    = nullptr;
-  CallbackPost          post   = nullptr;
-  CallbackChange        change = nullptr;
+  CallbackPre    pre    = nullptr;
+  CallbackPost   post   = nullptr;
+  CallbackChange change = nullptr;
+  CallbackPass   pass   = nullptr;
+
   std::vector<Semantic> naturalDeps;
 
   AutoParam() = default;
@@ -280,6 +281,7 @@ struct AutoParam
   AutoParam(CallbackChange ichange, std::initializer_list<Semantic> deps)
       : change(ichange), naturalDeps(std::move(deps))
   {}
+  AutoParam(CallbackPass ipass) : pass(ipass) {}
 };
 
 struct OutputMeta

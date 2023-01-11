@@ -23,8 +23,8 @@ public:
   struct CallbackData
   {
     void* instance;
-    Rect viewport;
-    Rect scissor;
+    Rect  viewport;
+    Rect  scissor;
   };
 
   void init(std::shared_ptr<GfxDevice43>);
@@ -40,14 +40,14 @@ public:
   // Draw a titlebar with flags, returns the button name clicked
   // if Menu flag is used, cursor is placed at next menu draw
   // You can right align to draw from right
-  void         endTitlebar();
-  void         textCentered(std::string_view text, ImVec2 pos, ImVec2 size);
-  bool         iconButton(std::string_view name, ImVec2 size, Color color, Color hover);
-  bool         drawResizeControl(glm::ivec2 windowSize);
+  void endTitlebar();
+  void textCentered(std::string_view text, ImVec2 pos, ImVec2 size);
+  bool iconButton(std::string_view name, ImVec2 size, Color color, Color hover);
+  bool drawResizeControl(glm::ivec2 windowSize);
   bool iconButton(char16_t, glm::ivec2 size, int iconSize, Color normal, Color hover, Color pressed, bool inlay = true);
   bool iconButton(ImageName, glm::ivec2 size, int iconSize, Color normal, Color hover, Color pressed,
                   bool inlay = true);
-  bool toggleButton(std::string_view name, bool& toggled, ImVec2 size, std::u8string_view tip, float padding = 0.0f);
+  bool toggleButton(const char* name, bool& toggled, ImVec2 size, std::u8string_view tip, float padding = 0.0f);
 
 private:
   std::tuple<bool, glm::ivec2, Color> iconButtonSetup(glm::ivec2 size, int iconSize, bool inlay, Color normal,
@@ -112,7 +112,7 @@ private:
   Params                                   paramData;
   std::array<PackUV, ImagePackCount>       packUVs;
   std::array<GfxDescriptorSet::rhandle, 2> descriptors;
-  GfxImage::handle                       font;
+  GfxImage::handle                         font;
   GfxSampler::handle                       sampler;
   GfxDescriptorSetLayout::handle           descriptorSetLayout;
   GfxDescriptorSet::handle                 descriptorSet;

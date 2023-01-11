@@ -16,7 +16,7 @@ param  : threshold (type = float, decltype = scalar, min = -inf, max = inf, defa
 param  : start (type = float2, semantic = start, decltype = scalar) hidden;
 param  : size (type = float2, semantic = size, decltype = scalar) hidden;
 
-pass
+pass RidgedTerrain
 {
   function : noise;
   shaders  : [opensimplex2s.glsl, ridged_terrain.glsl];

@@ -8,7 +8,7 @@ param  : minmax (type = float2, semantic = minmax, decltype = scalar) hidden;
 param  : scale_min (type = float, decltype = scalar, min = -inf, max = inf, default = -1.0, step = 0.1);
 param  : scale_max (type = float, decltype = scalar, min = -inf, max = inf, default =  1.0, step = 0.1);
 
-pass
+pass Rescale
 {
   function : rescale;
   shaders  : [rescale.glsl];

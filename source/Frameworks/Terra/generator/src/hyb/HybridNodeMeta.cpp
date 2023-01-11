@@ -34,13 +34,15 @@ void GpuNodeMeta::prepare()
     case DataTypeEnum::eBuffer:
       dict.names.emplace_back(buffPrefix + std::string(pdef.name()));
       break;
+    case DataTypeEnum::eButton:
     case DataTypeEnum::eBool:
       dict.names.emplace_back(boolPrefix + std::string(pdef.name()));
       break;
     case DataTypeEnum::eEnum:
     {
-      for (int32_t i = 0; i < pdef.maxEnum; ++i)
-        dict.names.emplace_back(fmt::format("Enum_{}", pdef.enumDisplayInfo[i].id));
+      auto const& ed = std::get<EnumData>(pdef.contents);
+      for (uint32_t i = 0; i < ed.size(); ++i)
+        dict.names.emplace_back(fmt::format("Enum_{}", ed[i].id));
     }
     break;
     }

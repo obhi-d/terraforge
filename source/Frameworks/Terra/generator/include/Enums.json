@@ -15,7 +15,9 @@
       "Rgba8",
       "Srgb8Alpha8",
       "Rg32f",
+      "Rg16f",
       "Rgba32f",
+      "Rgba16f",
       "Rgb8",
       "Depth32f",
       "Depth24"
@@ -47,7 +49,9 @@
       "PostProcess",
       "Enum",
       "Array",
-      "Buffer"
+      "Buffer",
+      "String",
+      "Button"
     ]
   },
   {
