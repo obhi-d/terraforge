@@ -459,6 +459,7 @@ gl43::GLuint GfxDevice43::createShader(ShaderType type, std::span<gl43::GLchar c
 #endif
     gl43::glDeleteShader(glhandle);
     glhandle = 0;
+    throw std::runtime_error("Failed to compile shader");
   }
   return glhandle;
 }
@@ -581,6 +582,7 @@ GfxProgram::handle GfxDevice43::createProgram(std::span<ShaderOptions> options, 
     }
     destroy(GfxProgram::handle(h));
     h = {};
+    throw std::runtime_error("Failed to link shader");
     return h;
   }
   gl43::glValidateProgram(res.glhandle);
@@ -590,6 +592,7 @@ GfxProgram::handle GfxDevice43::createProgram(std::span<ShaderOptions> options, 
     logError("Program validation failed: {}", (uint32_t)h);
     destroy(GfxProgram::handle(h));
     h = {};
+    throw std::runtime_error("Failed to validate shader");
   }
   return h;
 }

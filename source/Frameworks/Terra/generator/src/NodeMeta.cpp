@@ -70,10 +70,27 @@ Parameter ParameterMeta::getDefault() const
   }
 }
 
+ParamDeclTypeEnum declTypeFromType(DataTypeEnum type)
+{
+  switch (type)
+  {
+  case DataTypeEnum::eBuffer:
+    return ParamDeclTypeEnum::eStorageBuffer;
+  case DataTypeEnum::eSource:
+  case DataTypeEnum::eImage:
+  case DataTypeEnum::ePostProcess:
+  case DataTypeEnum::eInput:
+    return ParamDeclTypeEnum::eSampler2D;
+  default:
+    return ParamDeclTypeEnum::eScalar;
+  }
+}
+
 void ParameterMeta::setTypeFromString(std::string_view type, std::string_view scalarType)
 {
   format.type          = DataType::fromString(type);
   format.scalarSubType = DataType::fromString(scalarType);
+  format.declType      = declTypeFromType(format.type);
 }
 
 void ParameterMeta::setDeclFromString(std::string_view type)
@@ -85,6 +102,8 @@ void ParameterMeta::setValueFromString(ValueType valType, std::string_view value
 {
   auto localSetter = [this, valType](auto value)
   {
+    if (!std::holds_alternative<RangeData>(contents))
+      contents = RangeData();
     switch (valType)
     {
     case ValueType::eDefault:

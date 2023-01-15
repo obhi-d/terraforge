@@ -33,25 +33,25 @@ AutoParam::Result preFSeed(Pipeline& pipe, Node& node, uint32_t i, Parameter& po
 AutoParam::Result preSquare(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto p = node.param(i);
-  pout   = std::visit(overloaded{[](auto arg)
+  pout   = std::visit(Overloaded{[](auto arg)
                                {
-                                 return arg;
+                                 return Parameter(arg);
                                },
                                [](uint32_t arg)
                                {
-                                 return arg * arg;
+                                 return Parameter(arg * arg);
                                },
                                [](int32_t arg)
                                {
-                                 return arg * arg;
+                                 return Parameter(arg * arg);
                                },
                                [](const glm::ivec2& arg)
                                {
-                                 return arg * arg;
+                                 return Parameter(arg * arg);
                                },
                                [](const glm::uvec2& arg)
                                {
-                                 return arg * arg;
+                                 return Parameter(arg * arg);
                                },
                                [](float arg)
                                {
@@ -77,25 +77,25 @@ AutoParam::Result preSquare(Pipeline& pipe, Node& node, uint32_t i, Parameter& p
 AutoParam::Result preCube(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto p = node.param(i);
-  pout   = std::visit(overloaded{[](auto arg)
+  pout   = std::visit(Overloaded{[](auto arg)
                                {
-                                 return arg;
+                                 return Parameter(arg);
                                },
                                [](float arg)
                                {
-                                 return (arg * arg * arg);
+                                 return Parameter(arg * arg * arg);
                                },
                                [](const glm::vec2& arg)
                                {
-                                 return (arg * arg * arg);
+                                 return Parameter(arg * arg * arg);
                                },
                                [](const glm::vec3& arg)
                                {
-                                 return (arg * arg * arg);
+                                 return Parameter(arg * arg * arg);
                                },
                                [](const glm::vec4& arg)
                                {
-                                 return (arg * arg * arg);
+                                 return Parameter(arg * arg * arg);
                                }},
                       p);
   return AutoParam::Result::eOk;
@@ -104,25 +104,25 @@ AutoParam::Result preCube(Pipeline& pipe, Node& node, uint32_t i, Parameter& pou
 AutoParam::Result preSin(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto p = node.param(i);
-  pout   = std::visit(overloaded{[](auto arg)
+  pout   = std::visit(Overloaded{[](auto arg)
                                {
-                                 return arg;
+                                 return Parameter(arg);
                                },
                                [](float arg)
                                {
-                                 return std::sin(arg);
+                                 return Parameter(std::sin(arg));
                                },
                                [](const glm::vec2& arg)
                                {
-                                 return glm::sin(arg);
+                                 return Parameter(glm::sin(arg));
                                },
                                [](const glm::vec3& arg)
                                {
-                                 return glm::sin(arg);
+                                 return Parameter(glm::sin(arg));
                                },
                                [](const glm::vec4& arg)
                                {
-                                 return glm::sin(arg);
+                                 return Parameter(glm::sin(arg));
                                }},
                       p);
   return AutoParam::Result::eOk;
@@ -131,25 +131,25 @@ AutoParam::Result preSin(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout
 AutoParam::Result preCos(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto p = node.param(i);
-  pout   = std::visit(overloaded{[](auto arg)
+  pout   = std::visit(Overloaded{[](auto arg)
                                {
-                                 return arg;
+                                 return Parameter(arg);
                                },
                                [](float arg)
                                {
-                                 return std::cos(arg);
+                                 return Parameter(std::cos(arg));
                                },
                                [](const glm::vec2& arg)
                                {
-                                 return glm::cos(arg);
+                                 return Parameter(glm::cos(arg));
                                },
                                [](const glm::vec3& arg)
                                {
-                                 return glm::cos(arg);
+                                 return Parameter(glm::cos(arg));
                                },
                                [](const glm::vec4& arg)
                                {
-                                 return glm::cos(arg);
+                                 return Parameter(glm::cos(arg));
                                }},
                       p);
   return AutoParam::Result::eOk;
@@ -158,25 +158,25 @@ AutoParam::Result preCos(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout
 AutoParam::Result preExp(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto p = node.param(i);
-  pout   = std::visit(overloaded{[](auto arg)
+  pout   = std::visit(Overloaded{[](auto arg)
                                {
-                                 return arg;
+                                 return Parameter(arg);
                                },
                                [](float arg)
                                {
-                                 return std::exp(arg);
+                                 return Parameter(std::exp(arg));
                                },
                                [](const glm::vec2& arg)
                                {
-                                 return glm::exp(arg);
+                                 return Parameter(glm::exp(arg));
                                },
                                [](const glm::vec3& arg)
                                {
-                                 return glm::exp(arg);
+                                 return Parameter(glm::exp(arg));
                                },
                                [](const glm::vec4& arg)
                                {
-                                 return glm::exp(arg);
+                                 return Parameter(glm::exp(arg));
                                }},
                       p);
   return AutoParam::Result::eOk;
@@ -185,25 +185,25 @@ AutoParam::Result preExp(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout
 AutoParam::Result preLog(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto p = node.param(i);
-  pout   = std::visit(overloaded{[](auto arg)
+  pout   = std::visit(Overloaded{[](auto arg)
                                {
-                                 return arg;
+                                 return Parameter(arg);
                                },
                                [](float arg)
                                {
-                                 return std::log(arg);
+                                 return Parameter(std::log(arg));
                                },
                                [](const glm::vec2& arg)
                                {
-                                 return glm::log(arg);
+                                 return Parameter(glm::log(arg));
                                },
                                [](const glm::vec3& arg)
                                {
-                                 return glm::log(arg);
+                                 return Parameter(glm::log(arg));
                                },
                                [](const glm::vec4& arg)
                                {
-                                 return glm::log(arg);
+                                 return Parameter(glm::log(arg));
                                }},
                       p);
   return AutoParam::Result::eOk;
@@ -212,25 +212,25 @@ AutoParam::Result preLog(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout
 AutoParam::Result preSqrt(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
   auto p = node.param(i);
-  pout   = std::visit(overloaded{[](auto arg)
+  pout   = std::visit(Overloaded{[](auto arg)
                                {
-                                 return arg;
+                                 return Parameter(arg);
                                },
                                [](float arg)
                                {
-                                 return std::sqrt(arg);
+                                 return Parameter(std::sqrt(arg));
                                },
                                [](const glm::vec2& arg)
                                {
-                                 return glm::sqrt(arg);
+                                 return Parameter(glm::sqrt(arg));
                                },
                                [](const glm::vec3& arg)
                                {
-                                 return glm::sqrt(arg);
+                                 return Parameter(glm::sqrt(arg));
                                },
                                [](const glm::vec4& arg)
                                {
-                                 return glm::sqrt(arg);
+                                 return Parameter(glm::sqrt(arg));
                                }},
                       p);
   return AutoParam::Result::eOk;

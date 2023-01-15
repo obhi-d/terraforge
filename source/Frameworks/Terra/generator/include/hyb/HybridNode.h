@@ -99,7 +99,7 @@ struct GpuNode : public ClassicHybridNode
   void   build(HybridPipeline&, uint32_t pass, SourceBuilder&);
   void   executeImpl(HybridPipeline&, std::vector<Parameter>&) override;
   void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) override;
-  Result postExecute(HybridPipeline&) override;
+  Result postExecute(HybridPipeline&, Result preState) override;
 
   virtual void createResources(GpuNode::Data&, HybridPipeline&, GpuNodeMeta const&);
   virtual void pushOutputs(HybridPipeline&, uint32_t pass, ShaderProgramInstance&);

@@ -128,7 +128,7 @@ struct FmtEnum
   }
 };
 
-using EnumData   = acl::dynamic_array<DisplayInfo>;
+using EnumData   = std::vector<DisplayInfo>;
 using StringData = std::u8string_view;
 using RangeData  = ValueRange;
 

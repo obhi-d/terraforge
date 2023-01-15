@@ -28,7 +28,6 @@ void irregular_blob(in vec2 st)
   float dist_squared = dot(dist, dist);
   float fnoise = 0.0;
   float ampl = amplitude;
-  float freq = frequency;
   for (uint i = 0; i < octaves; i++) 
   {
     fnoise += ampl * (abs(noise(st * frequency + center + fseed)) - 0.5) * exponents[i];

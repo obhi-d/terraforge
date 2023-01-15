@@ -124,7 +124,7 @@ NodeCmdExecute(param, builder, state, cmd)
       {
         auto& values  = entry.value();
         auto  maxEnum = values.size();
-        auto  ed      = EnumData(maxEnum, {});
+        auto  ed      = EnumData(maxEnum, DisplayInfo{});
         for (size_t i = 0; i < maxEnum; ++i)
         {
           ed[i].from(std::get<neo::single>(values[i]).value());

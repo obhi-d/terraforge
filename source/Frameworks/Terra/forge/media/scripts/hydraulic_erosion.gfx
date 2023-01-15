@@ -9,11 +9,13 @@ output : water_d (type = [source, float], semantic = water, format = r32f, declt
 output : velocity_v (type = [source, vec2], semantic = velocity, format = rg16f, decltype = image2D);
 
 param  : source (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
-param  : play_pause (type = [button], semantic = play_pause, toggle = "pause");
-param  : stop (type = [button], semantic = stop);
+param  : play_pause (type = button, semantic = play_pause, toggle = "pause");
+param  : stop (type = button, semantic = stop);
 param  : water_spawn (type = [float4], semantic = spawner.water) hidden;
 param  : water_level (type = [source, float], semantic = water, format = r32f, decltype = image2D);
-param  : rain_spawn (type = [float4], semantic = spawner.rain) hidden;
+param  : rain_spawn (type = float4, semantic = spawner.rain) hidden;
+param  : fseed (type = float, semantic = fseed) hidden;
+param  : rsize (type = float2, semantic = rsize)
 
 pass  HydraulicErosion.ComputeWaterLevel (type = compute, semantic = prepare_pass) 
 {
@@ -24,5 +26,7 @@ pass  HydraulicErosion.ComputeWaterLevel (type = compute, semantic = prepare_pas
 
 pass HydraulicErosion.ComputeWaterSpawn (type = compute, semantic = spawner.water)
 {
+  shaders  : [water_source.glsl];
+  in       : [water_spawn];
+  out      : water_d;
 }
-

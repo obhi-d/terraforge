@@ -245,7 +245,7 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
       break;
     case DataTypeEnum::eEnum:
       shoption.setOption(optionIdx + (uint32_t)std::get<int>(p));
-      optionIdx += std::get<EnumData>(def.contents).size();
+      optionIdx += (uint32_t)std::get<EnumData>(def.contents).size();
       break;
     }
   }
@@ -323,7 +323,7 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
         break;
       case DataTypeEnum::eEnum:
         shoption.setOption(optionIdx + (uint32_t)std::get<int>(p));
-        optionIdx += std::get<EnumData>(def.contents).size();
+        optionIdx += (uint32_t)std::get<EnumData>(def.contents).size();
         break;
       }
     }
@@ -431,7 +431,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
         optionIdx++;
         break;
       case DataTypeEnum::eEnum:
-        optionIdx += std::get<EnumData>(def.contents).size();
+        optionIdx += (uint32_t)std::get<EnumData>(def.contents).size();
         break;
       }
     }
@@ -458,9 +458,9 @@ void GpuNode::pushOutputs(HybridPipeline& pipe, uint32_t pass, ShaderProgramInst
   }
 }
 
-HybridNode::Result GpuNode::postExecute(HybridPipeline& pipe)
+HybridNode::Result GpuNode::postExecute(HybridPipeline& pipe, Result preState)
 {
-  return ClassicHybridNode::postExecute(pipe);
+  return ClassicHybridNode::postExecute(pipe, preState);
 }
 
 //============== GpuScriptNode ==================
