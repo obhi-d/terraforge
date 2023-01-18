@@ -13,11 +13,12 @@
 
 namespace terra
 {
+
 struct ParamHelper
 {
-  using type =
-    std::variant<bool, float, int, uint32_t, vec2, ivec2, uvec2, vec3, glm::ivec3, glm::uvec3, vec4, glm::ivec4,
-                 glm::uvec4, ArrayFloatRef, ArrayIntRef, ArrayUintRef, Source, BufferRef, FixedString, Button>;
+  using type = std::variant<bool, float, int, uint32_t, vec2, ivec2, uvec2, vec3, glm::ivec3, glm::uvec3, vec4,
+                            glm::ivec4, glm::uvec4, ArrayFloatRef, ArrayIntRef, ArrayUintRef, Source, BufferRef,
+                            FixedString, Button, std::monostate>;
 
   enum Index
   {
@@ -40,7 +41,8 @@ struct ParamHelper
     eSource,
     eBuffer,
     eString,
-    eButton
+    eButton,
+    eInvalid
   };
 
   static uint16_t scalarSize(DataTypeEnum ty)

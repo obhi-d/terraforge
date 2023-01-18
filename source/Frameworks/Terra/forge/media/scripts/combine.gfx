@@ -7,7 +7,7 @@ param  : source_a (type = [source, float], semantic = heights, decltype = readon
 param  : source_b (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
 param  : scale_a (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
 param  : scale_b (type = [source, float], semantic = heights, decltype = readonlyImage2D, min = -inf, max = inf, default = 0.0, step = 0.001);
-param  : operator (type = [enum, int], enums = ["Add", "Multiply", "Divide", "Power", "AbsAdd"], default = 0);
+param  : operator (type = [enum, int], enums = ["Add", "Multiply", "Divide", "Power", "AbsAdd"]);
 
 pass Combine (type = compute)
 {

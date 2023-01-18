@@ -34,14 +34,14 @@ bool ParameterMeta::canBeScalar() const
 Parameter ParameterMeta::getDefault() const
 {
   static_assert(DataTypeEnum::kCount == 21);
-  if (DataTypeEnum::eButton)
+  if (DataTypeEnum::eButton == format.type)
     return Parameter(Button{});
-  else if (DataTypeEnum::eString)
+  else if (DataTypeEnum::eString == format.type)
     return Parameter(std::make_shared<std::string>());
   else if (DataTypeEnum::eBool == format.type)
     return (bool)(std::get<RangeData>(contents).defaultVal.ival != 0);
   else if (DataTypeEnum::eEnum == format.type)
-    return (std::get<RangeData>(contents).defaultVal.ival);
+    return (0);
   switch (format.scalarSubType)
   {
   case DataTypeEnum::eFloat:

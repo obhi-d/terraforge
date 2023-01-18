@@ -118,7 +118,10 @@ NodeCmdExecute(param, builder, state, cmd)
       if (entry.name() == "type")
       {
         auto const& values = entry.value();
-        meta.setTypeFromString(std::get<neo::single>(values[0]).value(), std::get<neo::single>(values[1]).value());
+        if (values.size() > 1)
+          meta.setTypeFromString(std::get<neo::single>(values[0]).value(), std::get<neo::single>(values[1]).value());
+        else
+          meta.setTypeFromString(std::get<neo::single>(values[0]).value(), std::get<neo::single>(values[0]).value());
       }
       else if (entry.name() == "enums")
       {

@@ -70,7 +70,7 @@ void Terra::scanShader(std::filesystem::path path)
       sm.for_each_error(
         [this](std::string const& e)
         {
-          logError(e);
+          logError("{}", e);
         });
     }
   }
