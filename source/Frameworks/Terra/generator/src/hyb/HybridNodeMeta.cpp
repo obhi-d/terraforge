@@ -34,7 +34,7 @@ void GpuNodeMeta::prepare()
     case DataTypeEnum::eBuffer:
       dict.names.emplace_back(buffPrefix + std::string(pdef.name()));
       break;
-    case DataTypeEnum::eButton:
+    case DataTypeEnum::eSwitch:
     case DataTypeEnum::eBool:
       dict.names.emplace_back(boolPrefix + std::string(pdef.name()));
       break;

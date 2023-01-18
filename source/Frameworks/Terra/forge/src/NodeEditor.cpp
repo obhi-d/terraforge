@@ -337,10 +337,10 @@ void NodeEditor::drawParameter(TerraMainApp& app, ImguiBackend& backend, Paramet
   static_assert(DataTypeEnum::kCount == 21);
   switch (def.format.type)
   {
-  case DataTypeEnum::eButton:
+  case DataTypeEnum::eSwitch:
   {
-    auto        sv = std::get<Button>(node.param(i));
-    auto const& tb = std::get<ButtonData>(def.contents);
+    auto        sv = std::get<Switch>(node.param(i));
+    auto const& tb = std::get<SwitchData>(def.contents);
     if (!tb.toggleTxt.empty())
     {
       if (backend.toggleButton(sv.state ? (const char*)tb.toggleTxt.data() : def.displayInfo.getName(), sv.state,

@@ -342,7 +342,7 @@ AutoParam::Result preparePass(Pipeline& pipe, Node& node, uint32_t p)
 
 AutoParam::Result prePausePlay(Pipeline& pipe, Node& node, uint32_t i, Parameter& pout)
 {
-  auto bs = std::get<Button>(node.param(i));
+  auto bs = std::get<Switch>(node.param(i));
   pout    = bs;
   if (bs.state)
     return AutoParam::Result::ePauseExecution;
@@ -351,7 +351,7 @@ AutoParam::Result prePausePlay(Pipeline& pipe, Node& node, uint32_t i, Parameter
 
 AutoParam::Result postStopSim(Pipeline& pipe, Node& node, uint32_t i)
 {
-  auto value = std::get<Button>(node.param(i));
+  auto value = std::get<Switch>(node.param(i));
   if (value.state)
   {
     node.state(i, value);

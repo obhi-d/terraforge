@@ -233,8 +233,8 @@ void GpuNode::build(HybridPipeline& pipe, uint32_t pass, SourceBuilder& builder)
     case DataTypeEnum::eArray:
       builder.param(def.name(), def.format);
       break;
-    case DataTypeEnum::eButton:
-      if (std::get<Button>(p).state)
+    case DataTypeEnum::eSwitch:
+      if (std::get<Switch>(p).state)
         shoption.setOption(optionIdx);
       optionIdx++;
       break;
@@ -311,8 +311,8 @@ void GpuNode::probe(HybridPipeline& pipe, ProgramKey& option, HashMachine& machi
       case DataTypeEnum::eSource:
         optionIdx++;
         break;
-      case DataTypeEnum::eButton:
-        if (std::get<Button>(p).state)
+      case DataTypeEnum::eSwitch:
+        if (std::get<Switch>(p).state)
           shoption.setOption(optionIdx);
         optionIdx++;
         break;
@@ -426,7 +426,7 @@ void GpuNode::executeImpl(HybridPipeline& pipe, std::vector<Parameter>& autoPara
       case DataTypeEnum::eArray:
         program.pushValue(p, def.format.type, def.format.scalarSubType);
         break;
-      case DataTypeEnum::eButton:
+      case DataTypeEnum::eSwitch:
       case DataTypeEnum::eBool:
         optionIdx++;
         break;

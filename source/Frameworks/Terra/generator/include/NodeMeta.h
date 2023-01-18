@@ -96,9 +96,9 @@ using ParamGetter = Parameter (*)(Node const&, uint32_t i);
 
 struct ValueRange
 {
-  DataValue defaultVal = {};
-  DataValue minVal     = {-1.0f};
-  DataValue maxVal     = {1.0f};
+  DataValue defaultVal = {0.0f};
+  DataValue minVal     = {-std::numeric_limits<float>::infinity()};
+  DataValue maxVal     = {std::numeric_limits<float>::infinity()};
   DataValue stepVal    = {0.1f};
 
   inline ValueRange() = default;
@@ -129,13 +129,15 @@ struct FmtEnum
 };
 
 using EnumData   = std::vector<DisplayInfo>;
-using StringData = std::u8string_view;
 using RangeData  = ValueRange;
+using StringData = std::u8string_view;
 
-struct ButtonData
+struct SwitchData
 {
   std::u8string_view toggleTxt;
 };
+
+using ContentType = std::variant<EnumData, RangeData, SwitchData, StringData, std::monostate>;
 
 struct ParameterMeta
 {
@@ -152,7 +154,7 @@ struct ParameterMeta
 
   DataFormat format;
 
-  std::variant<EnumData, StringData, RangeData, ButtonData> contents;
+  ContentType contents;
 
   uint64_t dependencies = 0;
 

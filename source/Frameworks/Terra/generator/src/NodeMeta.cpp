@@ -34,8 +34,8 @@ bool ParameterMeta::canBeScalar() const
 Parameter ParameterMeta::getDefault() const
 {
   static_assert(DataTypeEnum::kCount == 21);
-  if (DataTypeEnum::eButton == format.type)
-    return Parameter(Button{});
+  if (DataTypeEnum::eSwitch == format.type)
+    return Parameter(Switch{});
   else if (DataTypeEnum::eString == format.type)
     return Parameter(std::make_shared<std::string>());
   else if (DataTypeEnum::eBool == format.type)
@@ -86,11 +86,54 @@ ParamDeclTypeEnum declTypeFromType(DataTypeEnum type)
   }
 }
 
+DataTypeEnum getBaseScalarType(DataTypeEnum scalar) {
+  switch (scalar)
+  {
+  case DataTypeEnum::eBool:
+    return DataTypeEnum::eBool;
+  case DataTypeEnum::eInt:
+  case DataTypeEnum::eInt2:
+    return DataTypeEnum::eInt;
+  case DataTypeEnum::eUint:
+  case DataTypeEnum::eUint2:
+    return DataTypeEnum::eUint;
+  default:
+    return DataTypeEnum::eFloat;
+  }
+}
+
+ContentType getDefaultContentType(DataFormat format) 
+{
+  switch (format.type)
+  {
+  case DataTypeEnum::eEnum:
+    return EnumData();
+  case DataTypeEnum::eString:
+    return StringData();
+  case DataTypeEnum::eSwitch:
+    return SwitchData();
+  default:
+    switch (format.scalarSubType)
+    {
+    case DataTypeEnum::eBool:
+      return RangeData(0, 0, 1, 1);
+    case DataTypeEnum::eInt:
+      return RangeData(0, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), 1);
+    case DataTypeEnum::eUint:
+      return RangeData(0, 0, std::numeric_limits<int>::max(), 1);
+    default:
+      return RangeData();
+    }
+  }
+}
+
 void ParameterMeta::setTypeFromString(std::string_view type, std::string_view scalarType)
 {
   format.type          = DataType::fromString(type);
   format.scalarSubType = DataType::fromString(scalarType);
   format.declType      = declTypeFromType(format.type);
+  if (std::holds_alternative<std::monostate>(contents))
+    contents = getDefaultContentType(format);
 }
 
 void ParameterMeta::setDeclFromString(std::string_view type)

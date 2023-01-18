@@ -856,7 +856,7 @@ std::span<ubyte_t const> toSpan(std::vector<T> const& ref)
   return std::span<ubyte_t const>((ubyte_t const*)ref.data(), ref.size() * sizeof(T));
 }
 
-struct Button
+struct Switch
 {
   bool state = false;
 };

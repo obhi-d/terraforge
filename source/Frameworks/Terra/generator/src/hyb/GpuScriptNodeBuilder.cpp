@@ -109,7 +109,7 @@ NodeCmdExecute(param, builder, state, cmd)
       }
       else if (entry.name() == "toggle")
       {
-        meta.contents = ButtonData{builder.localizedString(entry.value())};
+        meta.contents = SwitchData{builder.localizedString(entry.value())};
       }
     }
     else if (std::holds_alternative<neo::list>(p))
