@@ -1,3 +1,4 @@
+layout(local_size_x = 1, local_size_y = 1) in;
 
 
 vec2 hash( vec2 p ) // replace this by something better
@@ -22,18 +23,23 @@ float noise( in vec2 p )
   return dot( n, vec3(70.0) );
 }
 
-void irregular_blob(in vec2 st) 
+float irregular_blob(in vec2 st) 
 {
   vec2 dist = center - st;
   float dist_squared = dot(dist, dist);
   float fnoise = 0.0;
   float ampl = amplitude;
+  float freq = frequency;
   for (uint i = 0; i < octaves; i++) 
   {
-    fnoise += ampl * (abs(noise(st * frequency + center + fseed)) - 0.5) * exponents[i];
-    frequency *= lacunarity;
+    fnoise += ampl * (abs(noise(st * freq + center + fseed)) - 0.5) * exponents[i];
+    freq *= lacunarity;
     ampl *= gain;
   }
-  heights = smoothstep(radius, radius*.8, dist_squared - fnoise * radius);
+  return smoothstep(radius, radius*.8, dist_squared - fnoise * radius);
 }
 
+void main()
+{   
+  imageStore(heights, ivec2(gl_GlobalInvocationID.xy), vec4(irregular_blob(vec2(gl_GlobalInvocationID.xy) * rsize)));
+}

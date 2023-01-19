@@ -137,7 +137,7 @@ struct SwitchData
   std::u8string_view toggleTxt;
 };
 
-using ContentType = std::variant<EnumData, RangeData, SwitchData, StringData, std::monostate>;
+using ContentType = std::variant<std::monostate, EnumData, RangeData, SwitchData, StringData>;
 
 struct ParameterMeta
 {

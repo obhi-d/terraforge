@@ -14,14 +14,12 @@ param  : lacunarity (type = float, decltype = scalar, semantic = lacunarity, min
 param  : radius (type = float, decltype = scalar, semantic = square, min = 0.0, max = 1.0, default = 0.636, step = 0.01);
 param  : center (type = float2, decltype = scalar, min = 0.0, max = 1.0, default = 0.5, step = 0.01);
 param  : gain (type = float, decltype = scalar, min = -inf, max = inf, default = 0.34, step = 0.01);
-param  : start (type = float2, semantic = start, decltype = scalar) hidden;
-param  : size (type = float2, semantic = size, decltype = scalar) hidden;
+param  : rsize (type = float2, semantic = rsize, decltype = scalar) hidden;
 
 pass Island
 {
-  function : noise;
   shaders  : [island.glsl];
-  in       : [fseed, frequency, octaves, lacunarity, amplitude, exponents, gain, offset, start, size];
+  in       : [fseed, frequency, octaves, lacunarity, amplitude, exponents, gain, offset, radius, center, rsize];
   out      : heights;
 }
 

@@ -16,12 +16,13 @@ namespace terra
 
 struct ParamHelper
 {
-  using type = std::variant<bool, float, int, uint32_t, vec2, ivec2, uvec2, vec3, glm::ivec3, glm::uvec3, vec4,
+  using type = std::variant<std::monostate, bool, float, int, uint32_t, vec2, ivec2, uvec2, vec3, glm::ivec3, glm::uvec3, vec4,
                             glm::ivec4, glm::uvec4, ArrayFloatRef, ArrayIntRef, ArrayUintRef, Source, BufferRef,
-                            FixedString, Switch, std::monostate>;
+                            FixedString, Switch>;
 
   enum Index
   {
+    eInvalid,
     eBool,
     eFloat,
     eInt,
@@ -41,8 +42,7 @@ struct ParamHelper
     eSource,
     eBuffer,
     eString,
-    eSwitch,
-    eInvalid
+    eSwitch
   };
 
   static uint16_t scalarSize(DataTypeEnum ty)
