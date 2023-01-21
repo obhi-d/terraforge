@@ -305,10 +305,15 @@ void MeshPreview::updateShaders(TerraMainApp const& app)
 
   auto topt = terrainProgOptions;
   if (showWaterLevel.get())
-    terrainProgOptions.setOption(1);
+    terrainProgOptions.setOption(0);
+  else
+    terrainProgOptions.unsetOption(0);
 
   if (waterContrib)
     terrainProgOptions.setOption(1);
+  else
+    terrainProgOptions.unsetOption(1);
+
 
   if (!terrainMat || topt != terrainProgOptions)
     rebuildTerrainShader = true;
@@ -391,16 +396,18 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   terrainMat->pushTexture(heights, {});
   terrainMat->pushTexture(terrainColors, layerSampler);
   terrainMat->pushTexture(shadowMapImage, shadowSampler);
-  terrainMat->pushTexture(waterContrib, layerSampler);
   terrainMat->pushTexture(vegetationContrib, layerSampler);
   terrainMat->pushTexture(rocksContrib, layerSampler);
+  if (waterContrib)
+    terrainMat->pushTexture(waterContrib, layerSampler);
+  else
+    terrainMat->pushScalar(waveLevel.get());
   terrainMat->pushScalar(heightScale.get());
   terrainMat->pushScalar(tileSize.x);
   terrainMat->pushScalar(tileSize.y);
   terrainMat->pushScalar(1.f / (float)tileSize.x);
   terrainMat->pushScalar(1.f / (float)tileSize.y);
-  terrainMat->pushScalar(waveLevel.get());
-  terrainMat->pushScalar(get().frameNumber() * 0.01f);
+  terrainMat->pushScalar(get().frameNumber() * 0.1f);
 
   GfxState state;
   state.blend[0].mode   = BlendMode::eDisabled;
@@ -431,22 +438,20 @@ void MeshPreview::buildTerrainDrawProgram()
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eRgba32f, ParamDeclType::eSampler1DArray));
   builder->param("shadow_map",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2DShadow));
-  builder->param("water",
-                 DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
   builder->param("vegetation",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
   builder->param("rocks",
                  DataFormat(DataType::eImage, DataType::eFloat, ImageFormat::eFloat, ParamDeclType::eSampler2D));
-  builder->param("hscale", DataFormat(DataType::eFloat, DataType::eFloat));
-  builder->param("width", DataFormat(DataType::eUint, DataType::eUint));
-  builder->param("height", DataFormat(DataType::eUint, DataType::eUint));
-  builder->param("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
-  builder->param("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
   if (waterContrib)
     builder->param("water_level", DataFormat(DataType::eSource, DataType::eFloat, ImageFormatEnum::eFloat,
                                              ParamDeclTypeEnum::eSampler2D));
   else
     builder->param("water_level", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("hscale", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("width", DataFormat(DataType::eUint, DataType::eUint));
+  builder->param("height", DataFormat(DataType::eUint, DataType::eUint));
+  builder->param("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("ftime", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->output("color_buffer",
                   DataFormat(DataType::eImage, DataType::eFloat4, ImageFormat::eRgba8, ParamDeclType::eSampler2D));

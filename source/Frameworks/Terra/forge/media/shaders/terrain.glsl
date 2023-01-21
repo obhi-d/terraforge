@@ -45,12 +45,13 @@ void main()
   vec3  wpos = vec3(float(x) - float(width - 1) * 0.5, water_depth > 0.0 ? water : z, float(y) - float(height - 1) * 0.5);
 #else
   float water = z;
+  const float water_depth = 0.0;
   vec3  wpos = vec3(float(x) - float(width - 1) * 0.5, z, float(y) - float(height - 1) * 0.5);
 #endif
 
   vec4 s = shadow_view_projection * vec4(wpos, 1.0);
   shadow_pos = s;
-  world_pos = vec4(wpos, water);
+  world_pos = vec4(wpos, max(water_depth, 0.0));
   gl_Position = view_projection * vec4(wpos, 1.0);
 }
 
@@ -87,53 +88,40 @@ const float foamSpeed = 0.05;
 // Author @patriciogv - 2015
 // http://patriciogonzalezvivo.com
 
-
-vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
-
-float snoise(vec2 v) {
-    const vec4 C = vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
-                        0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
-                        -0.577350269189626,  // -1.0 + 2.0 * C.x
-                        0.024390243902439); // 1.0 / 41.0
-    vec2 i  = floor(v + dot(v, C.yy) );
-    vec2 x0 = v -   i + dot(i, C.xx);
-    vec2 i1;
-    i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-    vec4 x12 = x0.xyxy + C.xxzz;
-    x12.xy -= i1;
-    i = mod289(i); // Avoid truncation effects in permutation
-    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-        + i.x + vec3(0.0, i1.x, 1.0 ));
-
-    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-    m = m*m ;
-    m = m*m ;
-    vec3 x = 2.0 * fract(p * C.www) - 1.0;
-    vec3 h = abs(x) - 0.5;
-    vec3 ox = floor(x + 0.5);
-    vec3 a0 = x - ox;
-    m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-    vec3 g;
-    g.x  = a0.x  * x0.x  + h.x  * x0.y;
-    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    return 130.0 * dot(m, g);
+vec2 random2(vec2 n) {
+  return vec2(fract(sin(dot(n, vec2(12.9898, 78.233))) * 43758.5453));
 }
 
-float get_foam(vec2 uv)
-{
-  return snoise(uv * 2.0 + ftime * foamSpeed);
+float noise(vec2 st) {
+  vec2 i = floor(st);
+  vec2 f = fract(st);
+
+  vec2 u = f * f * (3.0 - 2.0 * f);
+
+  return mix(mix(dot(random2(i + vec2(0.0, 0.0)), f - vec2(0.0, 0.0)),
+                dot(random2(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0)), u.x),
+              mix(dot(random2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0)),
+                dot(random2(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0)), u.x), u.y);
 }
 
-float get_bubble(vec2 uv)
-{
-  return snoise(uv * 4.0 + ftime * bubbleSpeed);
+vec3 get_foam(vec2 uv, float depth, float time) {
+    // foam intensity
+  float foam = smoothstep(0.08, 0.01, depth);
+  foam = foam - (noise(uv + vec2(time * 0.1, 0.0)) + noise(uv + vec2(0.0, time * 0.1))) * 0.01;
+  foam = clamp(foam, 0.0, 1.0) * 0.6;
+  vec3 foam_color = vec3(1, 1, 1) * foam;
+  return foam_color;
+}
+
+vec3 get_waves(vec2 uv, float depth, float time) {
+    // Waves
+  float wave_intensity = pow(abs(noise(vec2(uv.x + time * 0.1, uv.y + depth * 4.0 + time * 0.1))), 3.0) * .001;
+  vec3 wave_color = vec3(0.5, 0.5, 1) * wave_intensity;
+  return wave_color;
 }
 
 void main()
 {  
-  
   vec2  tex_size       = vec2(1.0f / float(ShadowTextureDim));
 
   vec3  x              = dFdx(world_pos.xyz);
@@ -159,23 +147,17 @@ void main()
               (weights.y + weights.z + weights.w);
 
   // if we are in land
-  if (world_pos.y > world_pos.w)
+  if (world_pos.w > 0.0)
   {
-    color_buffer  = shadow_contrib * max(dot(light_dir, normal), 0.01) * sun_data.w * .01 * color;
+    float water_depth = world_pos.w / hscale;
+    vec4 water_color = texture(layer_colors, vec2(water_depth, 0.0))  * weights.x;
+    vec3 bubble = get_waves(uv, water_depth, ftime);
+    vec3 foam = get_foam(uv, water_depth, ftime);
+    color_buffer = vec4(water_color.xyz + bubble + foam, 1.0);
   }
   else
   {
-    float water_depth = world_pos.w - world_pos.y;
-    vec4 water_color = texture(layer_colors, vec2(water_depth, 0.0))  * weights.x;
-    float bubble = get_bubble(uv);
-    float foam = get_foam(uv);
-    float wave = sin(uv.x * PI * 2.0 + ftime * waveSpeed) * waveHeight;
-    if (water_depth < 0.01 * hscale)
-    {
-      bubble = smoothstep(0.01 * hscale, 0.0, water_depth) * bubble * bubbleSize;
-      foam = smoothstep(0.01 * hscale, 0.0, water_depth) * foam * foamSize;
-    }
-    color_buffer = mix(water_color + bubble + foam, color, wave);
+    color_buffer  = shadow_contrib * max(dot(light_dir, normal), 0.01) * sun_data.w * .01 * color;
   }
 }
 
