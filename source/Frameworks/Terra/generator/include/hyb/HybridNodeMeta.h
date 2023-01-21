@@ -49,7 +49,7 @@ public:
   {
     std::string           name;
     Semantic              semantic;
-    PassType              type;
+    PassType              type = PassType::eFullscreen;
     std::string           function;
     std::string           extensions;
     std::string           shaderContent;

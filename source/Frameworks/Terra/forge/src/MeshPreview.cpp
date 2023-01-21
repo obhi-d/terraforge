@@ -16,6 +16,7 @@ namespace terra
 MeshPreview::MeshPreview()
 {
   ShaderOptions::Dictionary dict;
+  ShaderOptions::Dictionary dict2;
 
   vegetation->path = (getMediaPath() / vegetation->path).string();
   water->path      = (getMediaPath() / water->path).string();
@@ -27,6 +28,10 @@ MeshPreview::MeshPreview()
   dict.names.emplace_back("Enum_ShadowRes2048");
   dict.names.emplace_back("Enum_ShadowRes4096");
   shadowProgOptions = ShaderOptions(ShaderOptions::addDictionary(std::move(dict)));
+
+  dict2.names.emplace_back("ShowWaterLevel");
+  dict2.names.emplace_back("HasWaterLevel");
+  terrainProgOptions = ShaderOptions(ShaderOptions::addDictionary(std::move(dict2)));
 }
 
 void MeshPreview::init(TerraMainApp& app)
@@ -60,12 +65,12 @@ void MeshPreview::deinit(TerraMainApp& app)
 
   app.dispatcher().remove(setActorEventListener);
 
-  waterProg      = {};
+  // waterProg      = {};
   materialProg   = {};
   shadowProg     = {};
   atmosphereProg = {};
   pipeline       = {};
-  waterMat.reset();
+  // waterMat.reset();
   terrainMat.reset();
   shadowMat.reset();
   atmosphereMat.reset();
@@ -141,15 +146,15 @@ void MeshPreview::regenerate(TerraMainApp const& app, HDataSource iactor)
 void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
 {
   GfxMesh::Layout mesh;
-  layout                    = dev.createMeshLayout(mesh);
-  drawCall.layout           = layout;
-  waterDrawCall.type        = GfxMesh::Type::eStrips;
-  waterDrawCall.vertexCount = 4;
-  waterDrawCall.layout      = layout;
+  layout          = dev.createMeshLayout(mesh);
+  drawCall.layout = layout;
+  // waterDrawCall.type        = GfxMesh::Type::eStrips;
+  // waterDrawCall.vertexCount = 4;
+  // waterDrawCall.layout      = layout;
 
   buildShadowMapProgram();
   buildScatterProgram();
-  buildWaterProgram();
+  // buildWaterProgram();
   layerSampler   = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
   nearestSampler = dev.createSampler(ImageSampling(SamplingType::eNearest, Tiling::eClampToEdge));
   shadowSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
@@ -225,12 +230,13 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
   Pipeline::Layers llayer;
   pipeline->getResults(lheight, llayer);
   heights           = lheight ? lheight : nullImage;
-  waterContrib      = llayer.water ? llayer.water : nullImage;
+  waterContrib      = llayer.water;
   rocksContrib      = llayer.rocks ? llayer.rocks : nullImage;
   vegetationContrib = llayer.vegetation ? llayer.vegetation : nullImage;
 
   AppSettings const& settings = app.getSettings();
 
+  updateShaders(app);
   updateShadowMap(app);
 
   canvas.resize(scissor.size);
@@ -238,8 +244,8 @@ void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& 
 
   drawAtmosphere(app);
   drawTerrain(app);
-  if (showWaterLevel.get())
-    drawWater(app);
+  // if (showWaterLevel.get())
+  //   drawWater(app);
 
   canvas.end();
 
@@ -265,12 +271,10 @@ void MeshPreview::updateSunDir(glm::ivec2 viewportSize, MouseState& ms)
   }
 }
 
-void MeshPreview::updateShadowMap(TerraMainApp const& app)
+void MeshPreview::updateShaders(TerraMainApp const& app)
 {
-  // if (!shadowMapDirty)
-  //   return;
-  //
-  auto save = shadowProgOptions;
+  bool rebuildTerrainShader = false;
+  auto save                 = shadowProgOptions;
   shadowProgOptions.setOption(shadowMapResolution);
   if (save != shadowProgOptions || !shadowMapImage)
   {
@@ -292,12 +296,35 @@ void MeshPreview::updateShadowMap(TerraMainApp const& app)
       get().getDevice().create2DImage(GfxStorageClass::eStaticDeviceReadonly, shadowMapRez.x, shadowMapRez.y,
                                       camera.isReverseZ() ? ImageFormatEnum::eDepth32f : ImageFormatEnum::eDepth24);
     GfxPass::Attachment depth;
-    depth.clear    = true;
-    depth.depthVal = camera.isReverseZ() ? 0.f : 1.f;
-    depth.image    = shadowMapImage;
-    shadowGen      = get().getDevice().createPass({}, depth);
-    buildTerrainDrawProgram();
+    depth.clear          = true;
+    depth.depthVal       = camera.isReverseZ() ? 0.f : 1.f;
+    depth.image          = shadowMapImage;
+    shadowGen            = get().getDevice().createPass({}, depth);
+    rebuildTerrainShader = true;
   }
+
+  auto topt = terrainProgOptions;
+  if (showWaterLevel.get())
+    terrainProgOptions.setOption(1);
+
+  if (waterContrib)
+    terrainProgOptions.setOption(1);
+
+  if (!terrainMat || topt != terrainProgOptions)
+    rebuildTerrainShader = true;
+
+  if (rebuildTerrainShader)
+  {
+    buildTerrainDrawProgram();
+    terrainMat.emplace(*materialProg);
+  }
+}
+
+void MeshPreview::updateShadowMap(TerraMainApp const& app)
+{
+  // if (!shadowMapDirty)
+  //   return;
+  //
 
   camera.updateSunMatrix(sunRotation.get().toDir(), domeRadius);
 
@@ -350,9 +377,6 @@ void MeshPreview::buildShadowMapProgram()
 
 void MeshPreview::drawTerrain(TerraMainApp const& app)
 {
-  if (!terrainMat)
-    terrainMat.emplace(*materialProg);
-
   terrainMat->reset();
   uint32_t index   = 0;
   auto     sunDir  = sunRotation.get().toDir();
@@ -375,6 +399,8 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
   terrainMat->pushScalar(tileSize.y);
   terrainMat->pushScalar(1.f / (float)tileSize.x);
   terrainMat->pushScalar(1.f / (float)tileSize.y);
+  terrainMat->pushScalar(waveLevel.get());
+  terrainMat->pushScalar(get().frameNumber() * 0.01f);
 
   GfxState state;
   state.blend[0].mode   = BlendMode::eDisabled;
@@ -392,6 +418,8 @@ void MeshPreview::buildTerrainDrawProgram()
   shadowProgOptions.setOption((uint32_t)shadowMapResolution.get());
 
   builder->options(shadowProgOptions);
+  builder->options(terrainProgOptions);
+
   builder->param("shadow_view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
   builder->param("view_projection", DataFormat(DataType::eMat4, DataType::eMat4));
   builder->param("layer_weights", DataFormat(DataType::eFloat4, DataType::eFloat4));
@@ -414,6 +442,12 @@ void MeshPreview::buildTerrainDrawProgram()
   builder->param("height", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("rwidth", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("rheight", DataFormat(DataType::eFloat, DataType::eFloat));
+  if (waterContrib)
+    builder->param("water_level", DataFormat(DataType::eSource, DataType::eFloat, ImageFormatEnum::eFloat,
+                                             ParamDeclTypeEnum::eSampler2D));
+  else
+    builder->param("water_level", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("ftime", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->output("color_buffer",
                   DataFormat(DataType::eImage, DataType::eFloat4, ImageFormat::eRgba8, ParamDeclType::eSampler2D));
 
@@ -460,7 +494,7 @@ void MeshPreview::buildScatterProgram()
   atmosphereProg = builder->finalize();
   assert(atmosphereProg->program);
 }
-
+/*
 void MeshPreview::drawWater(TerraMainApp const& app)
 {
   if (!waterMat)
@@ -521,7 +555,7 @@ void MeshPreview::buildWaterProgram()
 
   assert(waterProg->program);
 }
-
+*/
 void MeshPreview::tick()
 {
   if (pipeline)
