@@ -120,20 +120,16 @@ float noise(vec2 v) {
     return 130.0 * dot(m, g);
 }
 
-vec3 get_foam(vec2 uv, float depth, float time) {
-    // foam intensity
-  float foam = smoothstep(0.08, 0.01, depth);
-  foam = (foam - (noise(uv + vec2(time * 0.04, 0.0)) + noise(uv + vec2(0.0, time * 0.04)))) * 0.5;
-  foam = clamp(foam, 0.0, 1.0) * 0.6;
-  vec3 foam_color = vec3(1, 1, 1) * foam;
-  return foam_color;
-}
-
-vec3 get_waves(vec2 uv, float depth, float time) {
-    // Waves
-  float wave_intensity = pow(abs(noise(vec2(uv.x + time * 0.1, uv.y + depth * 4.0 + time * 0.1))), 3.0) * .1;
-  vec3 wave_color = vec3(0.5, 0.5, 1) * wave_intensity;
-  return wave_color;
+float compute_shore_color(in vec3 wpos, in vec3 light_dir, in vec2 uv, in float depth, in float time) 
+{
+  float depthoff = depth + sin(time);
+  vec3 wh = vec3(world_pos.x, world_pos.y + depthoff, world_pos.z);
+  vec3 x = dFdx(wh);
+  vec3 y = dFdy(wh);
+  vec3 normal  = normalize(cross(x, y));
+  float specular = pow(max(dot(normal, light_dir), 0.0), 15.0);
+  float fresnel =  pow(1.0 - max(dot(vec3(0.0, 1.0, 0.0), normalize(vec3(0.0, 1.0, 0.0) + normalize(vec3(uv, depth)))), 5.0);
+  return fresnel + specular;
 }
 
 void main()
@@ -166,10 +162,10 @@ void main()
   if (world_pos.w > 0.0)
   {
     float water_depth = world_pos.w / hscale;
+  
     vec4 water_color = texture(layer_colors, vec2(water_depth, 0.0))  * weights.x;
-    vec3 bubble = get_waves(uv, water_depth, ftime);
-    vec3 foam = get_foam(uv, water_depth, ftime);
-    color_buffer = vec4(water_color.xyz + bubble + foam, 1.0);
+    color_buffer = water_color +  compute_shore_color(world_pos.xyz, light_dir, uv, water_depth, ftime);
+ 
   }
   else
   {
