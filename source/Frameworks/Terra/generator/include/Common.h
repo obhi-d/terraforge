@@ -771,6 +771,16 @@ public:
     return uint32_t{color.a} << 24 | uint32_t{color.b} << 16 | uint32_t{color.g} << 8 | uint32_t{color.r};
   }
 
+  inline uint32_t rgba() const
+  {
+    return uint32_t{color.r} << 24 | uint32_t{color.g} << 16 | uint32_t{color.b} << 8 | uint32_t{color.a};
+  }
+
+  inline uint32_t bgra() const
+  {
+    return uint32_t{color.b} << 24 | uint32_t{color.g} << 16 | uint32_t{color.r} << 8 | uint32_t{color.a};
+  }
+
   inline operator glm::vec4() const
   {
     return tovec4<glm::vec4>();
@@ -794,6 +804,18 @@ public:
   inline float a() const
   {
     return color.a / 255.f;
+  }
+
+  inline uint8_t gray() const
+  {
+    return (uint8_t)((float)(.299f * ((float)color.r / 255.f) + .587f * ((float)color.g / 255.f) +
+                             .114f * ((float)color.b / 255.f)) *
+                     255.f);
+  }
+
+  inline void a(uint8_t v)
+  {
+    color.a = v;
   }
 
 private:

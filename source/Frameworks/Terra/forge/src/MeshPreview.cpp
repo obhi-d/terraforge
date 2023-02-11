@@ -60,6 +60,8 @@ void MeshPreview::deinit(TerraMainApp& app)
   app.getDevice()->destroy(nearestSampler);
   app.getDevice()->destroy(shadowSampler);
   app.getDevice()->destroy(shadowGen);
+  app.getDevice()->destroy(repeatSampler);
+  app.getDevice()->destroy(oceanNormalFoam);
   // app.getDevice()->destroy(heights);
   // app.getDevice()->destroy(layerContrib);
 
@@ -157,6 +159,7 @@ void MeshPreview::createDeviceObjects(TerraMainApp const& app, GfxDevice43& dev)
   // buildWaterProgram();
   layerSampler   = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge));
   nearestSampler = dev.createSampler(ImageSampling(SamplingType::eNearest, Tiling::eClampToEdge));
+  repeatSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eRepeat));
   shadowSampler  = dev.createSampler(ImageSampling(SamplingType::eLinear, Tiling::eClampToEdge,
                                                   camera.isReverseZ() ? SampleCompare::eGT : SampleCompare::eLT));
 }
@@ -208,6 +211,12 @@ void MeshPreview::reloadTexture(TerraMainApp const& app)
   app.getDevice()->destroy(terrainColors);
   terrainColors = app.getDevice()->create1DImageArray(GfxStorageClass::eStaticDeviceReadonly, Width, 4,
                                                       ImageFormatEnum::eRgba8, (ubyte_t const*)layerColors.data());
+
+  {
+    Image ocean     = Image(getMediaPath() / "images/foam.png");
+    oceanNormalFoam = app.getDevice()->create2DImage(GfxStorageClass::eStaticDeviceReadonly, ocean.width, ocean.height,
+                                                     ImageFormatEnum::eUnorm8, ocean.data.get());
+  }
 }
 
 void MeshPreview::draw(Rect const& viewport, Rect const& scissor, TerraMainApp& app)
@@ -314,7 +323,6 @@ void MeshPreview::updateShaders(TerraMainApp const& app)
   else
     terrainProgOptions.unsetOption(1);
 
-
   if (!terrainMat || topt != terrainProgOptions)
     rebuildTerrainShader = true;
 
@@ -402,6 +410,7 @@ void MeshPreview::drawTerrain(TerraMainApp const& app)
     terrainMat->pushTexture(waterContrib, layerSampler);
   else
     terrainMat->pushScalar(waveLevel.get());
+  terrainMat->pushTexture(oceanNormalFoam, repeatSampler);
   terrainMat->pushScalar(heightScale.get());
   terrainMat->pushScalar(tileSize.x);
   terrainMat->pushScalar(tileSize.y);
@@ -447,6 +456,8 @@ void MeshPreview::buildTerrainDrawProgram()
                                              ParamDeclTypeEnum::eSampler2D));
   else
     builder->param("water_level", DataFormat(DataType::eFloat, DataType::eFloat));
+  builder->param("ocean_foam", DataFormat(DataType::eSource, DataType::eFloat4, ImageFormatEnum::eRgba8,
+                                          ParamDeclTypeEnum::eSampler2D));
   builder->param("hscale", DataFormat(DataType::eFloat, DataType::eFloat));
   builder->param("width", DataFormat(DataType::eUint, DataType::eUint));
   builder->param("height", DataFormat(DataType::eUint, DataType::eUint));

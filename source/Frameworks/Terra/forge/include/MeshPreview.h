@@ -78,6 +78,7 @@ private:
   GfxBuffer::handle         index;
   GfxImage::handle          nullImage;
   GfxImage::handle          terrainColors;
+  GfxImage::handle          oceanNormalFoam;
   GfxImage::handle          shadowMapImage;
   GfxImage::handle          heights;
   GfxImage::handle          waterContrib;
@@ -87,6 +88,7 @@ private:
   GfxSampler::handle        layerSampler;
   GfxSampler::handle        nearestSampler;
   GfxSampler::handle        shadowSampler;
+  GfxSampler::handle        repeatSampler;
   GfxPass::handle           shadowGen;
   ShaderProgramPtr          materialProg;
   ShaderProgramPtr          shadowProg;

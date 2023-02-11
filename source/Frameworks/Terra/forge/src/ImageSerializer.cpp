@@ -1,23 +1,23 @@
 
-#include "Logger.h"
 #include "ImageSerializer.h"
+#include "Logger.h"
 #include <png.h>
 
 namespace terra
 {
 
-void handleErrPNG(png_structp, png_const_charp txt) 
+void handleErrPNG(png_structp, png_const_charp txt)
 {
   logError("PNG error: {}", txt ? txt : "");
 }
 
-void writePNG(png_structp str, png_bytep data, size_t size) 
+void writePNG(png_structp str, png_bytep data, size_t size)
 {
-  std::ofstream& ss = *(std::ofstream*) png_get_io_ptr(str);
+  std::ofstream& ss = *(std::ofstream*)png_get_io_ptr(str);
   ss.write((const char*)data, size);
 }
 
-void flushPNG(png_structp str) 
+void flushPNG(png_structp str)
 {
   std::ofstream& ss = *(std::ofstream*)png_get_io_ptr(str);
   ss.flush();
@@ -29,7 +29,7 @@ void readPNG(png_structp str, png_bytep data, size_t size)
   ss.read((char*)data, size);
 }
 
-void ImageSerializer::saveImage(ImageData const& image, std::filesystem::path path) 
+void ImageSerializer::saveImage(ImageData const& image, std::filesystem::path path)
 {
   png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
   if (!png_ptr)
@@ -54,8 +54,8 @@ void ImageSerializer::saveImage(ImageData const& image, std::filesystem::path pa
     return;
   }
   png_set_write_fn(png_ptr, &file, writePNG, flushPNG);
-  int color = PNG_COLOR_TYPE_GRAY;
-  int bitd  = 16;
+  int  color = PNG_COLOR_TYPE_GRAY;
+  int  bitd  = 16;
   uint pix   = 2;
   if (image.format == ImageFormatEnum::eRgba8 || image.format == ImageFormatEnum::eSrgb8Alpha8)
   {
@@ -63,13 +63,13 @@ void ImageSerializer::saveImage(ImageData const& image, std::filesystem::path pa
     bitd  = 8;
     pix   = 4;
   }
-  png_set_IHDR(png_ptr, info_ptr, (uint32_t)image.width, (uint32_t)image.height, bitd,
-               color, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+  png_set_IHDR(png_ptr, info_ptr, (uint32_t)image.width, (uint32_t)image.height, bitd, color, PNG_INTERLACE_NONE,
+               PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
   png_write_info(png_ptr, info_ptr);
-  png_set_swap(png_ptr);
+
   auto row_pointers = std::vector<png_bytep>(image.height);
   auto start        = image.data.get();
-  for (uint i = 0; i <= image.height; ++i)
+  for (uint i = 0; i < image.height; ++i)
   {
     row_pointers[i] = (png_bytep)start;
     start += (image.width) * pix;
@@ -86,10 +86,10 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
   int           interlaceType   = 0;
   int           compressionType = 0;
   int           filterMethod    = 0;
-  size_t          rowbytes        = 0; 
-  char            channels        = 0;
-  auto            row_pointers    = std::vector<png_bytep>();
-  bool            ok              = true;
+  size_t        rowbytes        = 0;
+  char          channels        = 0;
+  auto          row_pointers    = std::vector<png_bytep>();
+  bool          ok              = true;
   std::ifstream file(path, std::ios::binary);
   if (!file)
   {
@@ -112,7 +112,7 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
 
   png_set_read_fn(png_ptr, &file, readPNG);
   png_read_info(png_ptr, info_ptr);
-  
+
   png_get_IHDR(png_ptr, info_ptr, &data.width, &data.height, &bitDepth, &colorType, &interlaceType, &compressionType,
                &filterMethod);
   if (colorType == PNG_COLOR_TYPE_GRAY)
@@ -163,9 +163,9 @@ bool ImageSerializer::loadImage(ImageData& data, std::filesystem::path path)
     }
   }
 
-  rowbytes = png_get_rowbytes(png_ptr, info_ptr);
-  channels = png_get_channels(png_ptr, info_ptr);
-  data.data     = std::make_unique<ubyte_t[]>(rowbytes * data.height);
+  rowbytes  = png_get_rowbytes(png_ptr, info_ptr);
+  channels  = png_get_channels(png_ptr, info_ptr);
+  data.data = std::make_unique<ubyte_t[]>(rowbytes * data.height);
   if (!data.data.get())
     goto error;
   row_pointers.resize(data.height);
@@ -256,10 +256,10 @@ void ImageSerializer::loadImageRgba(std::span<ubyte_t*> rows, uint32_t xwidth, u
       png_set_strip_16(png_ptr);
     }
   }
-  
-  rowbytes  = png_get_rowbytes(png_ptr, info_ptr);
+
+  rowbytes = png_get_rowbytes(png_ptr, info_ptr);
   assert(rowbytes == width * 4);
-  channels  = png_get_channels(png_ptr, info_ptr);
+  channels = png_get_channels(png_ptr, info_ptr);
   assert(channels == 4);
   png_read_image(png_ptr, (png_bytepp)rows.data());
   png_read_end(png_ptr, NULL);
@@ -296,7 +296,6 @@ void ImageSerializer::loadImageGray(std::span<ubyte_t*> rows, uint32_t xwidth, u
     return;
   }
 
- 
   png_set_read_fn(png_ptr, &file, readPNG);
   png_read_info(png_ptr, info_ptr);
 
@@ -307,7 +306,7 @@ void ImageSerializer::loadImageGray(std::span<ubyte_t*> rows, uint32_t xwidth, u
     logError("Cannot read this file of different dimensions");
     return;
   }
-  
+
   png_set_alpha_mode(png_ptr, PNG_ALPHA_PREMULTIPLIED, PNG_GAMMA_LINEAR);
   png_set_strip_alpha(png_ptr);
 
@@ -347,4 +346,4 @@ void ImageSerializer::loadImageGray(std::span<ubyte_t*> rows, uint32_t xwidth, u
   return;
 }
 
-}
+} // namespace terra

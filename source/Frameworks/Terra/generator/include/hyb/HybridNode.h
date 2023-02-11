@@ -41,14 +41,16 @@ struct HybridNode : public Node
 
   HybridNode(NodeMeta const& m) : Node(m) {}
 
-  virtual Queue  getQueue() const                                                                 = 0;
-  virtual Result execute(HybridPipeline&)                                                         = 0;
-  virtual Result preExecute(HybridPipeline&, std::vector<Parameter>&)                             = 0;
-  virtual void   executeImpl(HybridPipeline&, std::vector<Parameter>&)                            = 0;
-  virtual Result postExecute(HybridPipeline&, Result preState)                                    = 0;
-  virtual bool   prepare(HybridPipeline&)                                                         = 0;
-  virtual void   probe(HybridPipeline&, ProgramKey&, HashMachine&)                                = 0;
-  virtual void   push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) = 0;
+  virtual Queue    getQueue() const                                                                 = 0;
+  virtual Result   execute(HybridPipeline&)                                                         = 0;
+  virtual Result   preExecute(HybridPipeline&, std::vector<Parameter>&)                             = 0;
+  virtual void     executeImpl(HybridPipeline&, std::vector<Parameter>&)                            = 0;
+  virtual Result   postExecute(HybridPipeline&, Result preState)                                    = 0;
+  virtual bool     prepare(HybridPipeline&)                                                         = 0;
+  virtual void     probe(HybridPipeline&, ProgramKey&, HashMachine&)                                = 0;
+  virtual void     push(HybridPipeline&, ShaderProgramInstance&, uint32_t outIdx, DataFormat inFmt) = 0;
+  virtual uint32_t getComputeVersion() const                                                        = 0;
+  virtual void     setComputeVersion(uint32_t)                                                      = 0;
 };
 
 struct ClassicHybridNode : public HybridNode
@@ -77,8 +79,19 @@ struct ClassicHybridNode : public HybridNode
   void   executeImpl(HybridPipeline&, std::vector<Parameter>&) override {}
   Result postExecute(HybridPipeline&, Result preState) override;
 
-  uvec2 constraintTileStart = uvec2(0, 0);
-  uvec2 constraintTileCount = uvec2(0, 0);
+  virtual uint32_t getComputeVersion() const
+  {
+    return computeVer;
+  }
+
+  virtual void setComputeVersion(uint32_t v)
+  {
+    computeVer = v;
+  }
+
+  uvec2    constraintTileStart = uvec2(0, 0);
+  uvec2    constraintTileCount = uvec2(0, 0);
+  uint32_t computeVer          = 1440;
 };
 
 struct GpuNode : public ClassicHybridNode

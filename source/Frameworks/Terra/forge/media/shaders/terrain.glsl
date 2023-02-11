@@ -120,16 +120,35 @@ float noise(vec2 v) {
     return 130.0 * dot(m, g);
 }
 
+float random (float st) 
+{
+    return fract(sin(st * 12.9898) * 43758.5453123);
+}
+
+vec2 random (vec2 st) 
+{
+    return fract(sin(st * 12.9898) * 43758.5453123);
+}
+
 float compute_shore_color(in vec3 wpos, in vec3 light_dir, in vec2 uv, in float depth, in float time) 
 {
-  float depthoff = depth + sin(time);
-  vec3 wh = vec3(world_pos.x, world_pos.y + depthoff, world_pos.z);
-  vec3 x = dFdx(wh);
-  vec3 y = dFdy(wh);
-  vec3 normal  = normalize(cross(x, y));
-  float specular = pow(max(dot(normal, light_dir), 0.0), 15.0);
-  float fresnel =  pow(1.0 - max(dot(vec3(0.0, 1.0, 0.0), normalize(vec3(0.0, 1.0, 0.0) + normalize(vec3(uv, depth)))), 5.0);
-  return fresnel + specular;
+  vec4 nc = texture(ocean_foam, sin(uv + time * 0.001));
+  // vec3 normal  = normalize(nc.xyz);
+  // float specular = pow(max(dot(normal, light_dir), 0.0), 15.0);
+  return nc.r * .01;
+  // if (depth > 0.02) return 0.0;
+  // float value = (0.02 - depth) * PI / 0.01;
+  // float depthoff = max(cos((value - time * 0.1) * 4.0), 0.0);
+  // if (depthoff > 0.5)
+  //   depthoff = 0.0;
+  // 
+  // // vec3 wh = vec3(world_pos.x, world_pos.y + depthoff, world_pos.z);
+  // // vec3 x = dFdx(wh);
+  // // vec3 y = dFdy(wh);
+  // // vec3 normal  = normalize(cross(x, y));
+  // // float specular = pow(max(dot(normal, light_dir), 0.0), 15.0);
+  // // float fresnel =  pow(1.0 - max(dot(vec3(0.0, 1.0, 0.0), normalize(vec3(0.0, 1.0, 0.0) + normalize(vec3(uv, depth)))), 5.0);
+  // return depthoff;
 }
 
 void main()
@@ -163,7 +182,7 @@ void main()
   {
     float water_depth = world_pos.w / hscale;
   
-    vec4 water_color = texture(layer_colors, vec2(water_depth, 0.0))  * weights.x;
+    vec4 water_color = texture(layer_colors, vec2(water_depth + sin(ftime * .1) * 0.02, 0.0))  * weights.x;
     color_buffer = water_color +  compute_shore_color(world_pos.xyz, light_dir, uv, water_depth, ftime);
  
   }
